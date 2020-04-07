@@ -22,6 +22,6 @@ You can see below how it looks like in the browser, and how it looks like after 
 
 ![SVG file wiewed in the browser](example_svg.png)
 
-### In SwiftUI View, exported as Shape
+### In SwiftUI View, exported as Shape:
 
 ![SVG file wiewed in the browser](example_swift.png)
