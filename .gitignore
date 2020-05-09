@@ -1,5 +1,5 @@
 /node_modules/
-/docs/build/
+# /docs/build/
 .vscode/
 
 .DS_Store
