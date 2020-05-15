@@ -8,6 +8,8 @@ Tool to convert SVG to SwiftUI's Shape structure. This approach is much more mem
 
 Just follow the link in the repository description, it's intuitive from there on.
 
+**To run locally:** from the root directory run `npm run dev`
+
 ## Functionality Coverage
 
 This program supports a very limited conversion. In particular it can only use M, L, C and Z data points for now, more functionality comming later.
