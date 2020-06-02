@@ -6,9 +6,14 @@ Tool to convert SVG to SwiftUI's Shape structure. This approach is much more mem
 
 ## Usage
 
-Just follow the link in the repository description, it's intuitive from there on.
+The tool is available online, just follow [this](https://quassummanus.github.io/SVG-to-SwiftUI/) link.
 
-**To run locally:** from the root directory run `npm run dev`
+**To run locally:** from the root directory run
+
+```
+npm install
+npm run dev
+```
 
 ## Functionality Coverage
 
