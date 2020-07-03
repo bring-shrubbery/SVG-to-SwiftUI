@@ -20,10 +20,6 @@ npm run dev
 This program supports a very limited conversion. In particular it can only use M, L, C and Z data points for now, more functionality comming later.
 The code is structured in a way that allows to add new functionality quite easily, so feel free to contribute or submit an issue here on Github.
 
-## Contributing
-
-Since this tool is still work-in-progress, the contributions are very welcome. Particualrly, this tool is yet to support all the shapes that SVG provides, as well as their styling. Currently it only exports the shape of <path> SVG element, the code is structured in a way which allows to add support for new shapes quite easily, I just don't have much time to finish it up, so if you do, please consider feel free to open a pull request or create an issue.
-
 ## Example usage
 
 To demonstrate this tool I created a thicc plus sign with rounded corners (created it in Sketch, so shapes from Sketch should work fine with this tool).
