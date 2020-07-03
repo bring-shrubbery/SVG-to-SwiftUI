@@ -6,12 +6,23 @@ Tool to convert SVG to SwiftUI's Shape structure. This approach is much more mem
 
 ## Usage
 
-Just follow the link in the repository description, it's intuitive from there on.
+The tool is available online, just follow [this](https://quassummanus.github.io/SVG-to-SwiftUI/) link.
+
+**To run locally:** from the root directory run
+
+```
+npm install
+npm run dev
+```
 
 ## Functionality Coverage
 
 This program supports a very limited conversion. In particular it can only use M, L, C and Z data points for now, more functionality comming later.
 The code is structured in a way that allows to add new functionality quite easily, so feel free to contribute or submit an issue here on Github.
+
+## Contributing
+
+Since this tool is still work-in-progress, the contributions are very welcome. Particualrly, this tool is yet to support all the shapes that SVG provides, as well as their styling. Currently it only exports the shape of <path> SVG element, the code is structured in a way which allows to add support for new shapes quite easily, I just don't have much time to finish it up, so if you do, please consider feel free to open a pull request or create an issue.
 
 ## Example usage
 
