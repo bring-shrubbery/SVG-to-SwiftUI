@@ -21,7 +21,7 @@
   <h1>Welcome!</h1>
   <i>
     Functionality is limited for now, feel free to contribute on
-    <a href="https://github.com/bring-shrubbery/SVG-to-SwiftUI" target="_blank">
+    <a href="https://github.com/quassummanus/SVG-to-SwiftUI" target="_blank">
       Github
     </a>
     .
