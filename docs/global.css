@@ -38,7 +38,7 @@ textarea {
   font-family: inherit;
   font-size: inherit;
   padding: 0.4em;
-  margin: 0 0 0.5em 0;
+  margin: 0;
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 2px;
@@ -98,9 +98,44 @@ textarea {
   border-radius: 5px;
 }
 
+textarea::placeholder {
+  text-align: center;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  list-style: none;
+  width: fit-content;
+  height: fit-content;
+  margin: 0 auto;
+  margin-bottom: 10px;
+  display: flex;
+  /* justify-items: center; */
+  align-items: center;
+}
+
+li:last-child {
+  margin-bottom: 0;
+}
+
+li > label {
+  margin: 5px 10px;
+}
+
+li > input {
+}
+
 #swift-output-area {
   max-height: 1000px;
   height: 350px;
+}
+
+#settings-button:hover {
+  cursor: pointer;
 }
 
 @media (min-width: 640px) {
@@ -127,5 +162,9 @@ textarea {
 
   a:visited {
     color: rgb(0, 105, 211);
+  }
+
+  #settings-button {
+    filter: invert(100%);
   }
 }

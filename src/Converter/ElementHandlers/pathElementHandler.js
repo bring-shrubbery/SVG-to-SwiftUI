@@ -20,6 +20,10 @@ function convertPathToSwift(dataPointElements, options) {
 
   let swiftString = "";
   for (const el of dataPointElements) {
+    // Flatten data.
+    el.data = [].concat.apply([], el.data);
+
+    // Handle data depending on command type.
     switch (el.command) {
       case "M":
         swiftString +=
@@ -100,7 +104,7 @@ function parseDataPoints(dStr) {
 }
 
 function generateMoveToSwift(data, options) {
-  const [x, y] = data[0];
+  const [x, y] = data;
   const fmtOpts = {
     notation: "fixed",
     precision: options.numberPrecision,
@@ -109,11 +113,14 @@ function generateMoveToSwift(data, options) {
   const px = parseFloat(format(x / options.viewBox.width, fmtOpts));
   const py = parseFloat(format(y / options.viewBox.height, fmtOpts));
 
-  return `path.move(to: CGPoint(x: ${px}*width, y: ${py}*height))`;
+  const new_x = px == 0 ? "0" : `${px}*width`;
+  const new_y = py == 0 ? "0" : `${py}*height`;
+
+  return `path.move(to: CGPoint(x: ${new_x}, y: ${new_y}))`;
 }
 
 function generateLineToSwift(data, options) {
-  const [x, y] = data[0];
+  const [x, y] = data;
   const fmtOpts = {
     notation: "fixed",
     precision: options.numberPrecision,
@@ -122,7 +129,10 @@ function generateLineToSwift(data, options) {
   const px = parseFloat(format(x / options.viewBox.width, fmtOpts));
   const py = parseFloat(format(y / options.viewBox.height, fmtOpts));
 
-  return `path.addLine(to: CGPoint(x: ${px}*width, y: ${py}*height))`;
+  const new_x = px == 0 ? "0" : `${px}*width`;
+  const new_y = py == 0 ? "0" : `${py}*height`;
+
+  return `path.addLine(to: CGPoint(x: ${new_x}, y: ${new_y}))`;
 }
 
 function generateClosePathSwift(data, options) {
@@ -130,24 +140,33 @@ function generateClosePathSwift(data, options) {
 }
 
 function generateCubicCurveSwift(data, options) {
-  const [p2, p3, p1] = data;
+  let [p2x, p2y, p3x, p3y, p1x, p1y] = data;
   const fmtOpts = {
     notation: "fixed",
     precision: options.numberPrecision,
   };
 
-  const p1x = parseFloat(format(p1[0] / options.viewBox.width, fmtOpts));
-  const p1y = parseFloat(format(p1[1] / options.viewBox.height, fmtOpts));
+  // Convert raw values into width/height relative values.
+  p1x = parseFloat(format(p1x / options.viewBox.width, fmtOpts));
+  p1y = parseFloat(format(p1y / options.viewBox.height, fmtOpts));
 
-  const p2y = parseFloat(format(p2[1] / options.viewBox.height, fmtOpts));
-  const p2x = parseFloat(format(p2[0] / options.viewBox.width, fmtOpts));
+  p2y = parseFloat(format(p2y / options.viewBox.height, fmtOpts));
+  p2x = parseFloat(format(p2x / options.viewBox.width, fmtOpts));
 
-  const p3x = parseFloat(format(p3[0] / options.viewBox.width, fmtOpts));
-  const p3y = parseFloat(format(p3[1] / options.viewBox.height, fmtOpts));
+  p3x = parseFloat(format(p3x / options.viewBox.width, fmtOpts));
+  p3y = parseFloat(format(p3y / options.viewBox.height, fmtOpts));
+
+  // Prepare string values.
+  const p1x_str = p1x == 0 ? "0" : `${p1x}*width`;
+  const p1y_str = p1y == 0 ? "0" : `${p1y}*height`;
+  const p2x_str = p2x == 0 ? "0" : `${p2x}*width`;
+  const p2y_str = p2y == 0 ? "0" : `${p2y}*height`;
+  const p3x_str = p3x == 0 ? "0" : `${p3x}*width`;
+  const p3y_str = p3y == 0 ? "0" : `${p3y}*height`;
 
   return [
-    `path.addCurve(to: CGPoint(x: ${p1x}*width, y: ${p1y}*height),`,
-    `control1: CGPoint(x: ${p2x}*width, y: ${p2y}*height),`,
-    `control2: CGPoint(x: ${p3x}*width, y: ${p3y}*height))`,
+    `path.addCurve(to: CGPoint(x: ${p1x_str}, y: ${p1y_str}),`,
+    `control1: CGPoint(x: ${p2x_str}, y: ${p2y_str}),`,
+    `control2: CGPoint(x: ${p3x_str}, y: ${p3y_str}))`,
   ].join("");
 }
