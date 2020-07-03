@@ -41,3 +41,7 @@ It's saved as 'demo-plus.svg' file in this repository. You can see below how it 
 ## Author
 
 [Antoni Silvestrovic](https://github.com/bring-shrubbery)
+
+## License
+
+[MIT](https://github.com/quassummanus/SVG-to-SwiftUI/blob/master/LICENSE)
