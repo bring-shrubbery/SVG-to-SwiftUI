@@ -18,6 +18,11 @@ The code is structured in a way that allows to add new functionality quite easil
 To demonstrate this tool I created a thicc plus sign with rounded corners (created it in Sketch, so shapes from Sketch should work fine with this tool).
 It's saved as 'demo-plus.svg' file in this repository. You can see below how it looks like in the browser, and how it looks like after converting into SwiftUI Shape.
 
+## Contributing
+
+- Feel free to open an issue for the SVG code that did not work - provide the SVG code of course!
+- Pull requests are very welcome! Introducing support for more SVG element types would be the best contribution at this point.
+
 ### In the browser
 
 ![SVG file wiewed in the browser](example_svg.png)
@@ -25,3 +30,7 @@ It's saved as 'demo-plus.svg' file in this repository. You can see below how it 
 ### In SwiftUI View, exported as a Shape
 
 ![SVG file wiewed in the browser](example_swift.png)
+
+## Author
+
+[Antoni Silvestrovic](https://github.com/bring-shrubbery)
