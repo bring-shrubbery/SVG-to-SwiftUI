@@ -1,4 +1,4 @@
-# SVG-to-SwiftUI
+# SVG to SwiftUI Converter
 
 Tool to convert SVG to SwiftUI's Shape structure. This approach is much more memory efficient than introducing a SVG library for rendering.
 
