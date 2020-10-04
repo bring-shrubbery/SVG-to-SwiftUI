@@ -1,7 +1,14 @@
 export function convertToPixels(number) {
+  if (typeof number !== "number" && typeof number !== "string") {
+    throw new Error("Function only accepts strings or numbers.");
+  }
+
+  if (typeof number == "number") return number;
+
   const unit = String(number).substr(-2, 2);
+
   if (unit.search(/^[a-z]{2}$/i) != -1) {
-    switch (unit) {
+    switch (unit.toLowerCase()) {
       case "em":
         return 0;
       case "ex":
