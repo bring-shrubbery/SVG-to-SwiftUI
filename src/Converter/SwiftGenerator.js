@@ -3,12 +3,12 @@ import { handleElement } from "./SvgToSwiftConverters";
 import { convertToPixels } from "./Utils";
 
 export default function SwiftGenerator(svgJsonTree, options) {
-  const { decimalPoints } = options;
+  const { decimalPoints, customShapeName } = options;
 
   const { width, height, viewBox } = parseSvgElement(svgJsonTree);
   const svgPrimitives = getPrimitives(svgJsonTree);
 
-  const shapeName = "MyCustomShape";
+  const shapeName = customShapeName || "MyCustomShape";
   let swiftString = `struct ${shapeName}: Shape {\n`;
   swiftString += `    func path(in rect: CGRect) -> Path{\n`;
   swiftString += `        var path = Path()\n`;

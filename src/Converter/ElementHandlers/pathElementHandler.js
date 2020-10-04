@@ -68,7 +68,7 @@ function parseDataPoints(dStr) {
   let lastElementId;
 
   for (let i = 0; i < dStr.length; i++) {
-    if (/[a-zA-Z]/.test(dStr[i])) {
+    if (/[m|l|h|v|c|s|q|t|a|z]/i.test(dStr[i])) {
       // New command.
       lastElementId = elements.length;
       elements.push([dStr[i]]);

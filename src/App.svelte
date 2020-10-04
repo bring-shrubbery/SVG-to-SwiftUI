@@ -36,8 +36,9 @@
   {#if settingsShown}
     <ul>
       <li>
-        <label>Round to decimal points:</label>
+        <label for="precision-control-input">Round to decimal points:</label>
         <input
+          id="precision-control-input"
           type="number"
           min="0"
           max="10"
