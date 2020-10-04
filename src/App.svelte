@@ -8,6 +8,7 @@
   let settingsShown = false;
   const toggleSettings = () => (settingsShown = !settingsShown);
   let options = {
+    shapeName: "MyCustomShape",
     decimalPoints: 5
   };
 
@@ -20,11 +21,11 @@
 <main>
   <h1>Welcome!</h1>
   <i>
-    Functionality is limited for now, feel free to contribute on
+    Like this tool? Star it on
     <a href="https://github.com/quassummanus/SVG-to-SwiftUI" target="_blank">
       Github
     </a>
-    .
+    !
   </i>
   <img
     id="settings-button"
@@ -35,6 +36,13 @@
     title={`${settingsShown ? 'Hide' : 'Show'} settings`} />
   {#if settingsShown}
     <ul>
+      <li>
+        <label for="shape-name-input">Shape name:</label>
+        <input
+          id="shape-name-input"
+          type="text"
+          bind:value={options.shapeName} />
+      </li>
       <li>
         <label for="precision-control-input">Round to decimal points:</label>
         <input
