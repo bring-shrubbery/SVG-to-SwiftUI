@@ -112,7 +112,7 @@ function handleZeroAndOneValues(value_x, value_y) {
   } else if (value_x == 1) {
     filtered_x = "width";
   } else {
-    filtered_y = `${value_x}*width`;
+    filtered_x = `${value_x}*width`;
   }
 
   if (value_y == 0) {
