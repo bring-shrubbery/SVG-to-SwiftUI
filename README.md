@@ -2,7 +2,7 @@
 
 Tool to convert SVG to SwiftUI's Shape structure. This approach is much more memory efficient than introducing a SVG library for rendering.
 
-**Disclaimer:** If you need to import SVG into SwiftUI app, it's better to use [this](https://developer.apple.com/documentation/uikit/uiimage/creating_custom_symbol_images_for_your_app) guide to create a symbol instead. This tool might be useful in some particular situations though, for example: using SFSymbols in macOS applocation, animated Shape, finer control over positioning and scaling, etc.
+**Disclaimer:** If you need to import SVG into SwiftUI app, it's better to use [this](https://developer.apple.com/documentation/uikit/uiimage/creating_custom_symbol_images_for_your_app) guide to create a symbol instead. This tool might be useful in some particular situations though, for example: using SFSymbols in macOS application, animated Shape, finer control over positioning and scaling, etc.
 
 ## Usage
 
