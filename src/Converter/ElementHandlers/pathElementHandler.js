@@ -24,7 +24,7 @@ function convertPathToSwift(dataPointElements, options) {
     el.data = [].concat.apply([], el.data);
 
     // Handle data depending on command type.
-    switch (el.command) {
+    switch (el.command.toUpperCase()) {
       case "M":
         swiftString +=
           identation + generateMoveToSwift(el.data, options) + "\n";
@@ -103,6 +103,29 @@ function parseDataPoints(dStr) {
   return elements;
 }
 
+function handleZeroAndOneValues(value_x, value_y) {
+  let filtered_x = "";
+  let filtered_y = "";
+
+  if (value_x == 0) {
+    filtered_x = "0";
+  } else if (value_x == 1) {
+    filtered_x = "width";
+  } else {
+    filtered_y = `${value_x}*width`;
+  }
+
+  if (value_y == 0) {
+    filtered_y = "0";
+  } else if (value_y == 1) {
+    filtered_y = "height";
+  } else {
+    filtered_y = `${value_y}*height`;
+  }
+
+  return [filtered_x, filtered_y];
+}
+
 function generateMoveToSwift(data, options) {
   const [x, y] = data;
   const fmtOpts = {
@@ -113,8 +136,7 @@ function generateMoveToSwift(data, options) {
   const px = parseFloat(format(x / options.viewBox.width, fmtOpts));
   const py = parseFloat(format(y / options.viewBox.height, fmtOpts));
 
-  const new_x = px == 0 ? "0" : `${px}*width`;
-  const new_y = py == 0 ? "0" : `${py}*height`;
+  const [new_x, new_y] = handleZeroAndOneValues(px, py);
 
   return `path.move(to: CGPoint(x: ${new_x}, y: ${new_y}))`;
 }
@@ -129,8 +151,7 @@ function generateLineToSwift(data, options) {
   const px = parseFloat(format(x / options.viewBox.width, fmtOpts));
   const py = parseFloat(format(y / options.viewBox.height, fmtOpts));
 
-  const new_x = px == 0 ? "0" : `${px}*width`;
-  const new_y = py == 0 ? "0" : `${py}*height`;
+  const [new_x, new_y] = handleZeroAndOneValues(px, py);
 
   return `path.addLine(to: CGPoint(x: ${new_x}, y: ${new_y}))`;
 }
@@ -157,12 +178,9 @@ function generateCubicCurveSwift(data, options) {
   p3y = parseFloat(format(p3y / options.viewBox.height, fmtOpts));
 
   // Prepare string values.
-  const p1x_str = p1x == 0 ? "0" : `${p1x}*width`;
-  const p1y_str = p1y == 0 ? "0" : `${p1y}*height`;
-  const p2x_str = p2x == 0 ? "0" : `${p2x}*width`;
-  const p2y_str = p2y == 0 ? "0" : `${p2y}*height`;
-  const p3x_str = p3x == 0 ? "0" : `${p3x}*width`;
-  const p3y_str = p3y == 0 ? "0" : `${p3y}*height`;
+  const [p1x_str, p1y_str] = handleZeroAndOneValues(p1x, p1y);
+  const [p2x_str, p2y_str] = handleZeroAndOneValues(p2x, p2y);
+  const [p3x_str, p3y_str] = handleZeroAndOneValues(p3x, p3y);
 
   return [
     `path.addCurve(to: CGPoint(x: ${p1x_str}, y: ${p1y_str}),`,
