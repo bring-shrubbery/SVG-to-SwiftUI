@@ -7,5 +7,5 @@
     "node_modules/*",
     "__sapper__/*",
     "docs/*"
-  ],
+  ]
 }
