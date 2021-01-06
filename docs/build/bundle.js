@@ -1,5 +1,1083 @@
-var app=function(){"use strict";function t(){}function e(t){return t()}function r(){return Object.create(null)}function n(t){t.forEach(e)}function i(t){return"function"==typeof t}function o(t,e){return t!=t?e==e:t!==e||t&&"object"==typeof t||"function"==typeof t}function a(t,e){t.appendChild(e)}function s(t,e,r){t.insertBefore(e,r||null)}function u(t){t.parentNode.removeChild(t)}function c(t){return document.createElement(t)}function l(){return t=" ",document.createTextNode(t);var t}function h(t,e,r,n){return t.addEventListener(e,r,n),()=>t.removeEventListener(e,r,n)}function p(t,e,r){null==r?t.removeAttribute(e):t.getAttribute(e)!==r&&t.setAttribute(e,r)}function f(t){return""===t?null:+t}function d(t,e){t.value=null==e?"":e}function m(t,e,r,n){t.style.setProperty(e,r,n?"important":"")}let y;function v(t){y=t}const x=[],g=[],_=[],O=[],T=Promise.resolve();let N=!1;function S(t){_.push(t)}let E=!1;const C=new Set;function w(){if(!E){E=!0;do{for(let t=0;t<x.length;t+=1){const e=x[t];v(e),A(e.$$)}for(v(null),x.length=0;g.length;)g.pop()();for(let t=0;t<_.length;t+=1){const e=_[t];C.has(e)||(C.add(e),e())}_.length=0}while(x.length);for(;O.length;)O.pop()();N=!1,E=!1,C.clear()}}function A(t){if(null!==t.fragment){t.update(),n(t.before_update);const e=t.dirty;t.dirty=[-1],t.fragment&&t.fragment.p(t.ctx,e),t.after_update.forEach(S)}}const M=new Set;function b(t,e){-1===t.$$.dirty[0]&&(x.push(t),N||(N=!0,T.then(w)),t.$$.dirty.fill(0)),t.$$.dirty[e/31|0]|=1<<e%31}function R(o,a,s,c,l,h,p=[-1]){const f=y;v(o);const d=a.props||{},m=o.$$={fragment:null,ctx:null,props:h,update:t,not_equal:l,bound:r(),on_mount:[],on_destroy:[],before_update:[],after_update:[],context:new Map(f?f.$$.context:[]),callbacks:r(),dirty:p,skip_bound:!1};let x=!1;if(m.ctx=s?s(o,d,((t,e,...r)=>{const n=r.length?r[0]:e;return m.ctx&&l(m.ctx[t],m.ctx[t]=n)&&(!m.skip_bound&&m.bound[t]&&m.bound[t](n),x&&b(o,t)),e})):[],m.update(),x=!0,n(m.before_update),m.fragment=!!c&&c(m.ctx),a.target){if(a.hydrate){const t=function(t){return Array.from(t.childNodes)}(a.target);m.fragment&&m.fragment.l(t),t.forEach(u)}else m.fragment&&m.fragment.c();a.intro&&((g=o.$$.fragment)&&g.i&&(M.delete(g),g.i(_))),function(t,r,o){const{fragment:a,on_mount:s,on_destroy:u,after_update:c}=t.$$;a&&a.m(r,o),S((()=>{const r=s.map(e).filter(i);u?u.push(...r):n(r),t.$$.on_mount=[]})),c.forEach(S)}(o,a.target,a.anchor),w()}var g,_;v(f)}"undefined"!=typeof globalThis?globalThis:"undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self&&self;function P(t){return t&&t.__esModule&&Object.prototype.hasOwnProperty.call(t,"default")?t.default:t}function V(t,e){return t(e={exports:{}},e.exports),e.exports}var I=V((function(t,e){!function(t){function e(t,e){void 0===e&&(e={});var r=e.offsetLine||0,n=e.offsetColumn||0,i=t.split("\n"),o=0,a=i.map((function(t,e){var r=o+t.length+1,n={start:o,end:r,line:e};return o=r,n})),s=0;function u(t,e){return t.start<=e&&e<t.end}function c(t,e){return{line:r+t.line,column:n+e-t.start,character:e}}function l(e,r){"string"==typeof e&&(e=t.indexOf(e,r||0));for(var n=a[s],i=e>=n.end?1:-1;n;){if(u(n,e))return c(n,e);n=a[s+=i]}}return l}function r(t,r,n){if("number"==typeof n)throw new Error("locate takes a { startIndex, offsetLine, offsetColumn } object as the third argument");return e(t,n)(r,n&&n.startIndex)}var n=/[a-zA-Z0-9:_-]/,i=/[\s\t\r\n]/,o=/['"]/;function a(t,e){for(var r="";e--;)r+=t;return r}function s(t){var e="",s=[],u=p,c=null,l=null;function h(e){var n=r(t,S),i=n.line,o=n.column,s=t.slice(0,S),u=/(^|\n).*$/.exec(s)[0].replace(/\t/g,"  "),c=t.slice(S),l=""+u+/.*(\n|$)/.exec(c)[0]+"\n"+a(" ",u.length)+"^";throw new Error(e+" ("+i+":"+o+"). If this is valid SVG, it's probably a bug in svg-parser. Please raise an issue at https://github.com/Rich-Harris/svg-parser/issues – thanks!\n\n"+l)}function p(){for(;S<t.length&&"<"!==t[S]||!n.test(t[S+1]);)e+=t[S++];return f()}function f(){for(var e="";S<t.length&&"<"!==t[S];)e+=t[S++];return/\S/.test(e)&&c.children.push({type:"text",value:e}),"<"===t[S]?d:f}function d(){var e=t[S];if("?"===e)return f;if("!"===e){if("--"===t.slice(S+1,S+3))return m;if("[CDATA["===t.slice(S+1,S+8))return y;if(/doctype/i.test(t.slice(S+1,S+8)))return f}if("/"===e)return v;var r,n={type:"element",tagName:x(),properties:{},children:[]};for(c?c.children.push(n):l=n;S<t.length&&(r=g());)n.properties[r.name]=r.value;var i=!1;return"/"===t[S]&&(S+=1,i=!0),">"!==t[S]&&h("Expected >"),i||(c=n,s.push(n)),f}function m(){var e=t.indexOf("--\x3e",S);return~e||h("expected --\x3e"),S=e+2,f}function y(){var e=t.indexOf("]]>",S);return~e||h("expected ]]>"),c.children.push(t.slice(S+7,e)),S=e+2,f}function v(){var e=x();return e||h("Expected tag name"),e!==c.tagName&&h("Expected closing tag </"+e+"> to match opening tag <"+c.tagName+">"),N(),">"!==t[S]&&h("Expected >"),s.pop(),c=s[s.length-1],f}function x(){for(var e="";S<t.length&&n.test(t[S]);)e+=t[S++];return e}function g(){if(!i.test(t[S]))return null;N();var e=x();if(!e)return null;var r=!0;return N(),"="===t[S]&&(S+=1,N(),r=_(),isNaN(r)||""===r.trim()||(r=+r)),{name:e,value:r}}function _(){return o.test(t[S])?T():O()}function O(){var e="";do{var r=t[S];if(" "===r||">"===r||"/"===r)return e;e+=r,S+=1}while(S<t.length);return e}function T(){for(var e=t[S++],r="",n=!1;S<t.length;){var i=t[S++];if(i===e&&!n)return r;"\\"!==i||n||(n=!0),r+=n?"\\"+i:i,n=!1}}function N(){for(;S<t.length&&i.test(t[S]);)S+=1}for(var S=p.length;S<t.length;)u||h("Unexpected character"),u=u(),S+=1;return u!==f&&h("Unexpected end of input"),"svg"===l.tagName&&(l.metadata=e),{type:"root",children:[l]}}t.parse=s,Object.defineProperty(t,"__esModule",{value:!0})}(e)}));P(I);var L=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.generateSwiftUIShape=void 0;e.generateSwiftUIShape=(t,e)=>{const r=new Array(e.indentationSize).fill(" ").join(""),n=t=>new Array(t).fill(r).join(""),i=`${n(2)}${t.join(`\n${n(2)}`)}`;return[`struct ${e.structName}: Shape {`,`${n(1)}func path(in rect: CGRect) -> Path {`,`${n(2)}var path = Path()`,`${n(2)}let width = rect.size.width`,`${n(2)}let height = rect.size.height`,i,`${n(2)}return path`,`${n(1)}}`,"}"].join("\n")}}));P(L);L.generateSwiftUIShape;var U=V((function(t,e){function r(t){if("number"==typeof t)return t;const e=String(t).substr(-2,2);if(-1===e.search(/^[a-z]{2}$/i))return parseFloat(t);switch(e){case"em":case"ex":case"px":case"pt":case"pc":case"cm":case"mm":case"in":default:return parseFloat(t)}}Object.defineProperty(e,"__esModule",{value:!0}),e.stringifyRectValues=e.normaliseRectValues=e.clampNormalisedSizeProduct=e.getSVGElement=e.extractSVGProperties=e.convertToPixels=void 0,e.convertToPixels=r,e.extractSVGProperties=function(t){var e,n,i;const o=null===(e=t.properties)||void 0===e?void 0:e.viewBox,a=null===(n=t.properties)||void 0===n?void 0:n.width,s=null===(i=t.properties)||void 0===i?void 0:i.height;if(!(a&&s)&&!!!o)throw new Error("Width and height or viewBox must be provided on <svg> element!");const u=String(o).split(" ").map((t=>parseFloat(t))),[c,l,h,p]=u,f=u.every((t=>!isNaN(t))),d=r(a||h),m=r(s||p);return{width:d,height:m,viewBox:f?{x:c,y:l,width:h,height:p}:{x:0,y:0,width:d,height:m}}},e.getSVGElement=function(t){const e=[t];for(;e.length>0;){const t=e.shift();if(t&&"string"!=typeof t){if("root"===t.type){e.push(...t.children);continue}if("element"===t.type){if("svg"===t.tagName)return t;e.push(...t.children);continue}}else;}},e.clampNormalisedSizeProduct=function(t,e){return 1===parseFloat(t)?e:0===parseFloat(t)?"0":`${t}*${e}`},e.normaliseRectValues=function(t,e){return t.width&&t.height?{x:t.x/e.width,y:t.y/e.height,width:t.width/e.width,height:t.height/e.height}:{x:t.x/e.width,y:t.y/e.height}},e.stringifyRectValues=function(t,e){const r=t=>t.toFixed(e).replace(/0+$/,"");return t.width&&t.height?{x:r(t.x),y:r(t.y),width:r(t.width),height:r(t.height)}:{x:r(t.x),y:r(t.y)}}}));P(U);U.stringifyRectValues,U.normaliseRectValues,U.clampNormalisedSizeProduct,U.getSVGElement,U.extractSVGProperties,U.convertToPixels;var $=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t,e){const r=t.properties;if(r){const t=r;if(!t.cx||!t.cy||!t.r)throw new Error("Circle element has to contain cx, cy, and r properties!");const n=parseFloat(t.cx),i=parseFloat(t.cy),o=parseFloat(t.r),a=n-o,s=i-o,u=2*o,c=2*o,l=U.normaliseRectValues({x:a,y:s,width:u,height:c},e.viewBox),h=U.stringifyRectValues(l,e.precision);return[`path.addEllipse(in: ${`CGRect(x: ${U.clampNormalisedSizeProduct(h.x,"width")}, y: ${U.clampNormalisedSizeProduct(h.y,"height")}, width: ${U.clampNormalisedSizeProduct(h.width,"width")}, height: ${U.clampNormalisedSizeProduct(h.height,"height")})`})`]}throw new Error("Circle element has to some properties")}}));P($);var H=V((function(t,e){function r(t){const e={},r=t.replace(/\s/g,"").split(";").map((t=>{const[e,r]=t.split(":");return{property:e,value:r}}));for(const t of r)e[t.property]=t.value;return e}function n(t){return Object.keys(t).filter((t=>e.StylePropertiesSet.has(t))).reduce(((e,r)=>(e[r]=t[r],e)),{})}Object.defineProperty(e,"__esModule",{value:!0}),e.StylePropertiesSet=e.filterStyleProps=e.parseStyle=e.extractStyle=void 0,e.extractStyle=function(t){const e=t.properties;if(e)return"string"==typeof e.style?r(e.style):n(e);throw new Error(`No properties found on ${t.tagName} node!`)},e.parseStyle=r,e.filterStyleProps=n,e.StylePropertiesSet=new Set(["alignment-baseline","baseline-shift","clip","clip-path","clip-rule","color","color-interpolation","color-interpolation-filters","color-profile","color-rendering","cursor","direction","display","dominant-baseline","enable-background","fill","fill-opacity","fill-rule","filter","flood-color","flood-opacity","font-family","font-size","font-size-adjust","font-stretch","font-style","font-variant","font-weight","glyph-orientation-horizontal","glyph-orientation-vertical","image-rendering","kerning","letter-spacing","lighting-color","marker-end","marker-mid","marker-start","mask","opacity","overflow","pointer-events","shape-rendering","solid-color","solid-opacity","stop-color","stop-opacity","stroke","stroke-dasharray","stroke-dashoffset","stroke-linecap","stroke-linejoin","stroke-miterlimit","stroke-opacity","stroke-width","text-anchor","text-decoration","text-rendering","transform","unicode-bidi","vector-effect","visibility","word-spacing","writing-mode"])}));P(H);H.StylePropertiesSet,H.filterStyleProps,H.parseStyle,H.extractStyle;var D=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t,e){const{children:r}=t,n="element"===t.type?H.extractStyle(t):{},i=[];for(const t of r)"string"!=typeof t&&"text"!==t.type&&i.push(...dt.handleElement(t,{...e,...n}));return i}}));P(D);
-/*! *****************************************************************************
+
+(function(l, r) { if (l.getElementById('livereloadscript')) return; r = l.createElement('script'); r.async = 1; r.src = '//' + (window.location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1'; r.id = 'livereloadscript'; l.getElementsByTagName('head')[0].appendChild(r) })(window.document);
+var app = (function () {
+    'use strict';
+
+    function noop() { }
+    function add_location(element, file, line, column, char) {
+        element.__svelte_meta = {
+            loc: { file, line, column, char }
+        };
+    }
+    function run(fn) {
+        return fn();
+    }
+    function blank_object() {
+        return Object.create(null);
+    }
+    function run_all(fns) {
+        fns.forEach(run);
+    }
+    function is_function(thing) {
+        return typeof thing === 'function';
+    }
+    function safe_not_equal(a, b) {
+        return a != a ? b == b : a !== b || ((a && typeof a === 'object') || typeof a === 'function');
+    }
+    function is_empty(obj) {
+        return Object.keys(obj).length === 0;
+    }
+
+    function append(target, node) {
+        target.appendChild(node);
+    }
+    function insert(target, node, anchor) {
+        target.insertBefore(node, anchor || null);
+    }
+    function detach(node) {
+        node.parentNode.removeChild(node);
+    }
+    function element(name) {
+        return document.createElement(name);
+    }
+    function text(data) {
+        return document.createTextNode(data);
+    }
+    function space() {
+        return text(' ');
+    }
+    function listen(node, event, handler, options) {
+        node.addEventListener(event, handler, options);
+        return () => node.removeEventListener(event, handler, options);
+    }
+    function attr(node, attribute, value) {
+        if (value == null)
+            node.removeAttribute(attribute);
+        else if (node.getAttribute(attribute) !== value)
+            node.setAttribute(attribute, value);
+    }
+    function to_number(value) {
+        return value === '' ? null : +value;
+    }
+    function children(element) {
+        return Array.from(element.childNodes);
+    }
+    function set_input_value(input, value) {
+        input.value = value == null ? '' : value;
+    }
+    function set_style(node, key, value, important) {
+        node.style.setProperty(key, value, important ? 'important' : '');
+    }
+    function custom_event(type, detail) {
+        const e = document.createEvent('CustomEvent');
+        e.initCustomEvent(type, false, false, detail);
+        return e;
+    }
+
+    let current_component;
+    function set_current_component(component) {
+        current_component = component;
+    }
+
+    const dirty_components = [];
+    const binding_callbacks = [];
+    const render_callbacks = [];
+    const flush_callbacks = [];
+    const resolved_promise = Promise.resolve();
+    let update_scheduled = false;
+    function schedule_update() {
+        if (!update_scheduled) {
+            update_scheduled = true;
+            resolved_promise.then(flush);
+        }
+    }
+    function add_render_callback(fn) {
+        render_callbacks.push(fn);
+    }
+    let flushing = false;
+    const seen_callbacks = new Set();
+    function flush() {
+        if (flushing)
+            return;
+        flushing = true;
+        do {
+            // first, call beforeUpdate functions
+            // and update components
+            for (let i = 0; i < dirty_components.length; i += 1) {
+                const component = dirty_components[i];
+                set_current_component(component);
+                update(component.$$);
+            }
+            set_current_component(null);
+            dirty_components.length = 0;
+            while (binding_callbacks.length)
+                binding_callbacks.pop()();
+            // then, once components are updated, call
+            // afterUpdate functions. This may cause
+            // subsequent updates...
+            for (let i = 0; i < render_callbacks.length; i += 1) {
+                const callback = render_callbacks[i];
+                if (!seen_callbacks.has(callback)) {
+                    // ...so guard against infinite loops
+                    seen_callbacks.add(callback);
+                    callback();
+                }
+            }
+            render_callbacks.length = 0;
+        } while (dirty_components.length);
+        while (flush_callbacks.length) {
+            flush_callbacks.pop()();
+        }
+        update_scheduled = false;
+        flushing = false;
+        seen_callbacks.clear();
+    }
+    function update($$) {
+        if ($$.fragment !== null) {
+            $$.update();
+            run_all($$.before_update);
+            const dirty = $$.dirty;
+            $$.dirty = [-1];
+            $$.fragment && $$.fragment.p($$.ctx, dirty);
+            $$.after_update.forEach(add_render_callback);
+        }
+    }
+    const outroing = new Set();
+    function transition_in(block, local) {
+        if (block && block.i) {
+            outroing.delete(block);
+            block.i(local);
+        }
+    }
+    function mount_component(component, target, anchor) {
+        const { fragment, on_mount, on_destroy, after_update } = component.$$;
+        fragment && fragment.m(target, anchor);
+        // onMount happens before the initial afterUpdate
+        add_render_callback(() => {
+            const new_on_destroy = on_mount.map(run).filter(is_function);
+            if (on_destroy) {
+                on_destroy.push(...new_on_destroy);
+            }
+            else {
+                // Edge case - component was destroyed immediately,
+                // most likely as a result of a binding initialising
+                run_all(new_on_destroy);
+            }
+            component.$$.on_mount = [];
+        });
+        after_update.forEach(add_render_callback);
+    }
+    function destroy_component(component, detaching) {
+        const $$ = component.$$;
+        if ($$.fragment !== null) {
+            run_all($$.on_destroy);
+            $$.fragment && $$.fragment.d(detaching);
+            // TODO null out other refs, including component.$$ (but need to
+            // preserve final state?)
+            $$.on_destroy = $$.fragment = null;
+            $$.ctx = [];
+        }
+    }
+    function make_dirty(component, i) {
+        if (component.$$.dirty[0] === -1) {
+            dirty_components.push(component);
+            schedule_update();
+            component.$$.dirty.fill(0);
+        }
+        component.$$.dirty[(i / 31) | 0] |= (1 << (i % 31));
+    }
+    function init(component, options, instance, create_fragment, not_equal, props, dirty = [-1]) {
+        const parent_component = current_component;
+        set_current_component(component);
+        const prop_values = options.props || {};
+        const $$ = component.$$ = {
+            fragment: null,
+            ctx: null,
+            // state
+            props,
+            update: noop,
+            not_equal,
+            bound: blank_object(),
+            // lifecycle
+            on_mount: [],
+            on_destroy: [],
+            before_update: [],
+            after_update: [],
+            context: new Map(parent_component ? parent_component.$$.context : []),
+            // everything else
+            callbacks: blank_object(),
+            dirty,
+            skip_bound: false
+        };
+        let ready = false;
+        $$.ctx = instance
+            ? instance(component, prop_values, (i, ret, ...rest) => {
+                const value = rest.length ? rest[0] : ret;
+                if ($$.ctx && not_equal($$.ctx[i], $$.ctx[i] = value)) {
+                    if (!$$.skip_bound && $$.bound[i])
+                        $$.bound[i](value);
+                    if (ready)
+                        make_dirty(component, i);
+                }
+                return ret;
+            })
+            : [];
+        $$.update();
+        ready = true;
+        run_all($$.before_update);
+        // `false` as a special case of no DOM component
+        $$.fragment = create_fragment ? create_fragment($$.ctx) : false;
+        if (options.target) {
+            if (options.hydrate) {
+                const nodes = children(options.target);
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                $$.fragment && $$.fragment.l(nodes);
+                nodes.forEach(detach);
+            }
+            else {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                $$.fragment && $$.fragment.c();
+            }
+            if (options.intro)
+                transition_in(component.$$.fragment);
+            mount_component(component, options.target, options.anchor);
+            flush();
+        }
+        set_current_component(parent_component);
+    }
+    /**
+     * Base class for Svelte components. Used when dev=false.
+     */
+    class SvelteComponent {
+        $destroy() {
+            destroy_component(this, 1);
+            this.$destroy = noop;
+        }
+        $on(type, callback) {
+            const callbacks = (this.$$.callbacks[type] || (this.$$.callbacks[type] = []));
+            callbacks.push(callback);
+            return () => {
+                const index = callbacks.indexOf(callback);
+                if (index !== -1)
+                    callbacks.splice(index, 1);
+            };
+        }
+        $set($$props) {
+            if (this.$$set && !is_empty($$props)) {
+                this.$$.skip_bound = true;
+                this.$$set($$props);
+                this.$$.skip_bound = false;
+            }
+        }
+    }
+
+    function dispatch_dev(type, detail) {
+        document.dispatchEvent(custom_event(type, Object.assign({ version: '3.31.1' }, detail)));
+    }
+    function append_dev(target, node) {
+        dispatch_dev('SvelteDOMInsert', { target, node });
+        append(target, node);
+    }
+    function insert_dev(target, node, anchor) {
+        dispatch_dev('SvelteDOMInsert', { target, node, anchor });
+        insert(target, node, anchor);
+    }
+    function detach_dev(node) {
+        dispatch_dev('SvelteDOMRemove', { node });
+        detach(node);
+    }
+    function listen_dev(node, event, handler, options, has_prevent_default, has_stop_propagation) {
+        const modifiers = options === true ? ['capture'] : options ? Array.from(Object.keys(options)) : [];
+        if (has_prevent_default)
+            modifiers.push('preventDefault');
+        if (has_stop_propagation)
+            modifiers.push('stopPropagation');
+        dispatch_dev('SvelteDOMAddEventListener', { node, event, handler, modifiers });
+        const dispose = listen(node, event, handler, options);
+        return () => {
+            dispatch_dev('SvelteDOMRemoveEventListener', { node, event, handler, modifiers });
+            dispose();
+        };
+    }
+    function attr_dev(node, attribute, value) {
+        attr(node, attribute, value);
+        if (value == null)
+            dispatch_dev('SvelteDOMRemoveAttribute', { node, attribute });
+        else
+            dispatch_dev('SvelteDOMSetAttribute', { node, attribute, value });
+    }
+    function prop_dev(node, property, value) {
+        node[property] = value;
+        dispatch_dev('SvelteDOMSetProperty', { node, property, value });
+    }
+    function validate_slots(name, slot, keys) {
+        for (const slot_key of Object.keys(slot)) {
+            if (!~keys.indexOf(slot_key)) {
+                console.warn(`<${name}> received an unexpected slot "${slot_key}".`);
+            }
+        }
+    }
+    /**
+     * Base class for Svelte components with some minor dev-enhancements. Used when dev=true.
+     */
+    class SvelteComponentDev extends SvelteComponent {
+        constructor(options) {
+            if (!options || (!options.target && !options.$$inline)) {
+                throw new Error("'target' is a required option");
+            }
+            super();
+        }
+        $destroy() {
+            super.$destroy();
+            this.$destroy = () => {
+                console.warn('Component was already destroyed'); // eslint-disable-line no-console
+            };
+        }
+        $capture_state() { }
+        $inject_state() { }
+    }
+
+    var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
+    function unwrapExports (x) {
+    	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+    }
+
+    function createCommonjsModule(fn, module) {
+    	return module = { exports: {} }, fn(module, module.exports), module.exports;
+    }
+
+    var svgParser_umd = createCommonjsModule(function (module, exports) {
+    (function (global, factory) {
+         factory(exports) ;
+    }(commonjsGlobal, (function (exports) {
+        function getLocator(source, options) {
+            if (options === void 0) { options = {}; }
+            var offsetLine = options.offsetLine || 0;
+            var offsetColumn = options.offsetColumn || 0;
+            var originalLines = source.split('\n');
+            var start = 0;
+            var lineRanges = originalLines.map(function (line, i) {
+                var end = start + line.length + 1;
+                var range = { start: start, end: end, line: i };
+                start = end;
+                return range;
+            });
+            var i = 0;
+            function rangeContains(range, index) {
+                return range.start <= index && index < range.end;
+            }
+            function getLocation(range, index) {
+                return { line: offsetLine + range.line, column: offsetColumn + index - range.start, character: index };
+            }
+            function locate(search, startIndex) {
+                if (typeof search === 'string') {
+                    search = source.indexOf(search, startIndex || 0);
+                }
+                var range = lineRanges[i];
+                var d = search >= range.end ? 1 : -1;
+                while (range) {
+                    if (rangeContains(range, search))
+                        return getLocation(range, search);
+                    i += d;
+                    range = lineRanges[i];
+                }
+            }
+            return locate;
+        }
+        function locate(source, search, options) {
+            if (typeof options === 'number') {
+                throw new Error('locate takes a { startIndex, offsetLine, offsetColumn } object as the third argument');
+            }
+            return getLocator(source, options)(search, options && options.startIndex);
+        }
+
+        var validNameCharacters = /[a-zA-Z0-9:_-]/;
+        var whitespace = /[\s\t\r\n]/;
+        var quotemark = /['"]/;
+
+        function repeat(str, i) {
+        	var result = '';
+        	while (i--) { result += str; }
+        	return result;
+        }
+
+        function parse(source) {
+        	var header = '';
+        	var stack = [];
+
+        	var state = metadata;
+        	var currentElement = null;
+        	var root = null;
+
+        	function error(message) {
+        		var ref = locate(source, i);
+        		var line = ref.line;
+        		var column = ref.column;
+        		var before = source.slice(0, i);
+        		var beforeLine = /(^|\n).*$/.exec(before)[0].replace(/\t/g, '  ');
+        		var after = source.slice(i);
+        		var afterLine = /.*(\n|$)/.exec(after)[0];
+
+        		var snippet = "" + beforeLine + afterLine + "\n" + (repeat(' ', beforeLine.length)) + "^";
+
+        		throw new Error(
+        			(message + " (" + line + ":" + column + "). If this is valid SVG, it's probably a bug in svg-parser. Please raise an issue at https://github.com/Rich-Harris/svg-parser/issues – thanks!\n\n" + snippet)
+        		);
+        	}
+
+        	function metadata() {
+        		while ((i < source.length && source[i] !== '<') || !validNameCharacters.test(source[i + 1])) {
+        			header += source[i++];
+        		}
+
+        		return neutral();
+        	}
+
+        	function neutral() {
+        		var text = '';
+        		while (i < source.length && source[i] !== '<') { text += source[i++]; }
+
+        		if (/\S/.test(text)) {
+        			currentElement.children.push({ type: 'text', value: text });
+        		}
+
+        		if (source[i] === '<') {
+        			return tag;
+        		}
+
+        		return neutral;
+        	}
+
+        	function tag() {
+        		var char = source[i];
+
+        		if (char === '?') { return neutral; } // <?xml...
+
+        		if (char === '!') {
+        			if (source.slice(i + 1, i + 3) === '--') { return comment; }
+        			if (source.slice(i + 1, i + 8) === '[CDATA[') { return cdata; }
+        			if (/doctype/i.test(source.slice(i + 1, i + 8))) { return neutral; }
+        		}
+
+        		if (char === '/') { return closingTag; }
+
+        		var tagName = getName();
+
+        		var element = {
+        			type: 'element',
+        			tagName: tagName,
+        			properties: {},
+        			children: []
+        		};
+
+        		if (currentElement) {
+        			currentElement.children.push(element);
+        		} else {
+        			root = element;
+        		}
+
+        		var attribute;
+        		while (i < source.length && (attribute = getAttribute())) {
+        			element.properties[attribute.name] = attribute.value;
+        		}
+
+        		var selfClosing = false;
+
+        		if (source[i] === '/') {
+        			i += 1;
+        			selfClosing = true;
+        		}
+
+        		if (source[i] !== '>') {
+        			error('Expected >');
+        		}
+
+        		if (!selfClosing) {
+        			currentElement = element;
+        			stack.push(element);
+        		}
+
+        		return neutral;
+        	}
+
+        	function comment() {
+        		var index = source.indexOf('-->', i);
+        		if (!~index) { error('expected -->'); }
+
+        		i = index + 2;
+        		return neutral;
+        	}
+
+        	function cdata() {
+        		var index = source.indexOf(']]>', i);
+        		if (!~index) { error('expected ]]>'); }
+
+        		currentElement.children.push(source.slice(i + 7, index));
+
+        		i = index + 2;
+        		return neutral;
+        	}
+
+        	function closingTag() {
+        		var tagName = getName();
+
+        		if (!tagName) { error('Expected tag name'); }
+
+        		if (tagName !== currentElement.tagName) {
+        			error(("Expected closing tag </" + tagName + "> to match opening tag <" + (currentElement.tagName) + ">"));
+        		}
+
+        		allowSpaces();
+
+        		if (source[i] !== '>') {
+        			error('Expected >');
+        		}
+
+        		stack.pop();
+        		currentElement = stack[stack.length - 1];
+
+        		return neutral;
+        	}
+
+        	function getName() {
+        		var name = '';
+        		while (i < source.length && validNameCharacters.test(source[i])) { name += source[i++]; }
+
+        		return name;
+        	}
+
+        	function getAttribute() {
+        		if (!whitespace.test(source[i])) { return null; }
+        		allowSpaces();
+
+        		var name = getName();
+        		if (!name) { return null; }
+
+        		var value = true;
+
+        		allowSpaces();
+        		if (source[i] === '=') {
+        			i += 1;
+        			allowSpaces();
+
+        			value = getAttributeValue();
+        			if (!isNaN(value) && value.trim() !== '') { value = +value; } // TODO whitelist numeric attributes?
+        		}
+
+        		return { name: name, value: value };
+        	}
+
+        	function getAttributeValue() {
+        		return quotemark.test(source[i]) ? getQuotedAttributeValue() : getUnquotedAttributeValue();
+        	}
+
+        	function getUnquotedAttributeValue() {
+        		var value = '';
+        		do {
+        			var char = source[i];
+        			if (char === ' ' || char === '>' || char === '/') {
+        				return value;
+        			}
+
+        			value += char;
+        			i += 1;
+        		} while (i < source.length);
+
+        		return value;
+        	}
+
+        	function getQuotedAttributeValue() {
+        		var quotemark = source[i++];
+
+        		var value = '';
+        		var escaped = false;
+
+        		while (i < source.length) {
+        			var char = source[i++];
+        			if (char === quotemark && !escaped) {
+        				return value;
+        			}
+
+        			if (char === '\\' && !escaped) {
+        				escaped = true;
+        			}
+
+        			value += escaped ? ("\\" + char) : char;
+        			escaped = false;
+        		}
+        	}
+
+        	function allowSpaces() {
+        		while (i < source.length && whitespace.test(source[i])) { i += 1; }
+        	}
+
+        	var i = metadata.length;
+        	while (i < source.length) {
+        		if (!state) { error('Unexpected character'); }
+        		state = state();
+        		i += 1;
+        	}
+
+        	if (state !== neutral) {
+        		error('Unexpected end of input');
+        	}
+
+        	if (root.tagName === 'svg') { root.metadata = header; }
+        	return {
+        		type: 'root',
+        		children: [root]
+        	};
+        }
+
+        exports.parse = parse;
+
+        Object.defineProperty(exports, '__esModule', { value: true });
+
+    })));
+    //# sourceMappingURL=svg-parser.umd.js.map
+    });
+
+    unwrapExports(svgParser_umd);
+
+    var stubs = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.generateSwiftUIShape = void 0;
+    const generateSwiftUIShape = (body, config) => {
+        const indStr = new Array(config.indentationSize).fill(' ').join('');
+        const getInd = (indLevel) => new Array(indLevel).fill(indStr).join('');
+        const indentedBody = `${getInd(2)}${body.join(`\n${getInd(2)}`)}`;
+        return [
+            `struct ${config.structName}: Shape {`,
+            `${getInd(1)}func path(in rect: CGRect) -> Path {`,
+            `${getInd(2)}var path = Path()`,
+            `${getInd(2)}let width = rect.size.width`,
+            `${getInd(2)}let height = rect.size.height`,
+            indentedBody,
+            `${getInd(2)}return path`,
+            `${getInd(1)}}`,
+            '}',
+        ].join('\n');
+    };
+    exports.generateSwiftUIShape = generateSwiftUIShape;
+    //# sourceMappingURL=stubs.js.map
+    });
+
+    unwrapExports(stubs);
+    var stubs_1 = stubs.generateSwiftUIShape;
+
+    var utils = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.stringifyRectValues = exports.normaliseRectValues = exports.clampNormalisedSizeProduct = exports.getSVGElement = exports.extractSVGProperties = exports.convertToPixels = void 0;
+    /**
+     * Converts number with unit suffix to pixels.
+     * @param number Number with the unit as a string.
+     */
+    function convertToPixels(num) {
+        // If number is provided, just return that number.
+        if (typeof num === 'number')
+            return num;
+        // If the value is a string, handle the conversion.
+        const unit = String(num).substr(-2, 2);
+        if (unit.search(/^[a-z]{2}$/i) !== -1) {
+            switch (unit) {
+                case 'em':
+                    // TODO: Convert correctly from em.
+                    return parseFloat(num);
+                case 'ex':
+                    // TODO: Convert correctly from ex.
+                    return parseFloat(num);
+                case 'px':
+                    return parseFloat(num);
+                case 'pt':
+                    // TODO: Convert correctly from pt.
+                    return parseFloat(num);
+                case 'pc':
+                    // TODO: Convert correctly from pc.
+                    return parseFloat(num);
+                case 'cm':
+                    // TODO: Convert correctly from cm.
+                    return parseFloat(num);
+                case 'mm':
+                    // TODO: Convert correctly from mm.
+                    return parseFloat(num);
+                case 'in':
+                    // TODO: Convert correctly from in.
+                    return parseFloat(num);
+                default:
+                    return parseFloat(num);
+            }
+        }
+        else {
+            return parseFloat(num);
+        }
+    }
+    exports.convertToPixels = convertToPixels;
+    /**
+     * Extracts properties of the <svg> node.
+     * @param svgJsonTree
+     */
+    function extractSVGProperties(svg) {
+        var _a, _b, _c;
+        // Extract needed properties.
+        const viewBox = (_a = svg.properties) === null || _a === void 0 ? void 0 : _a.viewBox;
+        const width = (_b = svg.properties) === null || _b === void 0 ? void 0 : _b.width;
+        const height = (_c = svg.properties) === null || _c === void 0 ? void 0 : _c.height;
+        // Throw if required properties are not provided.
+        const sizeProvided = width && height;
+        const viewBoxProvided = !!viewBox;
+        if (!sizeProvided && !viewBoxProvided) {
+            throw new Error('Width and height or viewBox must be provided on <svg> element!');
+        }
+        // Validiate and parse view box.
+        const viewBoxElements = String(viewBox)
+            .split(' ')
+            .map(n => parseFloat(n));
+        const [vbx, vby, vbWidth, vbHeight] = viewBoxElements;
+        const viewBoxValid = viewBoxElements.every(value => !isNaN(value));
+        // Parse width and height with units.
+        const widthUnit = convertToPixels(width || vbWidth);
+        const heightUnit = convertToPixels(height || vbHeight);
+        return {
+            width: widthUnit,
+            height: heightUnit,
+            viewBox: viewBoxValid
+                ? { x: vbx, y: vby, width: vbWidth, height: vbHeight } // If view box is provided, use this.
+                : { x: 0, y: 0, width: widthUnit, height: heightUnit },
+        };
+    }
+    exports.extractSVGProperties = extractSVGProperties;
+    /**
+     * Performs Breadth First Search (BFS) to find <svg> element
+     * @param rootNode Root node of given by SVG Parser
+     */
+    function getSVGElement(rootNode) {
+        const frontier = [rootNode];
+        // Run while there are nodes in the frontier
+        while (frontier.length > 0) {
+            // Get the first node so there is a FIFO queue.
+            const currentNode = frontier.shift();
+            // Ignore undefined and string nodes.
+            if (currentNode && typeof currentNode !== 'string') {
+                if (currentNode.type === 'root') {
+                    // Only need children from the root node, so add them
+                    // to frontier and continue.
+                    frontier.push(...currentNode.children);
+                    continue;
+                }
+                else if (currentNode.type === 'element') {
+                    // If the element node is the svg element, return it.
+                    if (currentNode.tagName === 'svg')
+                        return currentNode;
+                    // Otherwise push children to the frontier and continue.
+                    frontier.push(...currentNode.children);
+                    continue;
+                }
+                else {
+                    continue;
+                }
+            }
+        }
+        return undefined;
+    }
+    exports.getSVGElement = getSVGElement;
+    /**
+     * This function is used to cleanup expression like this: `0.5*width`.
+     * If the expression is `1*width` there is no reason to multiply it by
+     * 1, so we can just leave `width`. If the expression is `0*width`
+     * then there is no reason to keep `width` around, so it just becomes
+     * `0`.
+     * @param value Numberic value.
+     * @param suffix Variable suffix that is appended to the end (width,
+     * height, etc.)
+     */
+    function clampNormalisedSizeProduct(value, suffix) {
+        if (parseFloat(value) === 1) {
+            return suffix;
+        }
+        else if (parseFloat(value) === 0) {
+            return '0';
+        }
+        else {
+            return `${value}*${suffix}`;
+        }
+    }
+    exports.clampNormalisedSizeProduct = clampNormalisedSizeProduct;
+    /**
+     * Normalises the position and size of the provided rectangle to span
+     * from 0 to 1 based on the viewBox of the <svg> element. Width and
+     * height are optional, so if only the position is required, then you
+     * can just provide the x and y values.
+     * @param rect ViewBox-like object with width and height being optional.
+     * @param viewBox View box of the SVG Element.
+     */
+    function normaliseRectValues(rect, viewBox) {
+        if (rect.width && rect.height) {
+            return {
+                x: rect.x / viewBox.width,
+                y: rect.y / viewBox.height,
+                width: rect.width / viewBox.width,
+                height: rect.height / viewBox.height,
+            };
+        }
+        else {
+            return {
+                x: rect.x / viewBox.width,
+                y: rect.y / viewBox.height,
+            };
+        }
+    }
+    exports.normaliseRectValues = normaliseRectValues;
+    function stringifyRectValues(rect, precision) {
+        // Function to convert all numbers the same way.
+        const toFixed = (value) => {
+            return value.toFixed(precision).replace(/0+$/, '');
+        };
+        if (!rect.width || !rect.height) {
+            return {
+                x: toFixed(rect.x),
+                y: toFixed(rect.y),
+            };
+        }
+        else {
+            return {
+                x: toFixed(rect.x),
+                y: toFixed(rect.y),
+                width: toFixed(rect.width),
+                height: toFixed(rect.height),
+            };
+        }
+    }
+    exports.stringifyRectValues = stringifyRectValues;
+    //# sourceMappingURL=utils.js.map
+    });
+
+    unwrapExports(utils);
+    var utils_1 = utils.stringifyRectValues;
+    var utils_2 = utils.normaliseRectValues;
+    var utils_3 = utils.clampNormalisedSizeProduct;
+    var utils_4 = utils.getSVGElement;
+    var utils_5 = utils.extractSVGProperties;
+    var utils_6 = utils.convertToPixels;
+
+    var circleElementHandler = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+
+    function handleCircleElement(element, options) {
+        // TODO: Add styles support
+        // const style = {
+        //   ...options.parentStyle,
+        //   ...extractStyle(element),
+        // };
+        const props = element.properties;
+        if (props) {
+            const circleProps = props;
+            // Check if required properties are provided.
+            if (!circleProps.cx || !circleProps.cy || !circleProps.r) {
+                throw new Error('Circle element has to contain cx, cy, and r properties!');
+            }
+            // Parse numbers from the striings.
+            const cx = parseFloat(circleProps.cx);
+            const cy = parseFloat(circleProps.cy);
+            const r = parseFloat(circleProps.r);
+            // Convert center-radius to bounding box.
+            const x = cx - r;
+            const y = cy - r;
+            const width = r * 2;
+            const height = r * 2;
+            // Normalise all values to be based on fraction of width/height.
+            const normalisedRect = utils.normaliseRectValues({ x, y, width, height }, options.viewBox);
+            // Stringify values to the fixed precision point.
+            const SR = utils.stringifyRectValues(normalisedRect, options.precision);
+            // Append the width and height multipliers after normalisation.
+            const strX = utils.clampNormalisedSizeProduct(SR.x, 'width');
+            const strY = utils.clampNormalisedSizeProduct(SR.y, 'height');
+            const strWidth = utils.clampNormalisedSizeProduct(SR.width, 'width');
+            const strHeight = utils.clampNormalisedSizeProduct(SR.height, 'height');
+            // Generate SwiftUI string.
+            const CGRect = `CGRect(x: ${strX}, y: ${strY}, width: ${strWidth}, height: ${strHeight})`;
+            return [`path.addEllipse(in: ${CGRect})`];
+        }
+        else {
+            throw new Error('Circle element has to some properties');
+        }
+    }
+    exports.default = handleCircleElement;
+    //# sourceMappingURL=circleElementHandler.js.map
+    });
+
+    unwrapExports(circleElementHandler);
+
+    var styleUtils = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.StylePropertiesSet = exports.filterStyleProps = exports.parseStyle = exports.extractStyle = void 0;
+    /**
+     * Extracts
+     * @param element Element node which
+     * @param options
+     */
+    function extractStyle(element) {
+        const props = element.properties;
+        if (props) {
+            if (typeof props.style === 'string') {
+                return parseStyle(props.style);
+            }
+            else {
+                return filterStyleProps(props);
+            }
+        }
+        else {
+            throw new Error(`No properties found on ${element.tagName} node!`);
+        }
+    }
+    exports.extractStyle = extractStyle;
+    /**
+     * Converts style property value into a map where key is
+     * the style rule and value is the value of that rule.
+     * @param style Style property string.
+     */
+    function parseStyle(style) {
+        const styleProperties = {};
+        // Extract style statements into array of strings.
+        const styleArray = style
+            .replace(/\s/g, '')
+            .split(';')
+            .map(el => {
+            const [property, value] = el.split(':');
+            return { property, value };
+        });
+        // Remap array of {property, value} objects into a map.
+        for (const el of styleArray) {
+            styleProperties[el.property] = el.value;
+        }
+        return styleProperties;
+    }
+    exports.parseStyle = parseStyle;
+    /**
+     * Filters out just the properties that are considered
+     * style properties, i.e. `fill`, `color`, etc.
+     * @param props Any properties from the HAST node.
+     */
+    function filterStyleProps(props) {
+        return Object.keys(props)
+            .filter(key => exports.StylePropertiesSet.has(key))
+            .reduce((obj, key) => {
+            obj[key] = props[key];
+            return obj;
+        }, {});
+    }
+    exports.filterStyleProps = filterStyleProps;
+    exports.StylePropertiesSet = new Set([
+        'alignment-baseline',
+        'baseline-shift',
+        'clip',
+        'clip-path',
+        'clip-rule',
+        'color',
+        'color-interpolation',
+        'color-interpolation-filters',
+        'color-profile',
+        'color-rendering',
+        'cursor',
+        'direction',
+        'display',
+        'dominant-baseline',
+        'enable-background',
+        'fill',
+        'fill-opacity',
+        'fill-rule',
+        'filter',
+        'flood-color',
+        'flood-opacity',
+        'font-family',
+        'font-size',
+        'font-size-adjust',
+        'font-stretch',
+        'font-style',
+        'font-variant',
+        'font-weight',
+        'glyph-orientation-horizontal',
+        'glyph-orientation-vertical',
+        'image-rendering',
+        'kerning',
+        'letter-spacing',
+        'lighting-color',
+        'marker-end',
+        'marker-mid',
+        'marker-start',
+        'mask',
+        'opacity',
+        'overflow',
+        'pointer-events',
+        'shape-rendering',
+        'solid-color',
+        'solid-opacity',
+        'stop-color',
+        'stop-opacity',
+        'stroke',
+        'stroke-dasharray',
+        'stroke-dashoffset',
+        'stroke-linecap',
+        'stroke-linejoin',
+        'stroke-miterlimit',
+        'stroke-opacity',
+        'stroke-width',
+        'text-anchor',
+        'text-decoration',
+        'text-rendering',
+        'transform',
+        'unicode-bidi',
+        'vector-effect',
+        'visibility',
+        'word-spacing',
+        'writing-mode',
+    ]);
+    //# sourceMappingURL=styleUtils.js.map
+    });
+
+    unwrapExports(styleUtils);
+    var styleUtils_1 = styleUtils.StylePropertiesSet;
+    var styleUtils_2 = styleUtils.filterStyleProps;
+    var styleUtils_3 = styleUtils.parseStyle;
+    var styleUtils_4 = styleUtils.extractStyle;
+
+    var groupElementHandler = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+
+
+    /**
+     * Transforms SVG group element into SwiftUI Shape by
+     * accumulating subcomands of the children.
+     * @param element Group element node
+     * @param options Transpiler options
+     */
+    function handleGroupElement(element, options) {
+        const { children } = element;
+        const style = element.type === 'element' ? styleUtils.extractStyle(element) : {};
+        // For each child run the generator, accumulate swift string and return it.
+        const acc = [];
+        for (const child of children) {
+            // TODO: Handle string children properly.
+            if (typeof child === 'string')
+                continue;
+            // TODO: Handle TextNode children properly.
+            if (child.type === 'text')
+                continue;
+            // Append result to the accumulator.
+            acc.push(...elementHandlers.handleElement(child, {
+                ...options,
+                ...style,
+            }));
+        }
+        return acc;
+    }
+    exports.default = handleGroupElement;
+    //# sourceMappingURL=groupElementHandler.js.map
+    });
+
+    unwrapExports(groupElementHandler);
+
+    /*! *****************************************************************************
     Copyright (c) Microsoft Corporation. All rights reserved.
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use
     this file except in compliance with the License. You may obtain a copy of the
@@ -13,5 +1091,824 @@ var app=function(){"use strict";function t(){}function e(t){return t()}function 
     See the Apache Version 2.0 License for specific language governing permissions
     and limitations under the License.
     ***************************************************************************** */
-var G=function(t,e){return(G=Object.setPrototypeOf||{__proto__:[]}instanceof Array&&function(t,e){t.__proto__=e}||function(t,e){for(var r in e)e.hasOwnProperty(r)&&(t[r]=e[r])})(t,e)};function z(t,e){function r(){this.constructor=t}G(t,e),t.prototype=null===e?Object.create(e):(r.prototype=e.prototype,new r)}function F(t){var e="";Array.isArray(t)||(t=[t]);for(var r=0;r<t.length;r++){var n=t[r];if(n.type===ot.CLOSE_PATH)e+="z";else if(n.type===ot.HORIZ_LINE_TO)e+=(n.relative?"h":"H")+n.x;else if(n.type===ot.VERT_LINE_TO)e+=(n.relative?"v":"V")+n.y;else if(n.type===ot.MOVE_TO)e+=(n.relative?"m":"M")+n.x+" "+n.y;else if(n.type===ot.LINE_TO)e+=(n.relative?"l":"L")+n.x+" "+n.y;else if(n.type===ot.CURVE_TO)e+=(n.relative?"c":"C")+n.x1+" "+n.y1+" "+n.x2+" "+n.y2+" "+n.x+" "+n.y;else if(n.type===ot.SMOOTH_CURVE_TO)e+=(n.relative?"s":"S")+n.x2+" "+n.y2+" "+n.x+" "+n.y;else if(n.type===ot.QUAD_TO)e+=(n.relative?"q":"Q")+n.x1+" "+n.y1+" "+n.x+" "+n.y;else if(n.type===ot.SMOOTH_QUAD_TO)e+=(n.relative?"t":"T")+n.x+" "+n.y;else{if(n.type!==ot.ARC)throw new Error('Unexpected command type "'+n.type+'" at index '+r+".");e+=(n.relative?"a":"A")+n.rX+" "+n.rY+" "+n.xRot+" "+ +n.lArcFlag+" "+ +n.sweepFlag+" "+n.x+" "+n.y}}return e}function k(t,e){var r=t[0],n=t[1];return[r*Math.cos(e)-n*Math.sin(e),r*Math.sin(e)+n*Math.cos(e)]}function Y(){for(var t=[],e=0;e<arguments.length;e++)t[e]=arguments[e];for(var r=0;r<t.length;r++)if("number"!=typeof t[r])throw new Error("assertNumbers arguments["+r+"] is not a number. "+typeof t[r]+" == typeof "+t[r]);return!0}var X=Math.PI;function j(t,e,r){t.lArcFlag=0===t.lArcFlag?0:1,t.sweepFlag=0===t.sweepFlag?0:1;var n=t.rX,i=t.rY,o=t.x,a=t.y;n=Math.abs(t.rX),i=Math.abs(t.rY);var s=k([(e-o)/2,(r-a)/2],-t.xRot/180*X),u=s[0],c=s[1],l=Math.pow(u,2)/Math.pow(n,2)+Math.pow(c,2)/Math.pow(i,2);1<l&&(n*=Math.sqrt(l),i*=Math.sqrt(l)),t.rX=n,t.rY=i;var h=Math.pow(n,2)*Math.pow(c,2)+Math.pow(i,2)*Math.pow(u,2),p=(t.lArcFlag!==t.sweepFlag?1:-1)*Math.sqrt(Math.max(0,(Math.pow(n,2)*Math.pow(i,2)-h)/h)),f=n*c/i*p,d=-i*u/n*p,m=k([f,d],t.xRot/180*X);t.cX=m[0]+(e+o)/2,t.cY=m[1]+(r+a)/2,t.phi1=Math.atan2((c-d)/i,(u-f)/n),t.phi2=Math.atan2((-c-d)/i,(-u-f)/n),0===t.sweepFlag&&t.phi2>t.phi1&&(t.phi2-=2*X),1===t.sweepFlag&&t.phi2<t.phi1&&(t.phi2+=2*X),t.phi1*=180/X,t.phi2*=180/X}function Q(t,e,r){Y(t,e,r);var n=t*t+e*e-r*r;if(0>n)return[];if(0===n)return[[t*r/(t*t+e*e),e*r/(t*t+e*e)]];var i=Math.sqrt(n);return[[(t*r+e*i)/(t*t+e*e),(e*r-t*i)/(t*t+e*e)],[(t*r-e*i)/(t*t+e*e),(e*r+t*i)/(t*t+e*e)]]}var Z,B=Math.PI/180;function q(t,e,r){return(1-r)*t+r*e}function W(t,e,r,n){return t+Math.cos(n/180*X)*e+Math.sin(n/180*X)*r}function K(t,e,r,n){var i=e-t,o=r-e,a=3*i+3*(n-r)-6*o,s=6*(o-i),u=3*i;return Math.abs(a)<1e-6?[-u/s]:function(t,e,r){void 0===r&&(r=1e-6);var n=t*t/4-e;if(n<-r)return[];if(n<=r)return[-t/2];var i=Math.sqrt(n);return[-t/2-i,-t/2+i]}(s/a,u/a,1e-6)}function J(t,e,r,n,i){var o=1-i;return t*(o*o*o)+e*(3*o*o*i)+r*(3*o*i*i)+n*(i*i*i)}!function(t){function e(){return i((function(t,e,r){return t.relative&&(void 0!==t.x1&&(t.x1+=e),void 0!==t.y1&&(t.y1+=r),void 0!==t.x2&&(t.x2+=e),void 0!==t.y2&&(t.y2+=r),void 0!==t.x&&(t.x+=e),void 0!==t.y&&(t.y+=r),t.relative=!1),t}))}function r(){var t=NaN,e=NaN,r=NaN,n=NaN;return i((function(i,o,a){return i.type&ot.SMOOTH_CURVE_TO&&(i.type=ot.CURVE_TO,t=isNaN(t)?o:t,e=isNaN(e)?a:e,i.x1=i.relative?o-t:2*o-t,i.y1=i.relative?a-e:2*a-e),i.type&ot.CURVE_TO?(t=i.relative?o+i.x2:i.x2,e=i.relative?a+i.y2:i.y2):(t=NaN,e=NaN),i.type&ot.SMOOTH_QUAD_TO&&(i.type=ot.QUAD_TO,r=isNaN(r)?o:r,n=isNaN(n)?a:n,i.x1=i.relative?o-r:2*o-r,i.y1=i.relative?a-n:2*a-n),i.type&ot.QUAD_TO?(r=i.relative?o+i.x1:i.x1,n=i.relative?a+i.y1:i.y1):(r=NaN,n=NaN),i}))}function n(){var t=NaN,e=NaN;return i((function(r,n,i){if(r.type&ot.SMOOTH_QUAD_TO&&(r.type=ot.QUAD_TO,t=isNaN(t)?n:t,e=isNaN(e)?i:e,r.x1=r.relative?n-t:2*n-t,r.y1=r.relative?i-e:2*i-e),r.type&ot.QUAD_TO){t=r.relative?n+r.x1:r.x1,e=r.relative?i+r.y1:r.y1;var o=r.x1,a=r.y1;r.type=ot.CURVE_TO,r.x1=((r.relative?0:n)+2*o)/3,r.y1=((r.relative?0:i)+2*a)/3,r.x2=(r.x+2*o)/3,r.y2=(r.y+2*a)/3}else t=NaN,e=NaN;return r}))}function i(t){var e=0,r=0,n=NaN,i=NaN;return function(o){if(isNaN(n)&&!(o.type&ot.MOVE_TO))throw new Error("path must start with moveto");var a=t(o,e,r,n,i);return o.type&ot.CLOSE_PATH&&(e=n,r=i),void 0!==o.x&&(e=o.relative?e+o.x:o.x),void 0!==o.y&&(r=o.relative?r+o.y:o.y),o.type&ot.MOVE_TO&&(n=e,i=r),a}}function o(t,e,r,n,o,a){return Y(t,e,r,n,o,a),i((function(i,s,u,c){var l=i.x1,h=i.x2,p=i.relative&&!isNaN(c),f=void 0!==i.x?i.x:p?0:s,d=void 0!==i.y?i.y:p?0:u;function m(t){return t*t}i.type&ot.HORIZ_LINE_TO&&0!==e&&(i.type=ot.LINE_TO,i.y=i.relative?0:u),i.type&ot.VERT_LINE_TO&&0!==r&&(i.type=ot.LINE_TO,i.x=i.relative?0:s),void 0!==i.x&&(i.x=i.x*t+d*r+(p?0:o)),void 0!==i.y&&(i.y=f*e+i.y*n+(p?0:a)),void 0!==i.x1&&(i.x1=i.x1*t+i.y1*r+(p?0:o)),void 0!==i.y1&&(i.y1=l*e+i.y1*n+(p?0:a)),void 0!==i.x2&&(i.x2=i.x2*t+i.y2*r+(p?0:o)),void 0!==i.y2&&(i.y2=h*e+i.y2*n+(p?0:a));var y=t*n-e*r;if(void 0!==i.xRot&&(1!==t||0!==e||0!==r||1!==n))if(0===y)delete i.rX,delete i.rY,delete i.xRot,delete i.lArcFlag,delete i.sweepFlag,i.type=ot.LINE_TO;else{var v=i.xRot*Math.PI/180,x=Math.sin(v),g=Math.cos(v),_=1/m(i.rX),O=1/m(i.rY),T=m(g)*_+m(x)*O,N=2*x*g*(_-O),S=m(x)*_+m(g)*O,E=T*n*n-N*e*n+S*e*e,C=N*(t*n+e*r)-2*(T*r*n+S*t*e),w=T*r*r-N*t*r+S*t*t,A=(Math.atan2(C,E-w)+Math.PI)%Math.PI/2,M=Math.sin(A),b=Math.cos(A);i.rX=Math.abs(y)/Math.sqrt(E*m(b)+C*M*b+w*m(M)),i.rY=Math.abs(y)/Math.sqrt(E*m(M)-C*M*b+w*m(b)),i.xRot=180*A/Math.PI}return void 0!==i.sweepFlag&&0>y&&(i.sweepFlag=+!i.sweepFlag),i}))}t.ROUND=function(t){function e(e){return Math.round(e*t)/t}return void 0===t&&(t=1e13),Y(t),function(t){return void 0!==t.x1&&(t.x1=e(t.x1)),void 0!==t.y1&&(t.y1=e(t.y1)),void 0!==t.x2&&(t.x2=e(t.x2)),void 0!==t.y2&&(t.y2=e(t.y2)),void 0!==t.x&&(t.x=e(t.x)),void 0!==t.y&&(t.y=e(t.y)),void 0!==t.rX&&(t.rX=e(t.rX)),void 0!==t.rY&&(t.rY=e(t.rY)),t}},t.TO_ABS=e,t.TO_REL=function(){return i((function(t,e,r){return t.relative||(void 0!==t.x1&&(t.x1-=e),void 0!==t.y1&&(t.y1-=r),void 0!==t.x2&&(t.x2-=e),void 0!==t.y2&&(t.y2-=r),void 0!==t.x&&(t.x-=e),void 0!==t.y&&(t.y-=r),t.relative=!0),t}))},t.NORMALIZE_HVZ=function(t,e,r){return void 0===t&&(t=!0),void 0===e&&(e=!0),void 0===r&&(r=!0),i((function(n,i,o,a,s){if(isNaN(a)&&!(n.type&ot.MOVE_TO))throw new Error("path must start with moveto");return e&&n.type&ot.HORIZ_LINE_TO&&(n.type=ot.LINE_TO,n.y=n.relative?0:o),r&&n.type&ot.VERT_LINE_TO&&(n.type=ot.LINE_TO,n.x=n.relative?0:i),t&&n.type&ot.CLOSE_PATH&&(n.type=ot.LINE_TO,n.x=n.relative?a-i:a,n.y=n.relative?s-o:s),n.type&ot.ARC&&(0===n.rX||0===n.rY)&&(n.type=ot.LINE_TO,delete n.rX,delete n.rY,delete n.xRot,delete n.lArcFlag,delete n.sweepFlag),n}))},t.NORMALIZE_ST=r,t.QT_TO_C=n,t.INFO=i,t.SANITIZE=function(t){void 0===t&&(t=0),Y(t);var e=NaN,r=NaN,n=NaN,o=NaN;return i((function(i,a,s,u,c){var l=Math.abs,h=!1,p=0,f=0;if(i.type&ot.SMOOTH_CURVE_TO&&(p=isNaN(e)?0:a-e,f=isNaN(r)?0:s-r),i.type&(ot.CURVE_TO|ot.SMOOTH_CURVE_TO)?(e=i.relative?a+i.x2:i.x2,r=i.relative?s+i.y2:i.y2):(e=NaN,r=NaN),i.type&ot.SMOOTH_QUAD_TO?(n=isNaN(n)?a:2*a-n,o=isNaN(o)?s:2*s-o):i.type&ot.QUAD_TO?(n=i.relative?a+i.x1:i.x1,o=i.relative?s+i.y1:i.y2):(n=NaN,o=NaN),i.type&ot.LINE_COMMANDS||i.type&ot.ARC&&(0===i.rX||0===i.rY||!i.lArcFlag)||i.type&ot.CURVE_TO||i.type&ot.SMOOTH_CURVE_TO||i.type&ot.QUAD_TO||i.type&ot.SMOOTH_QUAD_TO){var d=void 0===i.x?0:i.relative?i.x:i.x-a,m=void 0===i.y?0:i.relative?i.y:i.y-s;p=isNaN(n)?void 0===i.x1?p:i.relative?i.x:i.x1-a:n-a,f=isNaN(o)?void 0===i.y1?f:i.relative?i.y:i.y1-s:o-s;var y=void 0===i.x2?0:i.relative?i.x:i.x2-a,v=void 0===i.y2?0:i.relative?i.y:i.y2-s;l(d)<=t&&l(m)<=t&&l(p)<=t&&l(f)<=t&&l(y)<=t&&l(v)<=t&&(h=!0)}return i.type&ot.CLOSE_PATH&&l(a-u)<=t&&l(s-c)<=t&&(h=!0),h?[]:i}))},t.MATRIX=o,t.ROTATE=function(t,e,r){void 0===e&&(e=0),void 0===r&&(r=0),Y(t,e,r);var n=Math.sin(t),i=Math.cos(t);return o(i,n,-n,i,e-e*i+r*n,r-e*n-r*i)},t.TRANSLATE=function(t,e){return void 0===e&&(e=0),Y(t,e),o(1,0,0,1,t,e)},t.SCALE=function(t,e){return void 0===e&&(e=t),Y(t,e),o(t,0,0,e,0,0)},t.SKEW_X=function(t){return Y(t),o(1,0,Math.atan(t),1,0,0)},t.SKEW_Y=function(t){return Y(t),o(1,Math.atan(t),0,1,0,0)},t.X_AXIS_SYMMETRY=function(t){return void 0===t&&(t=0),Y(t),o(-1,0,0,1,t,0)},t.Y_AXIS_SYMMETRY=function(t){return void 0===t&&(t=0),Y(t),o(1,0,0,-1,0,t)},t.A_TO_C=function(){return i((function(t,e,r){return ot.ARC===t.type?function(t,e,r){var n,i,o,a;t.cX||j(t,e,r);for(var s=Math.min(t.phi1,t.phi2),u=Math.max(t.phi1,t.phi2)-s,c=Math.ceil(u/90),l=new Array(c),h=e,p=r,f=0;f<c;f++){var d=q(t.phi1,t.phi2,f/c),m=q(t.phi1,t.phi2,(f+1)/c),y=m-d,v=4/3*Math.tan(y*B/4),x=[Math.cos(d*B)-v*Math.sin(d*B),Math.sin(d*B)+v*Math.cos(d*B)],g=x[0],_=x[1],O=[Math.cos(m*B),Math.sin(m*B)],T=O[0],N=O[1],S=[T+v*Math.sin(m*B),N-v*Math.cos(m*B)],E=S[0],C=S[1];l[f]={relative:t.relative,type:ot.CURVE_TO};var w=function(e,r){var n=k([e*t.rX,r*t.rY],t.xRot),i=n[0],o=n[1];return[t.cX+i,t.cY+o]};n=w(g,_),l[f].x1=n[0],l[f].y1=n[1],i=w(E,C),l[f].x2=i[0],l[f].y2=i[1],o=w(T,N),l[f].x=o[0],l[f].y=o[1],t.relative&&(l[f].x1-=h,l[f].y1-=p,l[f].x2-=h,l[f].y2-=p,l[f].x-=h,l[f].y-=p),h=(a=[l[f].x,l[f].y])[0],p=a[1]}return l}(t,t.relative?0:e,t.relative?0:r):t}))},t.ANNOTATE_ARCS=function(){return i((function(t,e,r){return t.relative&&(e=0,r=0),ot.ARC===t.type&&j(t,e,r),t}))},t.CLONE=function(){return function(t){var e={};for(var r in t)e[r]=t[r];return e}},t.CALCULATE_BOUNDS=function(){var t=e(),o=n(),a=r(),s=i((function(e,r,n){var i=a(o(t(function(t){var e={};for(var r in t)e[r]=t[r];return e}(e))));function u(t){t>s.maxX&&(s.maxX=t),t<s.minX&&(s.minX=t)}function c(t){t>s.maxY&&(s.maxY=t),t<s.minY&&(s.minY=t)}if(i.type&ot.DRAWING_COMMANDS&&(u(r),c(n)),i.type&ot.HORIZ_LINE_TO&&u(i.x),i.type&ot.VERT_LINE_TO&&c(i.y),i.type&ot.LINE_TO&&(u(i.x),c(i.y)),i.type&ot.CURVE_TO){u(i.x),c(i.y);for(var l=0,h=K(r,i.x1,i.x2,i.x);l<h.length;l++)0<(w=h[l])&&1>w&&u(J(r,i.x1,i.x2,i.x,w));for(var p=0,f=K(n,i.y1,i.y2,i.y);p<f.length;p++)0<(w=f[p])&&1>w&&c(J(n,i.y1,i.y2,i.y,w))}if(i.type&ot.ARC){u(i.x),c(i.y),j(i,r,n);for(var d=i.xRot/180*Math.PI,m=Math.cos(d)*i.rX,y=Math.sin(d)*i.rX,v=-Math.sin(d)*i.rY,x=Math.cos(d)*i.rY,g=i.phi1<i.phi2?[i.phi1,i.phi2]:-180>i.phi2?[i.phi2+360,i.phi1+360]:[i.phi2,i.phi1],_=g[0],O=g[1],T=function(t){var e=t[0],r=t[1],n=180*Math.atan2(r,e)/Math.PI;return n<_?n+360:n},N=0,S=Q(v,-m,0).map(T);N<S.length;N++)(w=S[N])>_&&w<O&&u(W(i.cX,m,v,w));for(var E=0,C=Q(x,-y,0).map(T);E<C.length;E++){var w;(w=C[E])>_&&w<O&&c(W(i.cY,y,x,w))}}return e}));return s.minX=1/0,s.maxX=-1/0,s.minY=1/0,s.maxY=-1/0,s}}(Z||(Z={}));var tt,et=function(){function t(){}return t.prototype.round=function(t){return this.transform(Z.ROUND(t))},t.prototype.toAbs=function(){return this.transform(Z.TO_ABS())},t.prototype.toRel=function(){return this.transform(Z.TO_REL())},t.prototype.normalizeHVZ=function(t,e,r){return this.transform(Z.NORMALIZE_HVZ(t,e,r))},t.prototype.normalizeST=function(){return this.transform(Z.NORMALIZE_ST())},t.prototype.qtToC=function(){return this.transform(Z.QT_TO_C())},t.prototype.aToC=function(){return this.transform(Z.A_TO_C())},t.prototype.sanitize=function(t){return this.transform(Z.SANITIZE(t))},t.prototype.translate=function(t,e){return this.transform(Z.TRANSLATE(t,e))},t.prototype.scale=function(t,e){return this.transform(Z.SCALE(t,e))},t.prototype.rotate=function(t,e,r){return this.transform(Z.ROTATE(t,e,r))},t.prototype.matrix=function(t,e,r,n,i,o){return this.transform(Z.MATRIX(t,e,r,n,i,o))},t.prototype.skewX=function(t){return this.transform(Z.SKEW_X(t))},t.prototype.skewY=function(t){return this.transform(Z.SKEW_Y(t))},t.prototype.xSymmetry=function(t){return this.transform(Z.X_AXIS_SYMMETRY(t))},t.prototype.ySymmetry=function(t){return this.transform(Z.Y_AXIS_SYMMETRY(t))},t.prototype.annotateArcs=function(){return this.transform(Z.ANNOTATE_ARCS())},t}(),rt=function(t){return" "===t||"\t"===t||"\r"===t||"\n"===t},nt=function(t){return"0".charCodeAt(0)<=t.charCodeAt(0)&&t.charCodeAt(0)<="9".charCodeAt(0)},it=function(t){function e(){var e=t.call(this)||this;return e.curNumber="",e.curCommandType=-1,e.curCommandRelative=!1,e.canParseCommandOrComma=!0,e.curNumberHasExp=!1,e.curNumberHasExpDigits=!1,e.curNumberHasDecimal=!1,e.curArgs=[],e}return z(e,t),e.prototype.finish=function(t){if(void 0===t&&(t=[]),this.parse(" ",t),0!==this.curArgs.length||!this.canParseCommandOrComma)throw new SyntaxError("Unterminated command at the path end.");return t},e.prototype.parse=function(t,e){var r=this;void 0===e&&(e=[]);for(var n=function(t){e.push(t),r.curArgs.length=0,r.canParseCommandOrComma=!0},i=0;i<t.length;i++){var o=t[i],a=!(this.curCommandType!==ot.ARC||3!==this.curArgs.length&&4!==this.curArgs.length||1!==this.curNumber.length||"0"!==this.curNumber&&"1"!==this.curNumber),s=nt(o)&&("0"===this.curNumber&&"0"===o||a);if(!nt(o)||s)if("e"!==o&&"E"!==o)if("-"!==o&&"+"!==o||!this.curNumberHasExp||this.curNumberHasExpDigits)if("."!==o||this.curNumberHasExp||this.curNumberHasDecimal||a){if(this.curNumber&&-1!==this.curCommandType){var u=Number(this.curNumber);if(isNaN(u))throw new SyntaxError("Invalid number ending at "+i);if(this.curCommandType===ot.ARC)if(0===this.curArgs.length||1===this.curArgs.length){if(0>u)throw new SyntaxError('Expected positive number, got "'+u+'" at index "'+i+'"')}else if((3===this.curArgs.length||4===this.curArgs.length)&&"0"!==this.curNumber&&"1"!==this.curNumber)throw new SyntaxError('Expected a flag, got "'+this.curNumber+'" at index "'+i+'"');this.curArgs.push(u),this.curArgs.length===at[this.curCommandType]&&(ot.HORIZ_LINE_TO===this.curCommandType?n({type:ot.HORIZ_LINE_TO,relative:this.curCommandRelative,x:u}):ot.VERT_LINE_TO===this.curCommandType?n({type:ot.VERT_LINE_TO,relative:this.curCommandRelative,y:u}):this.curCommandType===ot.MOVE_TO||this.curCommandType===ot.LINE_TO||this.curCommandType===ot.SMOOTH_QUAD_TO?(n({type:this.curCommandType,relative:this.curCommandRelative,x:this.curArgs[0],y:this.curArgs[1]}),ot.MOVE_TO===this.curCommandType&&(this.curCommandType=ot.LINE_TO)):this.curCommandType===ot.CURVE_TO?n({type:ot.CURVE_TO,relative:this.curCommandRelative,x1:this.curArgs[0],y1:this.curArgs[1],x2:this.curArgs[2],y2:this.curArgs[3],x:this.curArgs[4],y:this.curArgs[5]}):this.curCommandType===ot.SMOOTH_CURVE_TO?n({type:ot.SMOOTH_CURVE_TO,relative:this.curCommandRelative,x2:this.curArgs[0],y2:this.curArgs[1],x:this.curArgs[2],y:this.curArgs[3]}):this.curCommandType===ot.QUAD_TO?n({type:ot.QUAD_TO,relative:this.curCommandRelative,x1:this.curArgs[0],y1:this.curArgs[1],x:this.curArgs[2],y:this.curArgs[3]}):this.curCommandType===ot.ARC&&n({type:ot.ARC,relative:this.curCommandRelative,rX:this.curArgs[0],rY:this.curArgs[1],xRot:this.curArgs[2],lArcFlag:this.curArgs[3],sweepFlag:this.curArgs[4],x:this.curArgs[5],y:this.curArgs[6]})),this.curNumber="",this.curNumberHasExpDigits=!1,this.curNumberHasExp=!1,this.curNumberHasDecimal=!1,this.canParseCommandOrComma=!0}if(!rt(o))if(","===o&&this.canParseCommandOrComma)this.canParseCommandOrComma=!1;else if("+"!==o&&"-"!==o&&"."!==o)if(s)this.curNumber=o,this.curNumberHasDecimal=!1;else{if(0!==this.curArgs.length)throw new SyntaxError("Unterminated command at index "+i+".");if(!this.canParseCommandOrComma)throw new SyntaxError('Unexpected character "'+o+'" at index '+i+". Command cannot follow comma");if(this.canParseCommandOrComma=!1,"z"!==o&&"Z"!==o)if("h"===o||"H"===o)this.curCommandType=ot.HORIZ_LINE_TO,this.curCommandRelative="h"===o;else if("v"===o||"V"===o)this.curCommandType=ot.VERT_LINE_TO,this.curCommandRelative="v"===o;else if("m"===o||"M"===o)this.curCommandType=ot.MOVE_TO,this.curCommandRelative="m"===o;else if("l"===o||"L"===o)this.curCommandType=ot.LINE_TO,this.curCommandRelative="l"===o;else if("c"===o||"C"===o)this.curCommandType=ot.CURVE_TO,this.curCommandRelative="c"===o;else if("s"===o||"S"===o)this.curCommandType=ot.SMOOTH_CURVE_TO,this.curCommandRelative="s"===o;else if("q"===o||"Q"===o)this.curCommandType=ot.QUAD_TO,this.curCommandRelative="q"===o;else if("t"===o||"T"===o)this.curCommandType=ot.SMOOTH_QUAD_TO,this.curCommandRelative="t"===o;else{if("a"!==o&&"A"!==o)throw new SyntaxError('Unexpected character "'+o+'" at index '+i+".");this.curCommandType=ot.ARC,this.curCommandRelative="a"===o}else e.push({type:ot.CLOSE_PATH}),this.canParseCommandOrComma=!0,this.curCommandType=-1}else this.curNumber=o,this.curNumberHasDecimal="."===o}else this.curNumber+=o,this.curNumberHasDecimal=!0;else this.curNumber+=o;else this.curNumber+=o,this.curNumberHasExp=!0;else this.curNumber+=o,this.curNumberHasExpDigits=this.curNumberHasExp}return e},e.prototype.transform=function(t){return Object.create(this,{parse:{value:function(e,r){void 0===r&&(r=[]);for(var n=0,i=Object.getPrototypeOf(this).parse.call(this,e);n<i.length;n++){var o=i[n],a=t(o);Array.isArray(a)?r.push.apply(r,a):r.push(a)}return r}}})},e}(et),ot=function(t){function e(r){var n=t.call(this)||this;return n.commands="string"==typeof r?e.parse(r):r,n}return z(e,t),e.prototype.encode=function(){return e.encode(this.commands)},e.prototype.getBounds=function(){var t=Z.CALCULATE_BOUNDS();return this.transform(t),t},e.prototype.transform=function(t){for(var e=[],r=0,n=this.commands;r<n.length;r++){var i=t(n[r]);Array.isArray(i)?e.push.apply(e,i):e.push(i)}return this.commands=e,this},e.encode=function(t){return F(t)},e.parse=function(t){var e=new it,r=[];return e.parse(t,r),e.finish(r),r},e.CLOSE_PATH=1,e.MOVE_TO=2,e.HORIZ_LINE_TO=4,e.VERT_LINE_TO=8,e.LINE_TO=16,e.CURVE_TO=32,e.SMOOTH_CURVE_TO=64,e.QUAD_TO=128,e.SMOOTH_QUAD_TO=256,e.ARC=512,e.LINE_COMMANDS=e.LINE_TO|e.HORIZ_LINE_TO|e.VERT_LINE_TO,e.DRAWING_COMMANDS=e.HORIZ_LINE_TO|e.VERT_LINE_TO|e.LINE_TO|e.CURVE_TO|e.SMOOTH_CURVE_TO|e.QUAD_TO|e.SMOOTH_QUAD_TO|e.ARC,e}(et),at=((tt={})[ot.MOVE_TO]=2,tt[ot.LINE_TO]=2,tt[ot.HORIZ_LINE_TO]=1,tt[ot.VERT_LINE_TO]=1,tt[ot.CLOSE_PATH]=0,tt[ot.QUAD_TO]=4,tt[ot.SMOOTH_QUAD_TO]=2,tt[ot.CURVE_TO]=6,tt[ot.SMOOTH_CURVE_TO]=4,tt[ot.ARC]=7,tt),st=Object.freeze({__proto__:null,COMMAND_ARG_COUNTS:at,SVGPathData:ot,SVGPathDataParser:it,get SVGPathDataTransformer(){return Z},encodeSVGPath:F}),ut=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.generateMoveToSwift=void 0;e.generateMoveToSwift=(t,e)=>{const r=U.stringifyRectValues({x:t.x/e.viewBox.width,y:t.y/e.viewBox.height},e.precision);return[`path.move(to: CGPoint(x: ${U.clampNormalisedSizeProduct(r.x,"width")}, y: ${U.clampNormalisedSizeProduct(r.y,"height")}))`]}}));P(ut);ut.generateMoveToSwift;var ct=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.generateLineToSwift=void 0;e.generateLineToSwift=(t,e)=>{const r=U.stringifyRectValues({x:t.x/e.viewBox.width,y:t.y/e.viewBox.height},e.precision);return[`path.addLine(to: CGPoint(x: ${U.clampNormalisedSizeProduct(r.x,"width")}, y: ${U.clampNormalisedSizeProduct(r.y,"height")}))`]}}));P(ct);ct.generateLineToSwift;var lt=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.generateClosePathSwift=void 0;e.generateClosePathSwift=(t,e)=>["path.closeSubpath()"]}));P(lt);lt.generateClosePathSwift;var ht=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.generateCubicCurveSwift=void 0;e.generateCubicCurveSwift=(t,e)=>{const r=U.stringifyRectValues({x:t.x1/e.viewBox.width,y:t.y1/e.viewBox.height},e.precision),n=U.stringifyRectValues({x:t.x2/e.viewBox.width,y:t.y2/e.viewBox.height},e.precision),i=U.stringifyRectValues({x:t.x/e.viewBox.width,y:t.y/e.viewBox.height},e.precision);return[[`path.addCurve(to: CGPoint(x: ${U.clampNormalisedSizeProduct(i.x,"width")}, y: ${U.clampNormalisedSizeProduct(i.y,"height")}),`,`control1: CGPoint(x: ${U.clampNormalisedSizeProduct(r.x,"width")}, y: ${U.clampNormalisedSizeProduct(r.y,"height")}),`,`control2: CGPoint(x: ${U.clampNormalisedSizeProduct(n.x,"width")}, y: ${U.clampNormalisedSizeProduct(n.y,"height")}))`].join(" ")]}}));P(ht);ht.generateCubicCurveSwift;var pt=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t,e){const n=t.properties;if(n){const t=n;if(!t.d)throw new Error("Parameter `d` has to be provided on the <path> element!");e.lastPathId++,console.log("Props",t);const i=new st.SVGPathData(t.d).toAbs();return r(i.commands,e)}throw new Error("Path element does not have any properties!")};const r=(t,e)=>{const r=[];console.log("Data points",t);for(let n=0;n<t.length;n++){const i=t[n];switch(i.type){case st.SVGPathData.MOVE_TO:{const{type:t,relative:n,...o}=i;r.push(...ut.generateMoveToSwift(o,e));break}case st.SVGPathData.LINE_TO:{const{type:t,relative:n,...o}=i;r.push(...ct.generateLineToSwift(o,e));break}case st.SVGPathData.HORIZ_LINE_TO:console.error("Horizontal line is not supported yet");break;case st.SVGPathData.VERT_LINE_TO:console.error("Vertical line is not supported yet");break;case st.SVGPathData.CLOSE_PATH:r.push(...lt.generateClosePathSwift(null,e));break;case st.SVGPathData.QUAD_TO:console.error("Quad curve is not supported yet");break;case st.SVGPathData.SMOOTH_QUAD_TO:console.error("Smooth quad is not supported yet");break;case st.SVGPathData.CURVE_TO:{const{type:t,relative:n,...o}=i;r.push(...ht.generateCubicCurveSwift(o,e));break}case st.SVGPathData.SMOOTH_CURVE_TO:{const{type:o,relative:a,...s}=i,u=t[n-1];let c=s.x,l=s.y;u.type!==st.SVGPathData.CURVE_TO&&u.type!==st.SVGPathData.SMOOTH_CURVE_TO||(c=u.x+(u.x-u.x2),l=u.y+(u.y-u.y2));const h=ht.generateCubicCurveSwift({...s,x1:c,y1:l},e);r.push(...h);break}case st.SVGPathData.ARC:console.error("Arc is not supported yet")}}return r}}));P(pt);var ft=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t,e){const r=t.properties;if(r){const t=r;if(t.x=t.x||"0",t.y=t.y||"0",!t.width||!t.height)throw new Error("Rectangle has to have width and height properties!");const n=parseFloat(t.x),i=parseFloat(t.y),o=parseFloat(t.width),a=parseFloat(t.height),s=U.normaliseRectValues({x:n,y:i,width:o,height:a},e.viewBox),u=U.stringifyRectValues(s,e.precision);return[`path.addRect(${`CGRect(x: ${U.clampNormalisedSizeProduct(u.x,"width")}, y: ${U.clampNormalisedSizeProduct(u.y,"height")}, width: ${U.clampNormalisedSizeProduct(u.width,"width")}, height: ${U.clampNormalisedSizeProduct(u.height,"height")})`})`]}throw new Error("Circle element has to some properties")}}));P(ft);var dt=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.handleElement=void 0,e.handleElement=function(t,e){switch(t.tagName){case"g":case"svg":return D.default(t,e);case"path":return pt.default(t,e);case"circle":return $.default(t,e);case"rect":return ft.default(t,e);default:return console.error([`Element <${t.tagName}> is not supported!`,"Please open a Github issue for this or send a PR with the implementation!"].join("\n")),[]}}}));P(dt);dt.handleElement;var mt=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.DEFAULT_CONFIG=void 0,e.DEFAULT_CONFIG={structName:"MyCustomShape",precision:8,indentationSize:4}}));P(mt);mt.DEFAULT_CONFIG;var yt=V((function(t,e){Object.defineProperty(e,"__esModule",{value:!0}),e.convert=void 0,e.convert=function(t,e){const r=I.parse(t),n=U.getSVGElement(r);if(n)return function(t,e){const r={...U.extractSVGProperties(t),precision:(null==e?void 0:e.precision)||10,lastPathId:0,indentationSize:(null==e?void 0:e.indentationSize)||4,currentIndentationLevel:0,parentStyle:{}},n=dt.handleElement(t,r);return L.generateSwiftUIShape(n,{...mt.DEFAULT_CONFIG,...e})}(n,e);throw new Error("Could not find SVG element, please provide full SVG source!")}}));P(yt);var vt=yt.convert;function xt(t){let e,r,i,o,m,y,v,x,g,_,O,T,N,S,E,C,w;return{c(){e=c("ul"),r=c("li"),i=c("label"),i.textContent="Indentation Spaces:",o=l(),m=c("input"),y=l(),v=c("li"),x=c("label"),x.textContent="Round to decimal points:",g=l(),_=c("input"),O=l(),T=c("li"),N=c("label"),N.textContent="Struct name:",S=l(),E=c("input"),p(i,"for","indentation-input"),p(m,"id","indentation-input"),p(m,"type","number"),p(m,"min","0"),p(m,"max","12"),p(x,"for","precision-input"),p(_,"id","precision-input"),p(_,"type","number"),p(_,"min","0"),p(_,"max","10"),p(N,"for","name-input"),p(E,"id","name-input"),p(E,"type","text")},m(n,u){s(n,e,u),a(e,r),a(r,i),a(r,o),a(r,m),d(m,t[3].indentationSize),a(e,y),a(e,v),a(v,x),a(v,g),a(v,_),d(_,t[3].precision),a(e,O),a(e,T),a(T,N),a(T,S),a(T,E),d(E,t[3].structName),C||(w=[h(m,"input",t[6]),h(_,"input",t[7]),h(E,"input",t[8])],C=!0)},p(t,e){8&e&&f(m.value)!==t[3].indentationSize&&d(m,t[3].indentationSize),8&e&&f(_.value)!==t[3].precision&&d(_,t[3].precision),8&e&&E.value!==t[3].structName&&d(E,t[3].structName)},d(t){t&&u(e),C=!1,n(w)}}}function gt(e){let r,i,o,f,y,v,x,g,_,O,T,N,S,E,C,w,A,M,b,R,P,V,I,L,U,$,H=e[2]&&xt(e);return{c(){r=c("main"),i=c("h1"),i.textContent="Welcome!",o=l(),f=c("div"),f.innerHTML='<iframe src="https://ghbtns.com/github-btn.html?user=quassummanus&amp;repo=SVG-to-SwiftUI&amp;type=star&amp;count=true&amp;v=2" frameborder="0" scrolling="0" width="90" height="20" title="GitHub"></iframe>',y=l(),v=c("div"),v.innerHTML='<i>Functionality is limited for now, feel free to contribute on\n      <a href="https://github.com/quassummanus/SVG-to-SwiftUI" alt="link to GitHub">Github</a></i>',x=l(),g=c("div"),_=c("h2"),_.textContent="Paste SVG code below",O=l(),T=c("img"),E=l(),H&&H.c(),C=l(),w=c("div"),A=c("textarea"),M=l(),b=c("button"),b.textContent="Convert to SwiftUI Shape!",R=l(),P=c("h2"),P.textContent="Swift code will be shown below:",V=l(),I=c("div"),L=c("textarea"),m(f,"margin-bottom","12px"),m(v,"margin","8px auto"),m(_,"display","inline"),p(T,"id","settings-button"),T.src!==(N="https://img.icons8.com/ios-filled/50/000000/settings.png")&&p(T,"src","https://img.icons8.com/ios-filled/50/000000/settings.png"),p(T,"alt","settings icon"),p(T,"width","16px"),p(T,"title",S=(e[2]?"Hide":"Show")+" settings"),m(g,"margin","16px 0"),p(A,"placeholder","Paste SVG Code here"),L.value=e[1],p(L,"id","swift-output-area")},m(t,n){s(t,r,n),a(r,i),a(r,o),a(r,f),a(r,y),a(r,v),a(r,x),a(r,g),a(g,_),a(g,O),a(g,T),a(r,E),H&&H.m(r,null),a(r,C),a(r,w),a(w,A),d(A,e[0]),a(r,M),a(r,b),a(r,R),a(r,P),a(r,V),a(r,I),a(I,L),U||($=[h(T,"click",e[4]),h(A,"input",e[9]),h(b,"click",e[5])],U=!0)},p(t,[e]){4&e&&S!==(S=(t[2]?"Hide":"Show")+" settings")&&p(T,"title",S),t[2]?H?H.p(t,e):(H=xt(t),H.c(),H.m(r,C)):H&&(H.d(1),H=null),1&e&&d(A,t[0]),2&e&&(L.value=t[1])},i:t,o:t,d(t){t&&u(r),H&&H.d(),U=!1,n($)}}}function _t(t,e,r){let n="",i="",o=!1;let a={structName:"MyCustomShape",precision:5,indentationSize:4};return[n,i,o,a,()=>r(2,o=!o),()=>{try{r(1,i=vt(n,a))}catch(t){alert(t)}},function(){a.indentationSize=f(this.value),r(3,a)},function(){a.precision=f(this.value),r(3,a)},function(){a.structName=this.value,r(3,a)},function(){n=this.value,r(0,n)}]}return new class extends class{$destroy(){!function(t,e){const r=t.$$;null!==r.fragment&&(n(r.on_destroy),r.fragment&&r.fragment.d(e),r.on_destroy=r.fragment=null,r.ctx=[])}(this,1),this.$destroy=t}$on(t,e){const r=this.$$.callbacks[t]||(this.$$.callbacks[t]=[]);return r.push(e),()=>{const t=r.indexOf(e);-1!==t&&r.splice(t,1)}}$set(t){var e;this.$$set&&(e=t,0!==Object.keys(e).length)&&(this.$$.skip_bound=!0,this.$$set(t),this.$$.skip_bound=!1)}}{constructor(t){super(),R(this,t,_t,gt,o,{})}}({target:document.body})}();
+    var t=function(r,e){return (t=Object.setPrototypeOf||{__proto__:[]}instanceof Array&&function(t,r){t.__proto__=r;}||function(t,r){for(var e in r)r.hasOwnProperty(e)&&(t[e]=r[e]);})(r,e)};function r(r,e){function i(){this.constructor=r;}t(r,e),r.prototype=null===e?Object.create(e):(i.prototype=e.prototype,new i);}function e(t){var r="";Array.isArray(t)||(t=[t]);for(var e=0;e<t.length;e++){var i=t[e];if(i.type===f.CLOSE_PATH)r+="z";else if(i.type===f.HORIZ_LINE_TO)r+=(i.relative?"h":"H")+i.x;else if(i.type===f.VERT_LINE_TO)r+=(i.relative?"v":"V")+i.y;else if(i.type===f.MOVE_TO)r+=(i.relative?"m":"M")+i.x+" "+i.y;else if(i.type===f.LINE_TO)r+=(i.relative?"l":"L")+i.x+" "+i.y;else if(i.type===f.CURVE_TO)r+=(i.relative?"c":"C")+i.x1+" "+i.y1+" "+i.x2+" "+i.y2+" "+i.x+" "+i.y;else if(i.type===f.SMOOTH_CURVE_TO)r+=(i.relative?"s":"S")+i.x2+" "+i.y2+" "+i.x+" "+i.y;else if(i.type===f.QUAD_TO)r+=(i.relative?"q":"Q")+i.x1+" "+i.y1+" "+i.x+" "+i.y;else if(i.type===f.SMOOTH_QUAD_TO)r+=(i.relative?"t":"T")+i.x+" "+i.y;else {if(i.type!==f.ARC)throw new Error('Unexpected command type "'+i.type+'" at index '+e+".");r+=(i.relative?"a":"A")+i.rX+" "+i.rY+" "+i.xRot+" "+ +i.lArcFlag+" "+ +i.sweepFlag+" "+i.x+" "+i.y;}}return r}function i(t,r){var e=t[0],i=t[1];return [e*Math.cos(r)-i*Math.sin(r),e*Math.sin(r)+i*Math.cos(r)]}function a(){for(var t=[],r=0;r<arguments.length;r++)t[r]=arguments[r];for(var e=0;e<t.length;e++)if("number"!=typeof t[e])throw new Error("assertNumbers arguments["+e+"] is not a number. "+typeof t[e]+" == typeof "+t[e]);return !0}var n=Math.PI;function o(t,r,e){t.lArcFlag=0===t.lArcFlag?0:1,t.sweepFlag=0===t.sweepFlag?0:1;var a=t.rX,o=t.rY,s=t.x,u=t.y;a=Math.abs(t.rX),o=Math.abs(t.rY);var h=i([(r-s)/2,(e-u)/2],-t.xRot/180*n),c=h[0],y=h[1],p=Math.pow(c,2)/Math.pow(a,2)+Math.pow(y,2)/Math.pow(o,2);1<p&&(a*=Math.sqrt(p),o*=Math.sqrt(p)),t.rX=a,t.rY=o;var m=Math.pow(a,2)*Math.pow(y,2)+Math.pow(o,2)*Math.pow(c,2),O=(t.lArcFlag!==t.sweepFlag?1:-1)*Math.sqrt(Math.max(0,(Math.pow(a,2)*Math.pow(o,2)-m)/m)),T=a*y/o*O,v=-o*c/a*O,l=i([T,v],t.xRot/180*n);t.cX=l[0]+(r+s)/2,t.cY=l[1]+(e+u)/2,t.phi1=Math.atan2((y-v)/o,(c-T)/a),t.phi2=Math.atan2((-y-v)/o,(-c-T)/a),0===t.sweepFlag&&t.phi2>t.phi1&&(t.phi2-=2*n),1===t.sweepFlag&&t.phi2<t.phi1&&(t.phi2+=2*n),t.phi1*=180/n,t.phi2*=180/n;}function s(t,r,e){a(t,r,e);var i=t*t+r*r-e*e;if(0>i)return [];if(0===i)return [[t*e/(t*t+r*r),r*e/(t*t+r*r)]];var n=Math.sqrt(i);return [[(t*e+r*n)/(t*t+r*r),(r*e-t*n)/(t*t+r*r)],[(t*e-r*n)/(t*t+r*r),(r*e+t*n)/(t*t+r*r)]]}var u,h=Math.PI/180;function c(t,r,e){return (1-e)*t+e*r}function y(t,r,e,i){return t+Math.cos(i/180*n)*r+Math.sin(i/180*n)*e}function p(t,r,e,i){var a=r-t,n=e-r,o=3*a+3*(i-e)-6*n,s=6*(n-a),u=3*a;return Math.abs(o)<1e-6?[-u/s]:function(t,r,e){void 0===e&&(e=1e-6);var i=t*t/4-r;if(i<-e)return [];if(i<=e)return [-t/2];var a=Math.sqrt(i);return [-t/2-a,-t/2+a]}(s/o,u/o,1e-6)}function m(t,r,e,i,a){var n=1-a;return t*(n*n*n)+r*(3*n*n*a)+e*(3*n*a*a)+i*(a*a*a)}!function(t){function r(){return u((function(t,r,e){return t.relative&&(void 0!==t.x1&&(t.x1+=r),void 0!==t.y1&&(t.y1+=e),void 0!==t.x2&&(t.x2+=r),void 0!==t.y2&&(t.y2+=e),void 0!==t.x&&(t.x+=r),void 0!==t.y&&(t.y+=e),t.relative=!1),t}))}function e(){var t=NaN,r=NaN,e=NaN,i=NaN;return u((function(a,n,o){return a.type&f.SMOOTH_CURVE_TO&&(a.type=f.CURVE_TO,t=isNaN(t)?n:t,r=isNaN(r)?o:r,a.x1=a.relative?n-t:2*n-t,a.y1=a.relative?o-r:2*o-r),a.type&f.CURVE_TO?(t=a.relative?n+a.x2:a.x2,r=a.relative?o+a.y2:a.y2):(t=NaN,r=NaN),a.type&f.SMOOTH_QUAD_TO&&(a.type=f.QUAD_TO,e=isNaN(e)?n:e,i=isNaN(i)?o:i,a.x1=a.relative?n-e:2*n-e,a.y1=a.relative?o-i:2*o-i),a.type&f.QUAD_TO?(e=a.relative?n+a.x1:a.x1,i=a.relative?o+a.y1:a.y1):(e=NaN,i=NaN),a}))}function n(){var t=NaN,r=NaN;return u((function(e,i,a){if(e.type&f.SMOOTH_QUAD_TO&&(e.type=f.QUAD_TO,t=isNaN(t)?i:t,r=isNaN(r)?a:r,e.x1=e.relative?i-t:2*i-t,e.y1=e.relative?a-r:2*a-r),e.type&f.QUAD_TO){t=e.relative?i+e.x1:e.x1,r=e.relative?a+e.y1:e.y1;var n=e.x1,o=e.y1;e.type=f.CURVE_TO,e.x1=((e.relative?0:i)+2*n)/3,e.y1=((e.relative?0:a)+2*o)/3,e.x2=(e.x+2*n)/3,e.y2=(e.y+2*o)/3;}else t=NaN,r=NaN;return e}))}function u(t){var r=0,e=0,i=NaN,a=NaN;return function(n){if(isNaN(i)&&!(n.type&f.MOVE_TO))throw new Error("path must start with moveto");var o=t(n,r,e,i,a);return n.type&f.CLOSE_PATH&&(r=i,e=a),void 0!==n.x&&(r=n.relative?r+n.x:n.x),void 0!==n.y&&(e=n.relative?e+n.y:n.y),n.type&f.MOVE_TO&&(i=r,a=e),o}}function O(t,r,e,i,n,o){return a(t,r,e,i,n,o),u((function(a,s,u,h){var c=a.x1,y=a.x2,p=a.relative&&!isNaN(h),m=void 0!==a.x?a.x:p?0:s,O=void 0!==a.y?a.y:p?0:u;function T(t){return t*t}a.type&f.HORIZ_LINE_TO&&0!==r&&(a.type=f.LINE_TO,a.y=a.relative?0:u),a.type&f.VERT_LINE_TO&&0!==e&&(a.type=f.LINE_TO,a.x=a.relative?0:s),void 0!==a.x&&(a.x=a.x*t+O*e+(p?0:n)),void 0!==a.y&&(a.y=m*r+a.y*i+(p?0:o)),void 0!==a.x1&&(a.x1=a.x1*t+a.y1*e+(p?0:n)),void 0!==a.y1&&(a.y1=c*r+a.y1*i+(p?0:o)),void 0!==a.x2&&(a.x2=a.x2*t+a.y2*e+(p?0:n)),void 0!==a.y2&&(a.y2=y*r+a.y2*i+(p?0:o));var v=t*i-r*e;if(void 0!==a.xRot&&(1!==t||0!==r||0!==e||1!==i))if(0===v)delete a.rX,delete a.rY,delete a.xRot,delete a.lArcFlag,delete a.sweepFlag,a.type=f.LINE_TO;else {var l=a.xRot*Math.PI/180,_=Math.sin(l),N=Math.cos(l),x=1/T(a.rX),d=1/T(a.rY),A=T(N)*x+T(_)*d,E=2*_*N*(x-d),C=T(_)*x+T(N)*d,M=A*i*i-E*r*i+C*r*r,R=E*(t*i+r*e)-2*(A*e*i+C*t*r),g=A*e*e-E*t*e+C*t*t,I=(Math.atan2(R,M-g)+Math.PI)%Math.PI/2,S=Math.sin(I),L=Math.cos(I);a.rX=Math.abs(v)/Math.sqrt(M*T(L)+R*S*L+g*T(S)),a.rY=Math.abs(v)/Math.sqrt(M*T(S)-R*S*L+g*T(L)),a.xRot=180*I/Math.PI;}return void 0!==a.sweepFlag&&0>v&&(a.sweepFlag=+!a.sweepFlag),a}))}function T(){return function(t){var r={};for(var e in t)r[e]=t[e];return r}}t.ROUND=function(t){function r(r){return Math.round(r*t)/t}return void 0===t&&(t=1e13),a(t),function(t){return void 0!==t.x1&&(t.x1=r(t.x1)),void 0!==t.y1&&(t.y1=r(t.y1)),void 0!==t.x2&&(t.x2=r(t.x2)),void 0!==t.y2&&(t.y2=r(t.y2)),void 0!==t.x&&(t.x=r(t.x)),void 0!==t.y&&(t.y=r(t.y)),void 0!==t.rX&&(t.rX=r(t.rX)),void 0!==t.rY&&(t.rY=r(t.rY)),t}},t.TO_ABS=r,t.TO_REL=function(){return u((function(t,r,e){return t.relative||(void 0!==t.x1&&(t.x1-=r),void 0!==t.y1&&(t.y1-=e),void 0!==t.x2&&(t.x2-=r),void 0!==t.y2&&(t.y2-=e),void 0!==t.x&&(t.x-=r),void 0!==t.y&&(t.y-=e),t.relative=!0),t}))},t.NORMALIZE_HVZ=function(t,r,e){return void 0===t&&(t=!0),void 0===r&&(r=!0),void 0===e&&(e=!0),u((function(i,a,n,o,s){if(isNaN(o)&&!(i.type&f.MOVE_TO))throw new Error("path must start with moveto");return r&&i.type&f.HORIZ_LINE_TO&&(i.type=f.LINE_TO,i.y=i.relative?0:n),e&&i.type&f.VERT_LINE_TO&&(i.type=f.LINE_TO,i.x=i.relative?0:a),t&&i.type&f.CLOSE_PATH&&(i.type=f.LINE_TO,i.x=i.relative?o-a:o,i.y=i.relative?s-n:s),i.type&f.ARC&&(0===i.rX||0===i.rY)&&(i.type=f.LINE_TO,delete i.rX,delete i.rY,delete i.xRot,delete i.lArcFlag,delete i.sweepFlag),i}))},t.NORMALIZE_ST=e,t.QT_TO_C=n,t.INFO=u,t.SANITIZE=function(t){void 0===t&&(t=0),a(t);var r=NaN,e=NaN,i=NaN,n=NaN;return u((function(a,o,s,u,h){var c=Math.abs,y=!1,p=0,m=0;if(a.type&f.SMOOTH_CURVE_TO&&(p=isNaN(r)?0:o-r,m=isNaN(e)?0:s-e),a.type&(f.CURVE_TO|f.SMOOTH_CURVE_TO)?(r=a.relative?o+a.x2:a.x2,e=a.relative?s+a.y2:a.y2):(r=NaN,e=NaN),a.type&f.SMOOTH_QUAD_TO?(i=isNaN(i)?o:2*o-i,n=isNaN(n)?s:2*s-n):a.type&f.QUAD_TO?(i=a.relative?o+a.x1:a.x1,n=a.relative?s+a.y1:a.y2):(i=NaN,n=NaN),a.type&f.LINE_COMMANDS||a.type&f.ARC&&(0===a.rX||0===a.rY||!a.lArcFlag)||a.type&f.CURVE_TO||a.type&f.SMOOTH_CURVE_TO||a.type&f.QUAD_TO||a.type&f.SMOOTH_QUAD_TO){var O=void 0===a.x?0:a.relative?a.x:a.x-o,T=void 0===a.y?0:a.relative?a.y:a.y-s;p=isNaN(i)?void 0===a.x1?p:a.relative?a.x:a.x1-o:i-o,m=isNaN(n)?void 0===a.y1?m:a.relative?a.y:a.y1-s:n-s;var v=void 0===a.x2?0:a.relative?a.x:a.x2-o,l=void 0===a.y2?0:a.relative?a.y:a.y2-s;c(O)<=t&&c(T)<=t&&c(p)<=t&&c(m)<=t&&c(v)<=t&&c(l)<=t&&(y=!0);}return a.type&f.CLOSE_PATH&&c(o-u)<=t&&c(s-h)<=t&&(y=!0),y?[]:a}))},t.MATRIX=O,t.ROTATE=function(t,r,e){void 0===r&&(r=0),void 0===e&&(e=0),a(t,r,e);var i=Math.sin(t),n=Math.cos(t);return O(n,i,-i,n,r-r*n+e*i,e-r*i-e*n)},t.TRANSLATE=function(t,r){return void 0===r&&(r=0),a(t,r),O(1,0,0,1,t,r)},t.SCALE=function(t,r){return void 0===r&&(r=t),a(t,r),O(t,0,0,r,0,0)},t.SKEW_X=function(t){return a(t),O(1,0,Math.atan(t),1,0,0)},t.SKEW_Y=function(t){return a(t),O(1,Math.atan(t),0,1,0,0)},t.X_AXIS_SYMMETRY=function(t){return void 0===t&&(t=0),a(t),O(-1,0,0,1,t,0)},t.Y_AXIS_SYMMETRY=function(t){return void 0===t&&(t=0),a(t),O(1,0,0,-1,0,t)},t.A_TO_C=function(){return u((function(t,r,e){return f.ARC===t.type?function(t,r,e){var a,n,s,u;t.cX||o(t,r,e);for(var y=Math.min(t.phi1,t.phi2),p=Math.max(t.phi1,t.phi2)-y,m=Math.ceil(p/90),O=new Array(m),T=r,v=e,l=0;l<m;l++){var _=c(t.phi1,t.phi2,l/m),N=c(t.phi1,t.phi2,(l+1)/m),x=N-_,d=4/3*Math.tan(x*h/4),A=[Math.cos(_*h)-d*Math.sin(_*h),Math.sin(_*h)+d*Math.cos(_*h)],E=A[0],C=A[1],M=[Math.cos(N*h),Math.sin(N*h)],R=M[0],g=M[1],I=[R+d*Math.sin(N*h),g-d*Math.cos(N*h)],S=I[0],L=I[1];O[l]={relative:t.relative,type:f.CURVE_TO};var H=function(r,e){var a=i([r*t.rX,e*t.rY],t.xRot),n=a[0],o=a[1];return [t.cX+n,t.cY+o]};a=H(E,C),O[l].x1=a[0],O[l].y1=a[1],n=H(S,L),O[l].x2=n[0],O[l].y2=n[1],s=H(R,g),O[l].x=s[0],O[l].y=s[1],t.relative&&(O[l].x1-=T,O[l].y1-=v,O[l].x2-=T,O[l].y2-=v,O[l].x-=T,O[l].y-=v),T=(u=[O[l].x,O[l].y])[0],v=u[1];}return O}(t,t.relative?0:r,t.relative?0:e):t}))},t.ANNOTATE_ARCS=function(){return u((function(t,r,e){return t.relative&&(r=0,e=0),f.ARC===t.type&&o(t,r,e),t}))},t.CLONE=T,t.CALCULATE_BOUNDS=function(){var t=function(t){var r={};for(var e in t)r[e]=t[e];return r},i=r(),a=n(),h=e(),c=u((function(r,e,n){var u=h(a(i(t(r))));function O(t){t>c.maxX&&(c.maxX=t),t<c.minX&&(c.minX=t);}function T(t){t>c.maxY&&(c.maxY=t),t<c.minY&&(c.minY=t);}if(u.type&f.DRAWING_COMMANDS&&(O(e),T(n)),u.type&f.HORIZ_LINE_TO&&O(u.x),u.type&f.VERT_LINE_TO&&T(u.y),u.type&f.LINE_TO&&(O(u.x),T(u.y)),u.type&f.CURVE_TO){O(u.x),T(u.y);for(var v=0,l=p(e,u.x1,u.x2,u.x);v<l.length;v++){0<(w=l[v])&&1>w&&O(m(e,u.x1,u.x2,u.x,w));}for(var _=0,N=p(n,u.y1,u.y2,u.y);_<N.length;_++){0<(w=N[_])&&1>w&&T(m(n,u.y1,u.y2,u.y,w));}}if(u.type&f.ARC){O(u.x),T(u.y),o(u,e,n);for(var x=u.xRot/180*Math.PI,d=Math.cos(x)*u.rX,A=Math.sin(x)*u.rX,E=-Math.sin(x)*u.rY,C=Math.cos(x)*u.rY,M=u.phi1<u.phi2?[u.phi1,u.phi2]:-180>u.phi2?[u.phi2+360,u.phi1+360]:[u.phi2,u.phi1],R=M[0],g=M[1],I=function(t){var r=t[0],e=t[1],i=180*Math.atan2(e,r)/Math.PI;return i<R?i+360:i},S=0,L=s(E,-d,0).map(I);S<L.length;S++){(w=L[S])>R&&w<g&&O(y(u.cX,d,E,w));}for(var H=0,U=s(C,-A,0).map(I);H<U.length;H++){var w;(w=U[H])>R&&w<g&&T(y(u.cY,A,C,w));}}return r}));return c.minX=1/0,c.maxX=-1/0,c.minY=1/0,c.maxY=-1/0,c};}(u||(u={}));var O,T=function(){function t(){}return t.prototype.round=function(t){return this.transform(u.ROUND(t))},t.prototype.toAbs=function(){return this.transform(u.TO_ABS())},t.prototype.toRel=function(){return this.transform(u.TO_REL())},t.prototype.normalizeHVZ=function(t,r,e){return this.transform(u.NORMALIZE_HVZ(t,r,e))},t.prototype.normalizeST=function(){return this.transform(u.NORMALIZE_ST())},t.prototype.qtToC=function(){return this.transform(u.QT_TO_C())},t.prototype.aToC=function(){return this.transform(u.A_TO_C())},t.prototype.sanitize=function(t){return this.transform(u.SANITIZE(t))},t.prototype.translate=function(t,r){return this.transform(u.TRANSLATE(t,r))},t.prototype.scale=function(t,r){return this.transform(u.SCALE(t,r))},t.prototype.rotate=function(t,r,e){return this.transform(u.ROTATE(t,r,e))},t.prototype.matrix=function(t,r,e,i,a,n){return this.transform(u.MATRIX(t,r,e,i,a,n))},t.prototype.skewX=function(t){return this.transform(u.SKEW_X(t))},t.prototype.skewY=function(t){return this.transform(u.SKEW_Y(t))},t.prototype.xSymmetry=function(t){return this.transform(u.X_AXIS_SYMMETRY(t))},t.prototype.ySymmetry=function(t){return this.transform(u.Y_AXIS_SYMMETRY(t))},t.prototype.annotateArcs=function(){return this.transform(u.ANNOTATE_ARCS())},t}(),v=function(t){return " "===t||"\t"===t||"\r"===t||"\n"===t},l=function(t){return "0".charCodeAt(0)<=t.charCodeAt(0)&&t.charCodeAt(0)<="9".charCodeAt(0)},_=function(t){function e(){var r=t.call(this)||this;return r.curNumber="",r.curCommandType=-1,r.curCommandRelative=!1,r.canParseCommandOrComma=!0,r.curNumberHasExp=!1,r.curNumberHasExpDigits=!1,r.curNumberHasDecimal=!1,r.curArgs=[],r}return r(e,t),e.prototype.finish=function(t){if(void 0===t&&(t=[]),this.parse(" ",t),0!==this.curArgs.length||!this.canParseCommandOrComma)throw new SyntaxError("Unterminated command at the path end.");return t},e.prototype.parse=function(t,r){var e=this;void 0===r&&(r=[]);for(var i=function(t){r.push(t),e.curArgs.length=0,e.canParseCommandOrComma=!0;},a=0;a<t.length;a++){var n=t[a],o=!(this.curCommandType!==f.ARC||3!==this.curArgs.length&&4!==this.curArgs.length||1!==this.curNumber.length||"0"!==this.curNumber&&"1"!==this.curNumber),s=l(n)&&("0"===this.curNumber&&"0"===n||o);if(!l(n)||s)if("e"!==n&&"E"!==n)if("-"!==n&&"+"!==n||!this.curNumberHasExp||this.curNumberHasExpDigits)if("."!==n||this.curNumberHasExp||this.curNumberHasDecimal||o){if(this.curNumber&&-1!==this.curCommandType){var u=Number(this.curNumber);if(isNaN(u))throw new SyntaxError("Invalid number ending at "+a);if(this.curCommandType===f.ARC)if(0===this.curArgs.length||1===this.curArgs.length){if(0>u)throw new SyntaxError('Expected positive number, got "'+u+'" at index "'+a+'"')}else if((3===this.curArgs.length||4===this.curArgs.length)&&"0"!==this.curNumber&&"1"!==this.curNumber)throw new SyntaxError('Expected a flag, got "'+this.curNumber+'" at index "'+a+'"');this.curArgs.push(u),this.curArgs.length===N[this.curCommandType]&&(f.HORIZ_LINE_TO===this.curCommandType?i({type:f.HORIZ_LINE_TO,relative:this.curCommandRelative,x:u}):f.VERT_LINE_TO===this.curCommandType?i({type:f.VERT_LINE_TO,relative:this.curCommandRelative,y:u}):this.curCommandType===f.MOVE_TO||this.curCommandType===f.LINE_TO||this.curCommandType===f.SMOOTH_QUAD_TO?(i({type:this.curCommandType,relative:this.curCommandRelative,x:this.curArgs[0],y:this.curArgs[1]}),f.MOVE_TO===this.curCommandType&&(this.curCommandType=f.LINE_TO)):this.curCommandType===f.CURVE_TO?i({type:f.CURVE_TO,relative:this.curCommandRelative,x1:this.curArgs[0],y1:this.curArgs[1],x2:this.curArgs[2],y2:this.curArgs[3],x:this.curArgs[4],y:this.curArgs[5]}):this.curCommandType===f.SMOOTH_CURVE_TO?i({type:f.SMOOTH_CURVE_TO,relative:this.curCommandRelative,x2:this.curArgs[0],y2:this.curArgs[1],x:this.curArgs[2],y:this.curArgs[3]}):this.curCommandType===f.QUAD_TO?i({type:f.QUAD_TO,relative:this.curCommandRelative,x1:this.curArgs[0],y1:this.curArgs[1],x:this.curArgs[2],y:this.curArgs[3]}):this.curCommandType===f.ARC&&i({type:f.ARC,relative:this.curCommandRelative,rX:this.curArgs[0],rY:this.curArgs[1],xRot:this.curArgs[2],lArcFlag:this.curArgs[3],sweepFlag:this.curArgs[4],x:this.curArgs[5],y:this.curArgs[6]})),this.curNumber="",this.curNumberHasExpDigits=!1,this.curNumberHasExp=!1,this.curNumberHasDecimal=!1,this.canParseCommandOrComma=!0;}if(!v(n))if(","===n&&this.canParseCommandOrComma)this.canParseCommandOrComma=!1;else if("+"!==n&&"-"!==n&&"."!==n)if(s)this.curNumber=n,this.curNumberHasDecimal=!1;else {if(0!==this.curArgs.length)throw new SyntaxError("Unterminated command at index "+a+".");if(!this.canParseCommandOrComma)throw new SyntaxError('Unexpected character "'+n+'" at index '+a+". Command cannot follow comma");if(this.canParseCommandOrComma=!1,"z"!==n&&"Z"!==n)if("h"===n||"H"===n)this.curCommandType=f.HORIZ_LINE_TO,this.curCommandRelative="h"===n;else if("v"===n||"V"===n)this.curCommandType=f.VERT_LINE_TO,this.curCommandRelative="v"===n;else if("m"===n||"M"===n)this.curCommandType=f.MOVE_TO,this.curCommandRelative="m"===n;else if("l"===n||"L"===n)this.curCommandType=f.LINE_TO,this.curCommandRelative="l"===n;else if("c"===n||"C"===n)this.curCommandType=f.CURVE_TO,this.curCommandRelative="c"===n;else if("s"===n||"S"===n)this.curCommandType=f.SMOOTH_CURVE_TO,this.curCommandRelative="s"===n;else if("q"===n||"Q"===n)this.curCommandType=f.QUAD_TO,this.curCommandRelative="q"===n;else if("t"===n||"T"===n)this.curCommandType=f.SMOOTH_QUAD_TO,this.curCommandRelative="t"===n;else {if("a"!==n&&"A"!==n)throw new SyntaxError('Unexpected character "'+n+'" at index '+a+".");this.curCommandType=f.ARC,this.curCommandRelative="a"===n;}else r.push({type:f.CLOSE_PATH}),this.canParseCommandOrComma=!0,this.curCommandType=-1;}else this.curNumber=n,this.curNumberHasDecimal="."===n;}else this.curNumber+=n,this.curNumberHasDecimal=!0;else this.curNumber+=n;else this.curNumber+=n,this.curNumberHasExp=!0;else this.curNumber+=n,this.curNumberHasExpDigits=this.curNumberHasExp;}return r},e.prototype.transform=function(t){return Object.create(this,{parse:{value:function(r,e){void 0===e&&(e=[]);for(var i=0,a=Object.getPrototypeOf(this).parse.call(this,r);i<a.length;i++){var n=a[i],o=t(n);Array.isArray(o)?e.push.apply(e,o):e.push(o);}return e}}})},e}(T),f=function(t){function i(r){var e=t.call(this)||this;return e.commands="string"==typeof r?i.parse(r):r,e}return r(i,t),i.prototype.encode=function(){return i.encode(this.commands)},i.prototype.getBounds=function(){var t=u.CALCULATE_BOUNDS();return this.transform(t),t},i.prototype.transform=function(t){for(var r=[],e=0,i=this.commands;e<i.length;e++){var a=t(i[e]);Array.isArray(a)?r.push.apply(r,a):r.push(a);}return this.commands=r,this},i.encode=function(t){return e(t)},i.parse=function(t){var r=new _,e=[];return r.parse(t,e),r.finish(e),e},i.CLOSE_PATH=1,i.MOVE_TO=2,i.HORIZ_LINE_TO=4,i.VERT_LINE_TO=8,i.LINE_TO=16,i.CURVE_TO=32,i.SMOOTH_CURVE_TO=64,i.QUAD_TO=128,i.SMOOTH_QUAD_TO=256,i.ARC=512,i.LINE_COMMANDS=i.LINE_TO|i.HORIZ_LINE_TO|i.VERT_LINE_TO,i.DRAWING_COMMANDS=i.HORIZ_LINE_TO|i.VERT_LINE_TO|i.LINE_TO|i.CURVE_TO|i.SMOOTH_CURVE_TO|i.QUAD_TO|i.SMOOTH_QUAD_TO|i.ARC,i}(T),N=((O={})[f.MOVE_TO]=2,O[f.LINE_TO]=2,O[f.HORIZ_LINE_TO]=1,O[f.VERT_LINE_TO]=1,O[f.CLOSE_PATH]=0,O[f.QUAD_TO]=4,O[f.SMOOTH_QUAD_TO]=2,O[f.CURVE_TO]=6,O[f.SMOOTH_CURVE_TO]=4,O[f.ARC]=7,O);//# sourceMappingURL=SVGPathData.module.js.map
+
+    var SVGPathData_module = /*#__PURE__*/Object.freeze({
+        __proto__: null,
+        COMMAND_ARG_COUNTS: N,
+        SVGPathData: f,
+        SVGPathDataParser: _,
+        get SVGPathDataTransformer () { return u; },
+        encodeSVGPath: e
+    });
+
+    var moveToGenerator = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.generateMoveToSwift = void 0;
+
+    const generateMoveToSwift = (data, options) => {
+        const xy = utils.stringifyRectValues({
+            x: data.x / options.viewBox.width,
+            y: data.y / options.viewBox.height,
+        }, options.precision);
+        const new_x = utils.clampNormalisedSizeProduct(xy.x, 'width');
+        const new_y = utils.clampNormalisedSizeProduct(xy.y, 'height');
+        return [`path.move(to: CGPoint(x: ${new_x}, y: ${new_y}))`];
+    };
+    exports.generateMoveToSwift = generateMoveToSwift;
+    //# sourceMappingURL=moveToGenerator.js.map
+    });
+
+    unwrapExports(moveToGenerator);
+    var moveToGenerator_1 = moveToGenerator.generateMoveToSwift;
+
+    var lineToGenerator = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.generateLineToSwift = void 0;
+
+    const generateLineToSwift = (data, options) => {
+        const xy = utils.stringifyRectValues({
+            x: data.x / options.viewBox.width,
+            y: data.y / options.viewBox.height,
+        }, options.precision);
+        const new_x = utils.clampNormalisedSizeProduct(xy.x, 'width');
+        const new_y = utils.clampNormalisedSizeProduct(xy.y, 'height');
+        return [`path.addLine(to: CGPoint(x: ${new_x}, y: ${new_y}))`];
+    };
+    exports.generateLineToSwift = generateLineToSwift;
+    //# sourceMappingURL=lineToGenerator.js.map
+    });
+
+    unwrapExports(lineToGenerator);
+    var lineToGenerator_1 = lineToGenerator.generateLineToSwift;
+
+    var closePathGenerator = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.generateClosePathSwift = void 0;
+    const generateClosePathSwift = (_data, _options) => {
+        return ['path.closeSubpath()'];
+    };
+    exports.generateClosePathSwift = generateClosePathSwift;
+    //# sourceMappingURL=closePathGenerator.js.map
+    });
+
+    unwrapExports(closePathGenerator);
+    var closePathGenerator_1 = closePathGenerator.generateClosePathSwift;
+
+    var cubicCurveGenerator = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.generateCubicCurveSwift = void 0;
+
+    const generateCubicCurveSwift = (data, options) => {
+        // Convert raw values into width/height relative values.
+        const xy1 = utils.stringifyRectValues({
+            x: data.x1 / options.viewBox.width,
+            y: data.y1 / options.viewBox.height,
+        }, options.precision);
+        const xy2 = utils.stringifyRectValues({
+            x: data.x2 / options.viewBox.width,
+            y: data.y2 / options.viewBox.height,
+        }, options.precision);
+        const xy = utils.stringifyRectValues({
+            x: data.x / options.viewBox.width,
+            y: data.y / options.viewBox.height,
+        }, options.precision);
+        // Prepare string values.
+        const p1x_str = utils.clampNormalisedSizeProduct(xy.x, 'width');
+        const p1y_str = utils.clampNormalisedSizeProduct(xy.y, 'height');
+        const p2x_str = utils.clampNormalisedSizeProduct(xy1.x, 'width');
+        const p2y_str = utils.clampNormalisedSizeProduct(xy1.y, 'height');
+        const p3x_str = utils.clampNormalisedSizeProduct(xy2.x, 'width');
+        const p3y_str = utils.clampNormalisedSizeProduct(xy2.y, 'height');
+        const swiftString = [
+            `path.addCurve(to: CGPoint(x: ${p1x_str}, y: ${p1y_str}),`,
+            `control1: CGPoint(x: ${p2x_str}, y: ${p2y_str}),`,
+            `control2: CGPoint(x: ${p3x_str}, y: ${p3y_str}))`,
+        ].join(' ');
+        return [swiftString];
+    };
+    exports.generateCubicCurveSwift = generateCubicCurveSwift;
+    //# sourceMappingURL=cubicCurveGenerator.js.map
+    });
+
+    unwrapExports(cubicCurveGenerator);
+    var cubicCurveGenerator_1 = cubicCurveGenerator.generateCubicCurveSwift;
+
+    var pathElementHandler = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+
+
+
+
+
+    /**
+     * Converts SVG Path element to SwiftUI path string.
+     * @param element SVG Path Element
+     * @param options Transpiler options
+     */
+    function handlePathElement(element, options) {
+        const properties = element.properties;
+        if (properties) {
+            const props = properties;
+            if (!props.d) {
+                throw new Error('Parameter `d` has to be provided on the <path> element!');
+            }
+            options.lastPathId++;
+            console.log('Props', props);
+            const pathData = new SVGPathData_module.SVGPathData(props.d).toAbs();
+            return convertPathToSwift(pathData.commands, options);
+        }
+        else {
+            throw new Error('Path element does not have any properties!');
+        }
+    }
+    exports.default = handlePathElement;
+    /**
+     * Converts a list of `SVGCommand`s to SwiftUI Path
+     * @param data Path data if SVGCommand[] type.
+     * @param options Transpiler options
+     */
+    const convertPathToSwift = (data, options) => {
+        const swiftAccumulator = [];
+        console.log('Data points', data);
+        for (let i = 0; i < data.length; i++) {
+            const el = data[i];
+            // Handle data depending on command type.
+            switch (el.type) {
+                // Command M
+                case SVGPathData_module.SVGPathData.MOVE_TO: {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { type, relative, ...d } = el;
+                    swiftAccumulator.push(...moveToGenerator.generateMoveToSwift(d, options));
+                    break;
+                }
+                // Command L
+                case SVGPathData_module.SVGPathData.LINE_TO: {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { type, relative, ...d } = el;
+                    swiftAccumulator.push(...lineToGenerator.generateLineToSwift(d, options));
+                    break;
+                }
+                // Command H
+                case SVGPathData_module.SVGPathData.HORIZ_LINE_TO: {
+                    console.error('Horizontal line is not supported yet');
+                    break;
+                }
+                // Command V
+                case SVGPathData_module.SVGPathData.VERT_LINE_TO: {
+                    // TODO: Implement this commend
+                    console.error('Vertical line is not supported yet');
+                    break;
+                }
+                // Command Z
+                case SVGPathData_module.SVGPathData.CLOSE_PATH: {
+                    swiftAccumulator.push(...closePathGenerator.generateClosePathSwift(null, options));
+                    break;
+                }
+                // Command Q
+                case SVGPathData_module.SVGPathData.QUAD_TO: {
+                    // TODO: Implement this commend
+                    console.error('Quad curve is not supported yet');
+                    break;
+                }
+                // Command T
+                case SVGPathData_module.SVGPathData.SMOOTH_QUAD_TO: {
+                    // TODO: Implement this commend
+                    console.error('Smooth quad is not supported yet');
+                    break;
+                }
+                // Command C
+                case SVGPathData_module.SVGPathData.CURVE_TO: {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { type, relative, ...d } = el;
+                    swiftAccumulator.push(...cubicCurveGenerator.generateCubicCurveSwift(d, options));
+                    break;
+                }
+                // Command S
+                case SVGPathData_module.SVGPathData.SMOOTH_CURVE_TO: {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { type, relative, ...d } = el;
+                    const prevElement = data[i - 1];
+                    // Setup first control point
+                    let x1 = d.x;
+                    let y1 = d.y;
+                    if (prevElement.type === SVGPathData_module.SVGPathData.CURVE_TO ||
+                        prevElement.type === SVGPathData_module.SVGPathData.SMOOTH_CURVE_TO) {
+                        x1 = prevElement.x + (prevElement.x - prevElement.x2);
+                        y1 = prevElement.y + (prevElement.y - prevElement.y2);
+                    }
+                    const swiftLines = cubicCurveGenerator.generateCubicCurveSwift({ ...d, x1, y1 }, options);
+                    swiftAccumulator.push(...swiftLines);
+                    break;
+                }
+                // Command A
+                case SVGPathData_module.SVGPathData.ARC: {
+                    // TODO: Implement this commend
+                    console.error('Arc is not supported yet');
+                    break;
+                }
+            }
+        }
+        return swiftAccumulator;
+    };
+    //# sourceMappingURL=pathElementHandler.js.map
+    });
+
+    unwrapExports(pathElementHandler);
+
+    var rectElementHandler = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+
+    function handleRectElement(element, options) {
+        // TODO: Add style support
+        // const style = {
+        //   ...options.parentStyle,
+        //   ...extractStyle(element),
+        // };
+        const props = element.properties;
+        if (props) {
+            const circleProps = props;
+            // Set default values
+            circleProps.x = circleProps.x || '0';
+            circleProps.y = circleProps.y || '0';
+            // Check if required properties are provided.
+            if (!circleProps.width || !circleProps.height) {
+                throw new Error('Rectangle has to have width and height properties!');
+            }
+            // Parse numbers from the striings.
+            const x = parseFloat(circleProps.x);
+            const y = parseFloat(circleProps.y);
+            const width = parseFloat(circleProps.width);
+            const height = parseFloat(circleProps.height);
+            // Normalise all values to be based on fraction of width/height.
+            const normalisedRect = utils.normaliseRectValues({ x, y, width, height }, options.viewBox);
+            // Stringify values to the fixed precision point.
+            const SR = utils.stringifyRectValues(normalisedRect, options.precision);
+            // Append the width and height multipliers after normalisation.
+            const strX = utils.clampNormalisedSizeProduct(SR.x, 'width');
+            const strY = utils.clampNormalisedSizeProduct(SR.y, 'height');
+            const strWidth = utils.clampNormalisedSizeProduct(SR.width, 'width');
+            const strHeight = utils.clampNormalisedSizeProduct(SR.height, 'height');
+            // Generate SwiftUI string.
+            const CGRect = `CGRect(x: ${strX}, y: ${strY}, width: ${strWidth}, height: ${strHeight})`;
+            return [`path.addRect(${CGRect})`];
+        }
+        else {
+            throw new Error('Circle element has to some properties');
+        }
+    }
+    exports.default = handleRectElement;
+    //# sourceMappingURL=rectElementHandler.js.map
+    });
+
+    unwrapExports(rectElementHandler);
+
+    var elementHandlers = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.handleElement = void 0;
+
+
+
+
+    function handleElement(element, options) {
+        switch (element.tagName) {
+            case 'g':
+                return groupElementHandler.default(element, options);
+            case 'svg':
+                return groupElementHandler.default(element, options);
+            case 'path':
+                return pathElementHandler.default(element, options);
+            case 'circle':
+                return circleElementHandler.default(element, options);
+            case 'rect':
+                return rectElementHandler.default(element, options);
+            default:
+                console.error([
+                    `Element <${element.tagName}> is not supported!`,
+                    'Please open a Github issue for this or send a PR with the implementation!',
+                ].join('\n'));
+                return [];
+        }
+    }
+    exports.handleElement = handleElement;
+    //# sourceMappingURL=index.js.map
+    });
+
+    unwrapExports(elementHandlers);
+    var elementHandlers_1 = elementHandlers.handleElement;
+
+    var constants = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.DEFAULT_CONFIG = void 0;
+    exports.DEFAULT_CONFIG = {
+        structName: 'MyCustomShape',
+        precision: 8,
+        indentationSize: 4,
+    };
+    //# sourceMappingURL=constants.js.map
+    });
+
+    unwrapExports(constants);
+    var constants_1 = constants.DEFAULT_CONFIG;
+
+    var src = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.convert = void 0;
+
+
+
+
+
+    /**
+     * This function converts SVG string into SwiftUI
+     * Shape structure which is returned as a string.
+     * @param rawSVGString SVG code as a raw string.
+     * @param config Optional configuration object.
+     */
+    function convert(rawSVGString, config) {
+        const AST = svgParser_umd.parse(rawSVGString);
+        const svgElement = utils.getSVGElement(AST);
+        if (svgElement) {
+            return swiftUIGenerator(svgElement, config);
+        }
+        else {
+            throw new Error('Could not find SVG element, please provide full SVG source!');
+        }
+    }
+    exports.convert = convert;
+    /**
+     * Generates SwiftUI Shape string from SVG HAST (Abstract Syntax Tree).
+     * @param svgElement Parsed SVG Abstract Syntax Tree.
+     * @param config Optional configuration object.
+     */
+    function swiftUIGenerator(svgElement, config) {
+        const svgProperties = utils.extractSVGProperties(svgElement);
+        // The initial options passed to the first element.
+        const rootTranspilerOptions = {
+            ...svgProperties,
+            precision: (config === null || config === void 0 ? void 0 : config.precision) || 10,
+            lastPathId: 0,
+            indentationSize: (config === null || config === void 0 ? void 0 : config.indentationSize) || 4,
+            currentIndentationLevel: 0,
+            parentStyle: {},
+        };
+        // Generate SwiftUI Shape body.
+        const generatedBody = elementHandlers.handleElement(svgElement, rootTranspilerOptions);
+        // Inject generated body into the Shape struct template.
+        const fullSwiftUIShape = stubs.generateSwiftUIShape(generatedBody, {
+            ...constants.DEFAULT_CONFIG,
+            ...config,
+        });
+        return fullSwiftUIShape;
+    }
+    //# sourceMappingURL=index.js.map
+    });
+
+    unwrapExports(src);
+    var src_1 = src.convert;
+
+    /* src/App.svelte generated by Svelte v3.31.1 */
+    const file = "src/App.svelte";
+
+    // (73:2) {#if settingsShown}
+    function create_if_block(ctx) {
+    	let ul;
+    	let li0;
+    	let label0;
+    	let t1;
+    	let input0;
+    	let t2;
+    	let li1;
+    	let label1;
+    	let t4;
+    	let input1;
+    	let t5;
+    	let li2;
+    	let label2;
+    	let t7;
+    	let input2;
+    	let mounted;
+    	let dispose;
+
+    	const block = {
+    		c: function create() {
+    			ul = element("ul");
+    			li0 = element("li");
+    			label0 = element("label");
+    			label0.textContent = "Indentation Spaces:";
+    			t1 = space();
+    			input0 = element("input");
+    			t2 = space();
+    			li1 = element("li");
+    			label1 = element("label");
+    			label1.textContent = "Round to decimal points:";
+    			t4 = space();
+    			input1 = element("input");
+    			t5 = space();
+    			li2 = element("li");
+    			label2 = element("label");
+    			label2.textContent = "Struct name:";
+    			t7 = space();
+    			input2 = element("input");
+    			attr_dev(label0, "for", "indentation-input");
+    			add_location(label0, file, 75, 8, 1812);
+    			attr_dev(input0, "id", "indentation-input");
+    			attr_dev(input0, "type", "number");
+    			attr_dev(input0, "min", "0");
+    			attr_dev(input0, "max", "12");
+    			add_location(input0, file, 76, 8, 1879);
+    			add_location(li0, file, 74, 6, 1799);
+    			attr_dev(label1, "for", "precision-input");
+    			add_location(label1, file, 84, 8, 2061);
+    			attr_dev(input1, "id", "precision-input");
+    			attr_dev(input1, "type", "number");
+    			attr_dev(input1, "min", "0");
+    			attr_dev(input1, "max", "10");
+    			add_location(input1, file, 85, 8, 2131);
+    			add_location(li1, file, 83, 6, 2048);
+    			attr_dev(label2, "for", "name-input");
+    			add_location(label2, file, 93, 8, 2305);
+    			attr_dev(input2, "id", "name-input");
+    			attr_dev(input2, "type", "text");
+    			add_location(input2, file, 94, 8, 2358);
+    			add_location(li2, file, 92, 6, 2292);
+    			add_location(ul, file, 73, 4, 1788);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, ul, anchor);
+    			append_dev(ul, li0);
+    			append_dev(li0, label0);
+    			append_dev(li0, t1);
+    			append_dev(li0, input0);
+    			set_input_value(input0, /*options*/ ctx[3].indentationSize);
+    			append_dev(ul, t2);
+    			append_dev(ul, li1);
+    			append_dev(li1, label1);
+    			append_dev(li1, t4);
+    			append_dev(li1, input1);
+    			set_input_value(input1, /*options*/ ctx[3].precision);
+    			append_dev(ul, t5);
+    			append_dev(ul, li2);
+    			append_dev(li2, label2);
+    			append_dev(li2, t7);
+    			append_dev(li2, input2);
+    			set_input_value(input2, /*options*/ ctx[3].structName);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[6]),
+    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[7]),
+    					listen_dev(input2, "input", /*input2_input_handler*/ ctx[8])
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*options*/ 8 && to_number(input0.value) !== /*options*/ ctx[3].indentationSize) {
+    				set_input_value(input0, /*options*/ ctx[3].indentationSize);
+    			}
+
+    			if (dirty & /*options*/ 8 && to_number(input1.value) !== /*options*/ ctx[3].precision) {
+    				set_input_value(input1, /*options*/ ctx[3].precision);
+    			}
+
+    			if (dirty & /*options*/ 8 && input2.value !== /*options*/ ctx[3].structName) {
+    				set_input_value(input2, /*options*/ ctx[3].structName);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(ul);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block.name,
+    		type: "if",
+    		source: "(73:2) {#if settingsShown}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment(ctx) {
+    	let main;
+    	let h1;
+    	let t1;
+    	let div0;
+    	let iframe0;
+    	let iframe0_src_value;
+    	let t2;
+    	let iframe1;
+    	let iframe1_src_value;
+    	let t3;
+    	let div1;
+    	let i;
+    	let t4;
+    	let a;
+    	let t6;
+    	let div2;
+    	let h20;
+    	let t8;
+    	let img;
+    	let img_src_value;
+    	let img_title_value;
+    	let t9;
+    	let t10;
+    	let div3;
+    	let textarea0;
+    	let t11;
+    	let button;
+    	let t13;
+    	let h21;
+    	let t15;
+    	let div4;
+    	let textarea1;
+    	let mounted;
+    	let dispose;
+    	let if_block = /*settingsShown*/ ctx[2] && create_if_block(ctx);
+
+    	const block = {
+    		c: function create() {
+    			main = element("main");
+    			h1 = element("h1");
+    			h1.textContent = "Welcome!";
+    			t1 = space();
+    			div0 = element("div");
+    			iframe0 = element("iframe");
+    			t2 = space();
+    			iframe1 = element("iframe");
+    			t3 = space();
+    			div1 = element("div");
+    			i = element("i");
+    			t4 = text("Functionality is limited for now, feel free to contribute on\n      ");
+    			a = element("a");
+    			a.textContent = "Github";
+    			t6 = space();
+    			div2 = element("div");
+    			h20 = element("h2");
+    			h20.textContent = "Paste SVG code below";
+    			t8 = space();
+    			img = element("img");
+    			t9 = space();
+    			if (if_block) if_block.c();
+    			t10 = space();
+    			div3 = element("div");
+    			textarea0 = element("textarea");
+    			t11 = space();
+    			button = element("button");
+    			button.textContent = "Convert to SwiftUI Shape!";
+    			t13 = space();
+    			h21 = element("h2");
+    			h21.textContent = "Swift code will be shown below:";
+    			t15 = space();
+    			div4 = element("div");
+    			textarea1 = element("textarea");
+    			add_location(h1, file, 36, 2, 709);
+    			if (iframe0.src !== (iframe0_src_value = "https://ghbtns.com/github-btn.html?user=quassummanus&repo=SVG-to-SwiftUI&type=star&count=true&v=2")) attr_dev(iframe0, "src", iframe0_src_value);
+    			attr_dev(iframe0, "frameborder", "0");
+    			attr_dev(iframe0, "scrolling", "0");
+    			attr_dev(iframe0, "width", "90");
+    			attr_dev(iframe0, "height", "20");
+    			attr_dev(iframe0, "title", "GitHub");
+    			attr_dev(iframe0, "class", "svelte-19o4juq");
+    			add_location(iframe0, file, 38, 4, 761);
+    			if (iframe1.src !== (iframe1_src_value = "https://github.com/sponsors/bring-shrubbery/button")) attr_dev(iframe1, "src", iframe1_src_value);
+    			attr_dev(iframe1, "title", "Sponsor bring-shrubbery");
+    			attr_dev(iframe1, "height", "35");
+    			attr_dev(iframe1, "width", "116");
+    			set_style(iframe1, "border", "0");
+    			attr_dev(iframe1, "class", "svelte-19o4juq");
+    			add_location(iframe1, file, 45, 4, 984);
+    			attr_dev(div0, "id", "external-buttons");
+    			attr_dev(div0, "class", "svelte-19o4juq");
+    			add_location(div0, file, 37, 2, 729);
+    			attr_dev(a, "href", "https://github.com/quassummanus/SVG-to-SwiftUI");
+    			attr_dev(a, "alt", "link to GitHub");
+    			add_location(a, file, 55, 6, 1280);
+    			add_location(i, file, 53, 4, 1203);
+    			set_style(div1, "margin", "8px auto");
+    			add_location(div1, file, 52, 2, 1168);
+    			set_style(h20, "display", "inline");
+    			add_location(h20, file, 63, 4, 1454);
+    			attr_dev(img, "id", "settings-button");
+    			if (img.src !== (img_src_value = "https://img.icons8.com/ios-filled/50/000000/settings.png")) attr_dev(img, "src", img_src_value);
+    			attr_dev(img, "alt", "settings icon");
+    			attr_dev(img, "width", "16px");
+    			attr_dev(img, "title", img_title_value = `${/*settingsShown*/ ctx[2] ? "Hide" : "Show"} settings`);
+    			add_location(img, file, 64, 4, 1512);
+    			set_style(div2, "margin", "16px 0");
+    			add_location(div2, file, 62, 2, 1421);
+    			attr_dev(textarea0, "placeholder", "Paste SVG Code here");
+    			add_location(textarea0, file, 99, 4, 2470);
+    			add_location(div3, file, 98, 2, 2460);
+    			add_location(button, file, 101, 2, 2550);
+    			add_location(h21, file, 102, 2, 2624);
+    			textarea1.value = /*swiftOutput*/ ctx[1];
+    			attr_dev(textarea1, "id", "swift-output-area");
+    			add_location(textarea1, file, 104, 4, 2677);
+    			add_location(div4, file, 103, 2, 2667);
+    			add_location(main, file, 35, 0, 700);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, main, anchor);
+    			append_dev(main, h1);
+    			append_dev(main, t1);
+    			append_dev(main, div0);
+    			append_dev(div0, iframe0);
+    			append_dev(div0, t2);
+    			append_dev(div0, iframe1);
+    			append_dev(main, t3);
+    			append_dev(main, div1);
+    			append_dev(div1, i);
+    			append_dev(i, t4);
+    			append_dev(i, a);
+    			append_dev(main, t6);
+    			append_dev(main, div2);
+    			append_dev(div2, h20);
+    			append_dev(div2, t8);
+    			append_dev(div2, img);
+    			append_dev(main, t9);
+    			if (if_block) if_block.m(main, null);
+    			append_dev(main, t10);
+    			append_dev(main, div3);
+    			append_dev(div3, textarea0);
+    			set_input_value(textarea0, /*svgInput*/ ctx[0]);
+    			append_dev(main, t11);
+    			append_dev(main, button);
+    			append_dev(main, t13);
+    			append_dev(main, h21);
+    			append_dev(main, t15);
+    			append_dev(main, div4);
+    			append_dev(div4, textarea1);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(img, "click", /*toggleSettings*/ ctx[4], false, false, false),
+    					listen_dev(textarea0, "input", /*textarea0_input_handler*/ ctx[9]),
+    					listen_dev(button, "click", /*generateSwiftCode*/ ctx[5], false, false, false)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*settingsShown*/ 4 && img_title_value !== (img_title_value = `${/*settingsShown*/ ctx[2] ? "Hide" : "Show"} settings`)) {
+    				attr_dev(img, "title", img_title_value);
+    			}
+
+    			if (/*settingsShown*/ ctx[2]) {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
+    				} else {
+    					if_block = create_if_block(ctx);
+    					if_block.c();
+    					if_block.m(main, t10);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			if (dirty & /*svgInput*/ 1) {
+    				set_input_value(textarea0, /*svgInput*/ ctx[0]);
+    			}
+
+    			if (dirty & /*swiftOutput*/ 2) {
+    				prop_dev(textarea1, "value", /*swiftOutput*/ ctx[1]);
+    			}
+    		},
+    		i: noop,
+    		o: noop,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(main);
+    			if (if_block) if_block.d();
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance($$self, $$props, $$invalidate) {
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("App", slots, []);
+    	let svgInput = "";
+    	let swiftOutput = "";
+    	let settingsShown = false;
+    	const toggleSettings = () => $$invalidate(2, settingsShown = !settingsShown);
+
+    	let options = {
+    		structName: "MyCustomShape",
+    		precision: 5,
+    		indentationSize: 4
+    	};
+
+    	const generateSwiftCode = () => {
+    		try {
+    			$$invalidate(1, swiftOutput = src_1(svgInput, options));
+    		} catch(e) {
+    			alert(e);
+    		}
+    	};
+
+    	const writable_props = [];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<App> was created with unknown prop '${key}'`);
+    	});
+
+    	function input0_input_handler() {
+    		options.indentationSize = to_number(this.value);
+    		$$invalidate(3, options);
+    	}
+
+    	function input1_input_handler() {
+    		options.precision = to_number(this.value);
+    		$$invalidate(3, options);
+    	}
+
+    	function input2_input_handler() {
+    		options.structName = this.value;
+    		$$invalidate(3, options);
+    	}
+
+    	function textarea0_input_handler() {
+    		svgInput = this.value;
+    		$$invalidate(0, svgInput);
+    	}
+
+    	$$self.$capture_state = () => ({
+    		convert: src_1,
+    		svgInput,
+    		swiftOutput,
+    		settingsShown,
+    		toggleSettings,
+    		options,
+    		generateSwiftCode
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("svgInput" in $$props) $$invalidate(0, svgInput = $$props.svgInput);
+    		if ("swiftOutput" in $$props) $$invalidate(1, swiftOutput = $$props.swiftOutput);
+    		if ("settingsShown" in $$props) $$invalidate(2, settingsShown = $$props.settingsShown);
+    		if ("options" in $$props) $$invalidate(3, options = $$props.options);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [
+    		svgInput,
+    		swiftOutput,
+    		settingsShown,
+    		options,
+    		toggleSettings,
+    		generateSwiftCode,
+    		input0_input_handler,
+    		input1_input_handler,
+    		input2_input_handler,
+    		textarea0_input_handler
+    	];
+    }
+
+    class App extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance, create_fragment, safe_not_equal, {});
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "App",
+    			options,
+    			id: create_fragment.name
+    		});
+    	}
+    }
+
+    const app = new App({
+        target: document.body,
+    });
+    //# sourceMappingURL=main.js.map
+
+    return app;
+
+}());
 //# sourceMappingURL=bundle.js.map

@@ -21,9 +21,24 @@
   };
 </script>
 
+<style>
+  #external-buttons {
+    width: min-content;
+    margin: 0 auto;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #external-buttons > iframe:first-child {
+    margin-bottom: 8px;
+  }
+</style>
+
 <main>
   <h1>Welcome!</h1>
-  <div style="margin-bottom: 12px">
+  <div id="external-buttons">
     <iframe
       src="https://ghbtns.com/github-btn.html?user=quassummanus&repo=SVG-to-SwiftUI&type=star&count=true&v=2"
       frameborder="0"
@@ -31,6 +46,12 @@
       width="90"
       height="20"
       title="GitHub" />
+    <iframe
+      src="https://github.com/sponsors/bring-shrubbery/button"
+      title="Sponsor bring-shrubbery"
+      height="35"
+      width="116"
+      style="border: 0;" />
   </div>
   <div style="margin: 8px auto">
     <i>
