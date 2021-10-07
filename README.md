@@ -17,8 +17,8 @@ The tool is available online, just follow [this](https://quassummanus.github.io/
 ```
 git clone https://github.com/quassummanus/SVG-to-SwiftUI
 cd SVG-to-SwiftUI
-npm install
-npm run dev
+yarn
+yarn dev
 ```
 
 ## Functionality Coverage
