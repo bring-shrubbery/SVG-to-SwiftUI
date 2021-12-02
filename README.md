@@ -10,7 +10,7 @@ This tool is oriented towards specific implementations where you might otherwise
 
 ### Online
 
-The tool is available online, just follow [this](https://quassummanus.github.io/SVG-to-SwiftUI/) link.
+The tool is available online, just follow [this](https://quassum.github.io/SVG-to-SwiftUI/) link.
 
 ### Running locally
 
@@ -49,4 +49,4 @@ It's saved as `content/demo-plus.svg` file in this repository. You can see below
 
 ## License
 
-[MIT](https://github.com/quassummanus/SVG-to-SwiftUI/blob/master/LICENSE)
+[MIT](https://github.com/quassum/SVG-to-SwiftUI/blob/master/LICENSE)
