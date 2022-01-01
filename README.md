@@ -15,7 +15,7 @@ The tool is available online, just follow [this](https://quassum.github.io/SVG-t
 ### Running locally
 
 ```
-git clone https://github.com/quassummanus/SVG-to-SwiftUI
+git clone https://github.com/quassum/SVG-to-SwiftUI
 cd SVG-to-SwiftUI
 yarn
 yarn dev
@@ -23,7 +23,7 @@ yarn dev
 
 ## Functionality Coverage
 
-This repository is just a front-end wrapper over our [svg-to-swiftui-core](https://github.com/quassummanus/svg-to-swiftui-core) ([npm link](https://www.npmjs.com/package/svg-to-swiftui-core)) package. You can find the functionality coverage on that package's page. We encourage you checking it out and maybe starring it on GitHub 😍!
+This repository is just a front-end wrapper over our [svg-to-swiftui-core](https://github.com/quassum/svg-to-swiftui-core) ([npm link](https://www.npmjs.com/package/svg-to-swiftui-core)) package. You can find the functionality coverage on that package's page. We encourage you checking it out and maybe starring it on GitHub 😍!
 
 ## Example usage
 
