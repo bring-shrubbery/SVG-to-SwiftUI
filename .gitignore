@@ -3,3 +3,9 @@
 .vscode/
 
 .DS_Store
+
+/.svelte-kit
+/package
+/build
+/.svelte
+/functions

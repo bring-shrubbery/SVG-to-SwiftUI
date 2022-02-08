@@ -1,31 +1,33 @@
 {
   "name": "svg-to-swiftui-converter-app",
   "description": "Web app to convert SVG files into SwiftUI Shape struct.",
-  "version": "0.2.1",
+  "engines": {
+    "node": ">12"
+  },
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "start": "sirv docs",
-    "test": "jest"
+    "build": "svelte-kit build",
+    "dev": "svelte-kit dev",
+    "preview": "svelte-kit preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
+    "format": "prettier --write ./src/**/*.{svelte,ts,js} ./*.{ts,js}"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "17",
-    "@rollup/plugin-node-resolve": "11",
-    "@rollup/plugin-typescript": "^8.2.0",
-    "@tsconfig/svelte": "^1.0.10",
-    "rollup": "2",
-    "rollup-plugin-css-only": "3",
-    "rollup-plugin-livereload": "2",
-    "rollup-plugin-svelte": "7",
-    "rollup-plugin-terser": "7",
-    "sirv-cli": "^1.0.11",
-    "svelte": "3",
-    "svelte-check": "^1.2.6",
-    "svelte-preprocess": "^4.6.9",
-    "tslib": "^2.1.0",
-    "typescript": "^4.2.3"
+    "@quassum/prettier-config": "^1.0.2",
+    "@sveltejs/adapter-static": "^1.0.0-next.0",
+    "@sveltejs/adapter-vercel": "^1.0.0-next.0",
+    "@sveltejs/kit": "^1.0.0-next.1",
+    "@tsconfig/svelte": "^3.0.0",
+    "prettier": "^2.5.1",
+    "prettier-plugin-svelte": "^2.6.0",
+    "svelte": "^3.46.4",
+    "svelte-check": "^2.4.3",
+    "svelte-preprocess": "^4.10.2",
+    "tailwindcss": "^3.0.19",
+    "tslib": "^2.3.1",
+    "typescript": "^4.5.5"
   },
   "dependencies": {
-    "svg-to-swiftui-core": "^0.2.3"
+    "svg-to-swiftui-core": "^0.2.7"
   }
 }
