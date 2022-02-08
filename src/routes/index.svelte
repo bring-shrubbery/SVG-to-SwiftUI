@@ -21,21 +21,6 @@
   };
 </script>
 
-<style>
-  #external-buttons {
-    width: min-content;
-    margin: 0 auto;
-    margin-bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  #external-buttons > iframe:first-child {
-    margin-bottom: 8px;
-  }
-</style>
-
 <main>
   <h1>Welcome!</h1>
   <div id="external-buttons">
@@ -108,3 +93,18 @@
     <textarea value={swiftOutput} id="swift-output-area" />
   </div>
 </main>
+
+<style lang="css">
+  #external-buttons {
+    width: min-content;
+    margin: 0 auto;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #external-buttons > iframe:first-child {
+    margin-bottom: 8px;
+  }
+</style>
