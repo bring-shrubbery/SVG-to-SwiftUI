@@ -1,4 +1,4 @@
-<img align="right" src="https://user-images.githubusercontent.com/29360707/152959715-f2b494b6-944d-4600-a3b3-b676db3ee340.png" width="200px" />
+<img align="right" src="./static/svg-to-swiftui-logo.png" width="200px" />
 
 # SVG to SwiftUI Converter
 
