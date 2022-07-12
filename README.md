@@ -1,56 +1,77 @@
-<img align="right" src="./static/svg-to-swiftui-logo.png" width="200px" />
+# Turborepo starter with pnpm
 
-# SVG to SwiftUI Converter
+This is an official starter turborepo.
 
-Tool to convert SVG to SwiftUI's Shape structure. This approach is much more memory efficient than introducing a SVG library for rendering.
+## What's inside?
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/bring.shrubbery)
+This turborepo uses [pnpm](https://pnpm.io) as a packages manager. It includes the following packages/apps:
 
-## Disclaimer (Before you use this tool)
+### Apps and Packages
 
-This tool is oriented towards specific implementations where you might otherwise need to convert the icon into SwiftUI Shape manually, for example when you need a custom animatable icon, need to use SFSymbol in your macOS app, etc. For general purpose icons it might be better to use [this](https://developer.apple.com/documentation/uikit/uiimage/creating_custom_symbol_images_for_your_app) guide to create an SF Symbol instead.
+- `docs`: a [Next.js](https://nextjs.org) app
+- `web`: another [Next.js](https://nextjs.org) app
+- `ui`: a stub React component library shared by both `web` and `docs` applications
+- `eslint-config-custom`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
+- `tsconfig`: `tsconfig.json`s used throughout the monorepo
 
-## Usage
+Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 
-### Online
+### Utilities
 
-The tool is available online, just follow [this](https://quassum.github.io/SVG-to-SwiftUI/) link.
+This turborepo has some additional tools already setup for you:
 
-### Running locally
+- [TypeScript](https://www.typescriptlang.org/) for static type checking
+- [ESLint](https://eslint.org/) for code linting
+- [Prettier](https://prettier.io) for code formatting
+
+## Setup
+
+This repository is used in the `npx create-turbo@latest` command, and selected when choosing which package manager you wish to use with your monorepo (pnpm).
+
+### Build
+
+To build all apps and packages, run the following command:
 
 ```
-git clone https://github.com/quassum/SVG-to-SwiftUI
-cd SVG-to-SwiftUI
-yarn
-yarn dev
+cd my-turborepo
+pnpm run build
 ```
 
-## Functionality Coverage
+### Develop
 
-This repository is just a front-end wrapper over our [svg-to-swiftui-core](https://github.com/quassum/svg-to-swiftui-core) ([npm link](https://www.npmjs.com/package/svg-to-swiftui-core)) package. You can find the functionality coverage on that package's page. We encourage you checking it out and maybe starring it on GitHub 😍!
+To develop all apps and packages, run the following command:
 
-## Example usage
+```
+cd my-turborepo
+pnpm run dev
+```
 
-To demonstrate this tool I created a thicc plus sign with rounded corners (created it in Sketch, so shapes from Sketch should work fine with this tool).
-It's saved as `content/demo-plus.svg` file in this repository. You can see below how it looks like in the browser, and how it looks like after converting into SwiftUI Shape.
+### Remote Caching
 
-### In the browser
+Turborepo can use a technique known as [Remote Caching](https://turborepo.org/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
 
-![SVG file wiewed in the browser](content/example_svg.png)
+By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
 
-### In SwiftUI View, exported as a Shape
+```
+cd my-turborepo
+pnpx turbo login
+```
 
-![SVG file wiewed in the browser](content/example_swift.png)
+This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
 
-## Contributing
+Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your turborepo:
 
-- Feel free to open an issue for the SVG code that did not work - provide the SVG code of course!
-- Pull requests are very welcome! Introducing support for more SVG element types would be the best contribution at this point.
+```
+pnpx turbo link
+```
 
-## Author
+## Useful Links
 
-[Antoni Silvestrovic](https://github.com/bring-shrubbery)
+Learn more about the power of Turborepo:
 
-## License
-
-[MIT](https://github.com/quassum/SVG-to-SwiftUI/blob/master/LICENSE)
+- [Pipelines](https://turborepo.org/docs/core-concepts/pipelines)
+- [Caching](https://turborepo.org/docs/core-concepts/caching)
+- [Remote Caching](https://turborepo.org/docs/core-concepts/remote-caching)
+- [Scoped Tasks](https://turborepo.org/docs/core-concepts/scopes)
+- [Configuration Options](https://turborepo.org/docs/reference/configuration)
+- [CLI Usage](https://turborepo.org/docs/reference/command-line-reference)
