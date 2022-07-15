@@ -17,6 +17,8 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "svg-to-swiftui-core": "workspace:*"
+    "svg-to-swiftui-core": "workspace:*",
+    "svg-parser": "^2.0.4",
+    "svg-pathdata": "^6.0.3"
   }
 }
