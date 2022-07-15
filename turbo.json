@@ -5,7 +5,6 @@
       "outputs": ["dist/**", ".next/**"]
     },
     "test": {
-      "dependsOn": ["^build"],
       "outputs": []
     },
     "lint": {

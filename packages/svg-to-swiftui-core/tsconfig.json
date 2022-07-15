@@ -1,5 +1,5 @@
 {
-  "extends": "./node_modules/gts/tsconfig-google.json",
+  "extends": "tsconfig/react-library.json",
   "compilerOptions": {
     "module": "es2015",
     "target": "es5",
@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "declaration": true,
     "rootDir": ".",
-    "outDir": "build",
+    "outDir": "dist",
     "noImplicitAny": false,
     "lib": ["es2016", "dom", "es5"]
   },
