@@ -1,5 +1,5 @@
 {
-  "name": "SVG-to-SwiftUI",
+  "name": "svg-to-swiftui-monorepo",
   "version": "0.0.0",
   "private": true,
   "workspaces": [
@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "build": "turbo run build",
+    "test": "turbo run test",
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""

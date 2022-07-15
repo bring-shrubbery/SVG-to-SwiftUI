@@ -8,28 +8,36 @@ on:
     types: [created]
 
 jobs:
-  build:
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: 14
-      - run: rm -rf node_modules
-      - run: yarn install --frozen-lockfile
-      - run: yarn test
+          node-version: 16
+      - run: pnpm install
+  build:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - run: pnpm build
+
+  test:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - run: pnpm test
 
   publish-npm:
-    needs: build
+    needs:
+      - build
+      - test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: 14
+          node-version: 16
           registry-url: https://registry.npmjs.org/
-      - run: rm -rf node_modules
-      - run: yarn install --frozen-lockfile
-      - run: yarn publish
+      - run: pnpm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
