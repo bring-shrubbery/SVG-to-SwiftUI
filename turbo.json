@@ -12,6 +12,9 @@
     },
     "dev": {
       "cache": false
+    },
+    "coverage": {
+      "cache": false
     }
   }
 }
