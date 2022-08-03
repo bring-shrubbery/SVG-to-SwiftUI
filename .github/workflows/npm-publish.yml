@@ -38,6 +38,6 @@ jobs:
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org/
-      - run: pnpm publish
+      - run: pnpm publish -r --tag ${{github.event.release.tag_name}} --filter "svg-to-swiftui*"
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}

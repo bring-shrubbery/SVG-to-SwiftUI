@@ -1,7 +1,7 @@
 {
   "name": "svg-to-swiftui-webapp",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
