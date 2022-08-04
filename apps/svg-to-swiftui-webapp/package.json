@@ -6,7 +6,8 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "version": "npm version"
   },
   "devDependencies": {
     "@astrojs/svelte": "^0.3.0",

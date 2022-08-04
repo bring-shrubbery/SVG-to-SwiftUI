@@ -37,7 +37,8 @@
     "coverage": "jest --ci --coverage",
     "lint": "eslint ./src/**/*",
     "lint:fix": "eslint ./src/**/* --fix",
-    "format": "prettier --write ./src --loglevel error"
+    "format": "prettier --write ./src --loglevel error",
+    "version": "npm version"
   },
   "devDependencies": {
     "@quassum/prettier-config": "^1.2.0",
