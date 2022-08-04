@@ -1,0 +1,35 @@
+{
+    "name": "@types/svg-parser",
+    "version": "2.0.3",
+    "description": "TypeScript definitions for svg-parser",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/svg-parser",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "mrmlnc",
+            "url": "https://github.com/mrmlnc",
+            "githubUsername": "mrmlnc"
+        },
+        {
+            "name": "Joel Shinness",
+            "url": "https://github.com/JoelCodes",
+            "githubUsername": "JoelCodes"
+        },
+        {
+            "name": "Piotr Błażejewicz",
+            "url": "https://github.com/peterblazejewicz",
+            "githubUsername": "peterblazejewicz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/svg-parser"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "53097f21e4d18c056b78bf10478b3a05a2f223193cb0e1147c475464bbc9cbde",
+    "typeScriptVersion": "3.6"
+}

@@ -1,0 +1,5 @@
+[36m@astrojs/markdown-remark:build: [0mcache hit, replaying output [2m11f745aa911f62c3[0m
+[36m@astrojs/markdown-remark:build: [0m
+[36m@astrojs/markdown-remark:build: [0m> @astrojs/markdown-remark@0.11.4 build /home/runner/work/astro/astro/packages/markdown/remark
+[36m@astrojs/markdown-remark:build: [0m> astro-scripts build "src/**/*.ts" && tsc -p tsconfig.json
+[36m@astrojs/markdown-remark:build: [0m

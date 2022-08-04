@@ -1,0 +1,10 @@
+export declare function appendForwardSlash(path: string): string;
+export declare function prependForwardSlash(path: string): string;
+export declare function removeTrailingForwardSlash(path: string): string;
+export declare function removeLeadingForwardSlash(path: string): string;
+export declare function trimSlashes(path: string): string;
+export declare function startsWithForwardSlash(path: string): boolean;
+export declare function startsWithDotDotSlash(path: string): boolean;
+export declare function startsWithDotSlash(path: string): boolean;
+export declare function isRelativePath(path: string): boolean;
+export declare function joinPaths(...paths: (string | undefined)[]): string;

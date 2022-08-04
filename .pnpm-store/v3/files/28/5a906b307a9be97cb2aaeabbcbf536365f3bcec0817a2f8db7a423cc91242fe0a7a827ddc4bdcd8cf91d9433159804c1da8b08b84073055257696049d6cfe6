@@ -1,0 +1,28 @@
+{
+  "name": "micromorph",
+  "version": "0.1.2",
+  "main": "./index.mjs",
+  "types": "./types.d.ts",
+  "exports": {
+    ".": "./index.mjs",
+    "./spa": "./dist/spa.js"
+  },
+  "files": [
+    "index.mjs",
+    "index.d.ts",
+    "spa.d.ts",
+    "dist/"
+  ],
+  "scripts": {
+    "build": "pnpm run build:index && pnpm run build:spa",
+    "build:index": "esbuild src/index.ts --bundle --format=esm --target=es2020 --outfile=dist/index.js --minify",
+    "build:spa": "esbuild src/spa.ts --bundle --format=esm --target=es2020 --outfile=dist/spa.js --minify",
+    "demo": "pnpm run build --filter demo && pnpm run preview --filter demo"
+  },
+  "devDependencies": {
+    "esbuild": "^0.14.14"
+  },
+  "volta": {
+    "node": "14.18.3"
+  }
+}

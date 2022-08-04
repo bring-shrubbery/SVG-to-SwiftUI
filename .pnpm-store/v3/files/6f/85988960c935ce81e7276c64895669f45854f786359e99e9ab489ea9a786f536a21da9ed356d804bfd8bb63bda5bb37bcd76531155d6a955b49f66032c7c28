@@ -1,0 +1,31 @@
+import { CancellationToken, CompletionContext, DefinitionLink, Diagnostic, Hover, Position, Range, SemanticTokens, SignatureHelp, SignatureHelpContext, SymbolInformation, TextDocumentContentChangeEvent, WorkspaceEdit } from 'vscode-languageserver';
+import { ConfigManager } from '../../core/config';
+import { AstroDocument, DocumentManager } from '../../core/documents';
+import { AppCompletionItem, AppCompletionList, OnWatchFileChangesParam, Plugin } from '../interfaces';
+import { CompletionEntryWithIdentifer } from './features/CompletionsProvider';
+export declare class TypeScriptPlugin implements Plugin {
+    __name: string;
+    private configManager;
+    private readonly languageServiceManager;
+    private readonly completionProvider;
+    private readonly hoverProvider;
+    private readonly signatureHelpProvider;
+    private readonly diagnosticsProvider;
+    private readonly documentSymbolsProvider;
+    private readonly semanticTokensProvider;
+    constructor(docManager: DocumentManager, configManager: ConfigManager, workspaceUris: string[]);
+    doHover(document: AstroDocument, position: Position): Promise<Hover | null>;
+    rename(document: AstroDocument, position: Position, newName: string): Promise<WorkspaceEdit | null>;
+    getSemanticTokens(textDocument: AstroDocument, range?: Range, cancellationToken?: CancellationToken): Promise<SemanticTokens | null>;
+    getDocumentSymbols(document: AstroDocument): Promise<SymbolInformation[]>;
+    getCompletions(document: AstroDocument, position: Position, completionContext?: CompletionContext): Promise<AppCompletionList<CompletionEntryWithIdentifer> | null>;
+    resolveCompletion(document: AstroDocument, completionItem: AppCompletionItem<CompletionEntryWithIdentifer>): Promise<AppCompletionItem<CompletionEntryWithIdentifer>>;
+    getDefinitions(document: AstroDocument, position: Position): Promise<DefinitionLink[]>;
+    getDiagnostics(document: AstroDocument, cancellationToken?: CancellationToken): Promise<Diagnostic[]>;
+    onWatchFileChanges(onWatchFileChangesParas: OnWatchFileChangesParam[]): Promise<void>;
+    updateNonAstroFile(fileName: string, changes: TextDocumentContentChangeEvent[]): Promise<void>;
+    getSignatureHelp(document: AstroDocument, position: Position, context: SignatureHelpContext | undefined, cancellationToken?: CancellationToken): Promise<SignatureHelp | null>;
+    private goToDefinitionFoundOnlyAlias;
+    private getGoToDefinitionRefsForImportSpecifier;
+    private featureEnabled;
+}
