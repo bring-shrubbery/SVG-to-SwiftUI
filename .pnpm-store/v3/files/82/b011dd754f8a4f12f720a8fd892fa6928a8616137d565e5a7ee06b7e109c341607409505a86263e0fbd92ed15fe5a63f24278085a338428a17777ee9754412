@@ -1,0 +1,49 @@
+{
+  "name": "@swc/jest",
+  "version": "0.2.21",
+  "description": "swc integration for jest",
+  "main": "index.js",
+  "homepage": "https://github.com/swc-project/jest",
+  "scripts": {
+    "build": "npm run lint && tsc",
+    "test": "npm test --workspaces",
+    "prepublishOnly": "npm run build",
+    "lint": "eslint . --ext .ts && echo 'No lint errors found!'"
+  },
+  "keywords": [],
+  "author": "강동윤 <kdy1997.dev@gmail.com>",
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swc-project/jest.git"
+  },
+  "peerDependencies": {
+    "@swc/core": "*"
+  },
+  "dependencies": {
+    "@jest/create-cache-key-function": "^27.4.2"
+  },
+  "devDependencies": {
+    "@jest/transform": "^27.5.1",
+    "@swc/core": "^1.2.177",
+    "@types/node": "^16.11.12",
+    "@typescript-eslint/eslint-plugin": "^5.6.0",
+    "@typescript-eslint/parser": "^5.6.0",
+    "eslint": "^8.4.1",
+    "jest": "^27.4.4",
+    "typescript": "^4.5.3"
+  },
+  "engines": {
+    "npm": ">= 7.0.0"
+  },
+  "files": [
+    "index.js"
+  ],
+  "workspaces": [
+    "examples/react"
+  ]
+}

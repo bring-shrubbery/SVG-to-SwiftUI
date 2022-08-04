@@ -1,0 +1,26 @@
+import { STYLE_EXTENSIONS } from "../core/render/util.js";
+function getViteTransform(viteConfig) {
+  const viteCSSPlugin = viteConfig.plugins.find(({ name }) => name === "vite:css");
+  if (!viteCSSPlugin)
+    throw new Error(`vite:css plugin couldn\u2019t be found`);
+  if (!viteCSSPlugin.transform)
+    throw new Error(`vite:css has no transform() hook`);
+  return viteCSSPlugin.transform;
+}
+async function transformWithVite({
+  value,
+  lang,
+  transformHook,
+  id,
+  ssr,
+  pluginContext
+}) {
+  if (!STYLE_EXTENSIONS.has(lang)) {
+    return null;
+  }
+  return transformHook.call(pluginContext, value, id + `?astro&type=style&lang${lang}`, ssr);
+}
+export {
+  getViteTransform,
+  transformWithVite
+};

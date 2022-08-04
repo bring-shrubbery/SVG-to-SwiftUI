@@ -1,0 +1,55 @@
+{
+  "name": "vscode-css-languageservice",
+  "version": "5.4.2",
+  "description": "Language service for CSS, LESS and SCSS",
+  "main": "./lib/umd/cssLanguageService.js",
+  "typings": "./lib/umd/cssLanguageService",
+  "module": "./lib/esm/cssLanguageService.js",
+  "author": "Microsoft Corporation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Microsoft/vscode-css-languageservice"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Microsoft/vscode-css-languageservice"
+  },
+  "devDependencies": {
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^10.12.21",
+    "@typescript-eslint/eslint-plugin": "^5.17.0",
+    "@typescript-eslint/parser": "^5.17.0",
+    "@vscode/web-custom-data": "^0.3.9",
+    "eslint": "^8.11.0",
+    "js-beautify": "^1.14.3",
+    "mocha": "^9.2.2",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.5.5"
+  },
+  "dependencies": {
+    "vscode-languageserver-textdocument": "^1.0.4",
+    "vscode-languageserver-types": "^3.16.0",
+    "vscode-nls": "^5.0.0",
+    "vscode-uri": "^3.0.3"
+  },
+  "scripts": {
+    "prepublishOnly": "npm run clean && npm run compile-esm && npm run test && npm run remove-sourcemap-refs",
+    "postpublish": "node ./build/post-publish.js",
+    "compile": "tsc -p ./src && npm run copy-jsbeautify && npm run lint ",
+    "compile-esm": "tsc -p ./src/tsconfig.esm.json",
+    "clean": "rimraf lib",
+    "remove-sourcemap-refs": "node ./build/remove-sourcemap-refs.js",
+    "watch": "npm run copy-jsbeautify && tsc -w -p ./src",
+    "test": "npm run compile && mocha",
+    "mocha": "mocha",
+    "coverage": "npm run compile && npx nyc --reporter=html --reporter=text  mocha",
+    "lint": "eslint src/**/*.ts",
+    "update-data": "yarn add @vscode/web-custom-data -D && node ./build/generateData.js",
+    "install-types-next": "yarn add vscode-languageserver-types@next -f -S && yarn add vscode-languageserver-textdocument@next -f -S",
+    "copy-jsbeautify": "node ./build/copy-jsbeautify.js",
+    "update-jsbeautify": "yarn add js-beautify && node ./build/update-jsbeautify.js",
+    "update-jsbeautify-next": "yarn add js-beautify@next && node ./build/update-jsbeautify.js",
+    "preversion": "npm test",
+    "postversion": "git push && git push --tags"
+  }
+}
