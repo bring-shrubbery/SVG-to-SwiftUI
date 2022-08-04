@@ -1,5 +1,11 @@
 # svg-to-swiftui-core
 
+## 0.3.4
+
+### Patch Changes
+
+- 1cc440e2: Automation test #4
+
 ## 0.3.3
 
 ### Patch Changes
