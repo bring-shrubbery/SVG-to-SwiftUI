@@ -27,8 +27,9 @@ jobs:
         with:
           registry-url: https://registry.npmjs.org/
           node-version: 16
-      - name: install pnpm
-        run: npm i pnpm@latest -g
+      - uses: pnpm/action-setup@v2.0.1
+        with:
+          version: 7.8.0
       - name: Setup npmrc
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.npm_token }}" > .npmrc
       - name: setup pnpm config
