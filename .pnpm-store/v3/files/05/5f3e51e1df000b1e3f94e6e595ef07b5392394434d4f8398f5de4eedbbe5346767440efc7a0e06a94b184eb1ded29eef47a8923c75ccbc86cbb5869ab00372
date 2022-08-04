@@ -1,5 +1,0 @@
-[33m@astrojs/tailwind:build: [0mcache hit, replaying output [2mb11350eadcf98ced[0m
-[33m@astrojs/tailwind:build: [0m
-[33m@astrojs/tailwind:build: [0m> @astrojs/tailwind@0.2.3 build /home/runner/work/astro/astro/packages/integrations/tailwind
-[33m@astrojs/tailwind:build: [0m> astro-scripts build "src/**/*.ts" && tsc
-[33m@astrojs/tailwind:build: [0m

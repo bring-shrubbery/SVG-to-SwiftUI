@@ -1,1 +1,0 @@
-{"name":"@tsconfig/svelte","repository":{"type":"git","url":"https://github.com/tsconfig/bases.git","directory":"bases"},"license":"MIT","description":"A base TSConfig for working with Svelte.","version":"3.0.0"}

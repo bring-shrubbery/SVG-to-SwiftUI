@@ -16,6 +16,7 @@ build
 # misc
 .DS_Store
 *.pem
+.npmrc
 
 # debug
 npm-debug.log*
@@ -31,3 +32,6 @@ yarn-error.log*
 
 # turbo
 .turbo
+
+# pnpm
+.pnpm-store

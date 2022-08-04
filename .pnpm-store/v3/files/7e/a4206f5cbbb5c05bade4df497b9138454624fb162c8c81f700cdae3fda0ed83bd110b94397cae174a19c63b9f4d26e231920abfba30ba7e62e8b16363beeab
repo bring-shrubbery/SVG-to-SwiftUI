@@ -1,6 +1,0 @@
-[36m@astrojs/svelte:build: [0mcache hit, replaying output [2mc368ccd0f6c1b35a[0m
-[36m@astrojs/svelte:build: [0m[43m[30m WARN [39m[49m Unsupported engine: wanted: {"node":"^14.20.0 || >=16.16.0"} (current: {"node":"v14.19.3","pnpm":"7.5.0"})
-[36m@astrojs/svelte:build: [0m
-[36m@astrojs/svelte:build: [0m> @astrojs/svelte@0.3.0 build /home/runner/work/astro/astro/packages/integrations/svelte
-[36m@astrojs/svelte:build: [0m> astro-scripts build "src/index.ts" && astro-scripts build "src/editor.cts" --force-cjs --no-clean-dist && tsc
-[36m@astrojs/svelte:build: [0m
