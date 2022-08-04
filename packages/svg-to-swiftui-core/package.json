@@ -1,7 +1,7 @@
 {
   "name": "svg-to-swiftui-core",
   "private": false,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "SVG to SwiftUI Shape converter core package. Will transform the raw SVG code into SwiftUI Shape via the JavaScript API.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
