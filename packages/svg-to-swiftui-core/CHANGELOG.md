@@ -1,5 +1,11 @@
 # svg-to-swiftui-core
 
+## 0.3.2
+
+### Patch Changes
+
+- 100e908f: Automation test #2
+
 ## 0.3.1
 
 ### Patch Changes
