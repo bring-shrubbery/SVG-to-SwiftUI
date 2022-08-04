@@ -1,5 +1,12 @@
 # svg-to-swiftui-webapp
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies [7f0f80b8]
+  - svg-to-swiftui-core@0.3.3
+
 ## 1.0.2
 
 ### Patch Changes
