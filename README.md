@@ -1,4 +1,4 @@
-<img align="right" src="./static/svg-to-swiftui-logo.png" width="200px" />
+<img align="right" src="./content/svg-to-swiftui-logo.png" width="200px" />
 
 # SVG to SwiftUI Converter
 
