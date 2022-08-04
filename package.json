@@ -1,31 +1,29 @@
 {
-  "name": "svg-to-swiftui-converter-app",
-  "description": "Web app to convert SVG files into SwiftUI Shape struct.",
-  "version": "0.2.1",
+  "name": "svg-to-swiftui-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "start": "sirv docs",
-    "test": "jest"
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "dev": "turbo run dev --parallel",
+    "coverage": "turbo run coverage",
+    "lint": "turbo run lint",
+    "ci:version": "pnpm changeset version",
+    "ci:publish": "pnpm publish -r --filter 'svg-to-swiftui*'",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "17",
-    "@rollup/plugin-node-resolve": "11",
-    "@rollup/plugin-typescript": "^8.2.0",
-    "@tsconfig/svelte": "^1.0.10",
-    "rollup": "2",
-    "rollup-plugin-css-only": "3",
-    "rollup-plugin-livereload": "2",
-    "rollup-plugin-svelte": "7",
-    "rollup-plugin-terser": "7",
-    "sirv-cli": "^1.0.11",
-    "svelte": "3",
-    "svelte-check": "^1.2.6",
-    "svelte-preprocess": "^4.6.9",
-    "tslib": "^2.1.0",
-    "typescript": "^4.2.3"
+    "@changesets/cli": "^2.24.1",
+    "prettier": "^2.7.1",
+    "turbo": "^1.4.2"
   },
-  "dependencies": {
-    "svg-to-swiftui-core": "^0.2.3"
-  }
+  "engines": {
+    "npm": ">=7.0.0",
+    "node": ">=14.0.0"
+  },
+  "packageManager": "pnpm@7.8.0"
 }

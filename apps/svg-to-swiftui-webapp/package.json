@@ -1,0 +1,24 @@
+{
+  "name": "svg-to-swiftui-webapp",
+  "version": "1.0.0",
+  "private": false,
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "devDependencies": {
+    "@astrojs/svelte": "^0.3.0",
+    "@astrojs/tailwind": "^0.2.3",
+    "astro": "^1.0.0-beta.66",
+    "svelte": "^3.46.4",
+    "tsconfig": "workspace:*",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "svg-to-swiftui-core": "workspace:*",
+    "svg-parser": "^2.0.4",
+    "svg-pathdata": "^6.0.3"
+  }
+}
