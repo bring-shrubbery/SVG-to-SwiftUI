@@ -1,5 +1,11 @@
 # svg-to-swiftui-core
 
+## 0.3.5
+
+### Patch Changes
+
+- eeba9561: Automation test #5
+
 ## 0.3.4
 
 ### Patch Changes
