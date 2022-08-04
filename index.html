@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<title>Astro</title>
+	<link rel="stylesheet" href="/assets/5cd7050b.823f91a3.css" /></head>
+	<body>
+		<style>astro-island,astro-slot{display:contents}</style><script>(self.Astro=self.Astro||{}).load=a=>{(async()=>await(await a())())()};var a;{const l={0:t=>t,1:t=>JSON.parse(t,n),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(JSON.parse(t,n)),5:t=>new Set(JSON.parse(t,n)),6:t=>BigInt(t),7:t=>new URL(t)},n=(t,r)=>{if(t===""||!Array.isArray(r))return r;const[e,i]=r;return e in l?l[e](i):void 0};customElements.get("astro-island")||customElements.define("astro-island",(a=class extends HTMLElement{constructor(){super(...arguments);this.hydrate=()=>{if(!this.hydrator||this.parentElement?.closest("astro-island[ssr]"))return;const r=this.querySelectorAll("astro-slot"),e={},i=this.querySelectorAll("template[data-astro-template]");for(const s of i)!s.closest(this.tagName)?.isSameNode(this)||(e[s.getAttribute("data-astro-template")||"default"]=s.innerHTML,s.remove());for(const s of r)!s.closest(this.tagName)?.isSameNode(this)||(e[s.getAttribute("name")||"default"]=s.innerHTML);const o=this.hasAttribute("props")?JSON.parse(this.getAttribute("props"),n):{};this.hydrator(this)(this.Component,o,e,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),window.removeEventListener("astro:hydrate",this.hydrate),window.dispatchEvent(new CustomEvent("astro:hydrate"))}}connectedCallback(){!this.hasAttribute("await-children")||this.firstChild?this.childrenConnectedCallback():new MutationObserver((r,e)=>{e.disconnect(),this.childrenConnectedCallback()}).observe(this,{childList:!0})}async childrenConnectedCallback(){window.addEventListener("astro:hydrate",this.hydrate),await import(this.getAttribute("before-hydration-url"));const r=JSON.parse(this.getAttribute("opts"));Astro[this.getAttribute("client")](async()=>{const e=this.getAttribute("renderer-url"),[i,{default:o}]=await Promise.all([import(this.getAttribute("component-url")),e?import(e):()=>()=>{}]);return this.Component=i[this.getAttribute("component-export")||"default"],this.hydrator=o,this.hydrate},r,this)}attributeChangedCallback(){this.hydrator&&this.hydrate()}},a.observedAttributes=["props"],a))}</script><astro-island uid="Z1XrBNR" component-url="/App.3dc63b44.js" component-export="default" renderer-url="/client.d3f2e928.js" props="{}" ssr="" client="load" before-hydration-url="data:text/javascript;charset=utf-8,//[no before-hydration script]" opts="{&quot;name&quot;:&quot;App&quot;,&quot;value&quot;:true}" await-children=""><main><h1>Welcome!</h1>
+  <div id="external-buttons" class="svelte-rb68wo"><iframe src="https://ghbtns.com/github-btn.html?user=quassummanus&repo=SVG-to-SwiftUI&type=star&count=true&v=2" frameborder="0" scrolling="0" width="90" height="20" title="GitHub" class="svelte-rb68wo"></iframe>
+    <iframe src="https://github.com/sponsors/bring-shrubbery/button" title="Sponsor bring-shrubbery" height="35" width="116" style="border: 0;" class="svelte-rb68wo"></iframe></div>
+  <div style="margin: 8px auto"><i>Functionality is limited for now, feel free to contribute on
+      <a href="https://github.com/quassummanus/SVG-to-SwiftUI" alt="link to GitHub">Github
+      </a></i></div>
+  <div style="margin: 16px 0"><h2 style="display: inline">Paste SVG code below</h2>
+    <img id="settings-button" src="https://img.icons8.com/ios-filled/50/000000/settings.png" alt="settings icon" width="16px" title="Show settings"></div>
+  
+  <div><textarea placeholder="Paste SVG Code here"></textarea></div>
+  <button>Convert to SwiftUI Shape!</button>
+  <h2>Swift code will be shown below:</h2>
+  <div><textarea id="swift-output-area"></textarea></div></main></astro-island>
+	</body></html>
