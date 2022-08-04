@@ -9,6 +9,8 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   build:
     name: Build and Test ${{ matrix.node-version}} on ${{matrix.os}}
