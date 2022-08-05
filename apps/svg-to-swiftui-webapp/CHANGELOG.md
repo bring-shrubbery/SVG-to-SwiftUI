@@ -1,5 +1,11 @@
 # svg-to-swiftui-webapp
 
+## 1.0.6
+
+### Patch Changes
+
+- c8c2f9b6: Fixed site base url issue
+
 ## 1.0.5
 
 ### Patch Changes
