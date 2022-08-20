@@ -11,14 +11,16 @@
   "devDependencies": {
     "@astrojs/svelte": "^0.3.0",
     "@astrojs/tailwind": "^0.2.3",
-    "astro": "^1.0.0-beta.66",
-    "svelte": "^3.46.4",
+    "astro": "^1.0.6",
+    "svelte": "^3.49.0",
     "tsconfig": "workspace:*",
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "svg-to-swiftui-core": "workspace:*",
+    "highlight.js": "^11.6.0",
+    "prismjs": "^1.28.0",
     "svg-parser": "^2.0.4",
-    "svg-pathdata": "^6.0.3"
+    "svg-pathdata": "^6.0.3",
+    "svg-to-swiftui-core": "workspace:*"
   }
 }

@@ -1,0 +1,10 @@
+---
+import App from "./App.svelte"
+import Navbar from "./Navbar.astro";
+---
+
+<Navbar />
+
+<main class="block h-[calc(100%-128px)]">
+  <App client:load />
+</main>
