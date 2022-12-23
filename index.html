@@ -1,22 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width">
-		<title>Astro</title>
-	<link rel="stylesheet" href="/SVG-to-SwiftUI/assets/5cd7050b.823f91a3.css" /></head>
-	<body>
-		<style>astro-island,astro-slot{display:contents}</style><script>(self.Astro=self.Astro||{}).load=a=>{(async()=>await(await a())())()};var a;{const l={0:t=>t,1:t=>JSON.parse(t,n),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(JSON.parse(t,n)),5:t=>new Set(JSON.parse(t,n)),6:t=>BigInt(t),7:t=>new URL(t)},n=(t,r)=>{if(t===""||!Array.isArray(r))return r;const[e,i]=r;return e in l?l[e](i):void 0};customElements.get("astro-island")||customElements.define("astro-island",(a=class extends HTMLElement{constructor(){super(...arguments);this.hydrate=()=>{if(!this.hydrator||this.parentElement?.closest("astro-island[ssr]"))return;const r=this.querySelectorAll("astro-slot"),e={},i=this.querySelectorAll("template[data-astro-template]");for(const s of i)!s.closest(this.tagName)?.isSameNode(this)||(e[s.getAttribute("data-astro-template")||"default"]=s.innerHTML,s.remove());for(const s of r)!s.closest(this.tagName)?.isSameNode(this)||(e[s.getAttribute("name")||"default"]=s.innerHTML);const o=this.hasAttribute("props")?JSON.parse(this.getAttribute("props"),n):{};this.hydrator(this)(this.Component,o,e,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),window.removeEventListener("astro:hydrate",this.hydrate),window.dispatchEvent(new CustomEvent("astro:hydrate"))}}connectedCallback(){!this.hasAttribute("await-children")||this.firstChild?this.childrenConnectedCallback():new MutationObserver((r,e)=>{e.disconnect(),this.childrenConnectedCallback()}).observe(this,{childList:!0})}async childrenConnectedCallback(){window.addEventListener("astro:hydrate",this.hydrate),await import(this.getAttribute("before-hydration-url"));const r=JSON.parse(this.getAttribute("opts"));Astro[this.getAttribute("client")](async()=>{const e=this.getAttribute("renderer-url"),[i,{default:o}]=await Promise.all([import(this.getAttribute("component-url")),e?import(e):()=>()=>{}]);return this.Component=i[this.getAttribute("component-export")||"default"],this.hydrator=o,this.hydrate},r,this)}attributeChangedCallback(){this.hydrator&&this.hydrate()}},a.observedAttributes=["props"],a))}</script><astro-island uid="Z1XrBNR" component-url="/SVG-to-SwiftUI/App.3dc63b44.js" component-export="default" renderer-url="/SVG-to-SwiftUI/client.d3f2e928.js" props="{}" ssr="" client="load" before-hydration-url="data:text/javascript;charset=utf-8,//[no before-hydration script]" opts="{&quot;name&quot;:&quot;App&quot;,&quot;value&quot;:true}" await-children=""><main><h1>Welcome!</h1>
-  <div id="external-buttons" class="svelte-rb68wo"><iframe src="https://ghbtns.com/github-btn.html?user=quassummanus&repo=SVG-to-SwiftUI&type=star&count=true&v=2" frameborder="0" scrolling="0" width="90" height="20" title="GitHub" class="svelte-rb68wo"></iframe>
-    <iframe src="https://github.com/sponsors/bring-shrubbery/button" title="Sponsor bring-shrubbery" height="35" width="116" style="border: 0;" class="svelte-rb68wo"></iframe></div>
-  <div style="margin: 8px auto"><i>Functionality is limited for now, feel free to contribute on
-      <a href="https://github.com/quassummanus/SVG-to-SwiftUI" alt="link to GitHub">Github
-      </a></i></div>
-  <div style="margin: 16px 0"><h2 style="display: inline">Paste SVG code below</h2>
-    <img id="settings-button" src="https://img.icons8.com/ios-filled/50/000000/settings.png" alt="settings icon" width="16px" title="Show settings"></div>
-  
-  <div><textarea placeholder="Paste SVG Code here"></textarea></div>
-  <button>Convert to SwiftUI Shape!</button>
-  <h2>Swift code will be shown below:</h2>
-  <div><textarea id="swift-output-area"></textarea></div></main></astro-island>
-	</body></html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG to SwiftUI Converter</title>
+    <meta name="description" content="SVG to SwiftUI converter let's you convert raw svg code into a SwiftUI Shape structure. Just paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app!">
+    <meta name="robots" content="index, archive">
+    <link rel="canonical" href="https://quassum.github.io/SVG-to-SwiftUI/">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/SVG-to-SwiftUI/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/SVG-to-SwiftUI/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/SVG-to-SwiftUI/favicon-16x16.png">
+    <link rel="manifest" href="/SVG-to-SwiftUI/site.webmanifest">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="/SVG-to-SwiftUI/assets/index.c43922ef.css" /></head>
+
+  <body class="bg-zinc-50 dark:bg-zinc-900">
+    <div class="w-full py-3 bg-zinc-700 text-white">
+  <p class="mx-auto w-fit text-sm font-light tracking-wide">
+    Functionality is limited for now, feel free to contribute on
+    <a href="https://github.com/quassum/SVG-to-SwiftUI" class="text-blue-300 hover:text-blue-400 active:text-blue-200 visited:text-purple-300 font-normal">
+      Github
+    </a> or <a href="https://github.com/sponsors/bring-shrubbery" class="text-blue-300 hover:text-blue-400 active:text-blue-200 visited:text-purple-300 font-normal">support me financially</a> 🚀
+  </p>
+</div>
+
+<header class="w-full px-6 py-2 mb-1 bg-white dark:bg-zinc-800 flex justify-between select-none">
+  <div class="flex h-full items-center">
+    <img class="w-16 h-16" src="/svg-to-swiftui-logo-256.png" alt="SVG to SwiftUI Logo" width="64" height="64">
+    <h1 class="font-bold text-4xl pl-1 pt-1 bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text" style="-webkit-text-fill-color: transparent;">
+      SVG to SwiftUI
+    </h1>
+    <div class="mx-6 mt-1 rounded-lg shadow overflow-hidden border-2 border-zinc-500">
+      <iframe src="https://github.com/sponsors/bring-shrubbery/button" title="Sponsor bring-shrubbery" height="32" width="120" class="block rounded-md"></iframe>
+    </div>
+  </div>
+
+  <div class="flex items-center text-slate-900 dark:text-slate-50">
+    <!-- <iframe src=" https://ghbtns.com/github-btn.html?user=quassum&repo=SVG-to-SwiftUI&type=star&count=true&v=2"
+    frameborder="0" scrolling="0" width="90" height="20" title="GitHub" class="" /> -->
+
+    <style>astro-island,astro-slot{display:contents}</style><script>(self.Astro=self.Astro||{}).load=a=>{(async()=>await(await a())())()},window.dispatchEvent(new Event("astro:load"));var l;{const c={0:t=>t,1:t=>JSON.parse(t,o),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(JSON.parse(t,o)),5:t=>new Set(JSON.parse(t,o)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(JSON.parse(t)),9:t=>new Uint16Array(JSON.parse(t)),10:t=>new Uint32Array(JSON.parse(t))},o=(t,s)=>{if(t===""||!Array.isArray(s))return s;const[e,n]=s;return e in c?c[e](n):void 0};customElements.get("astro-island")||customElements.define("astro-island",(l=class extends HTMLElement{constructor(){super(...arguments);this.hydrate=()=>{if(!this.hydrator||this.parentElement&&this.parentElement.closest("astro-island[ssr]"))return;const s=this.querySelectorAll("astro-slot"),e={},n=this.querySelectorAll("template[data-astro-template]");for(const r of n){const i=r.closest(this.tagName);!i||!i.isSameNode(this)||(e[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(const r of s){const i=r.closest(this.tagName);!i||!i.isSameNode(this)||(e[r.getAttribute("name")||"default"]=r.innerHTML)}const a=this.hasAttribute("props")?JSON.parse(this.getAttribute("props"),o):{};this.hydrator(this)(this.Component,a,e,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),window.removeEventListener("astro:hydrate",this.hydrate),window.dispatchEvent(new CustomEvent("astro:hydrate"))}}connectedCallback(){!this.hasAttribute("await-children")||this.firstChild?this.childrenConnectedCallback():new MutationObserver((s,e)=>{e.disconnect(),this.childrenConnectedCallback()}).observe(this,{childList:!0})}async childrenConnectedCallback(){window.addEventListener("astro:hydrate",this.hydrate);let s=this.getAttribute("before-hydration-url");s&&await import(s),this.start()}start(){const s=JSON.parse(this.getAttribute("opts")),e=this.getAttribute("client");if(Astro[e]===void 0){window.addEventListener(`astro:${e}`,()=>this.start(),{once:!0});return}Astro[e](async()=>{const n=this.getAttribute("renderer-url"),[a,{default:r}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),i=this.getAttribute("component-export")||"default";if(!i.includes("."))this.Component=a[i];else{this.Component=a;for(const d of i.split("."))this.Component=this.Component[d]}return this.hydrator=r,this.hydrate},s,this)}attributeChangedCallback(){this.hydrator&&this.hydrate()}},l.observedAttributes=["props"],l))}</script><astro-island uid="1VB9NA" component-url="/SVG-to-SwiftUI/DarkModeToggle.95ce0c9a.js" component-export="default" renderer-url="/SVG-to-SwiftUI/client.4e0ae0f4.js" props="{}" ssr="" client="load" opts="{&quot;name&quot;:&quot;DarkModeToggle&quot;,&quot;value&quot;:true}" await-children=""><div class="cursor-pointer mx-4 w-10 h-10 flex items-center justify-center hover:bg-zinc-100 rounded-full" aria-label="switch color mode"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32" height="32" fill="currentColor"><title>ionicons-v5-q</title><line x1="256" y1="48" x2="256" y2="96" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="256" y1="416" x2="256" y2="464" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="403.08" y1="108.92" x2="369.14" y2="142.86" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="142.86" y1="369.14" x2="108.92" y2="403.08" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="464" y1="256" x2="416" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="96" y1="256" x2="48" y2="256" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="403.08" y1="403.08" x2="369.14" y2="369.14" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><line x1="142.86" y1="142.86" x2="108.92" y2="108.92" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></line><circle cx="256" cy="256" r="80" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-miterlimit:10;stroke-width:32px"></circle></svg></div></astro-island>
+
+    <div class="cursor-pointer w-10 h-10 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full">
+      <a class="cursor-pointer" href="https://github.com/quassum/SVG-to-SwiftUI">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">
+  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" fill="currentColor"></path>
+</svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="block h-[calc(100%-128px)]">
+  <astro-island uid="hU0LT" component-url="/SVG-to-SwiftUI/App.ee1e1233.js" component-export="default" renderer-url="/SVG-to-SwiftUI/client.4e0ae0f4.js" props="{}" ssr="" client="load" opts="{&quot;name&quot;:&quot;App&quot;,&quot;value&quot;:true}" await-children=""><div class="w-full h-full"><div class="flex flex-col w-full h-full"><div class="w-full mb-1 flex justify-between py-2 px-4 bg-white dark:bg-zinc-800"><div><span></span></div>
+  <div class="flex"><button class="flex gap-2 justify-center items-center mr-4 px-4 py-1 bg-green-500 hover:bg-green-400 rounded-md text-white shadow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20" height="20" fill="currentColor"><title>ionicons-v5-b</title><polyline points="304 48 416 160 304 272" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></polyline><line x1="398.87" y1="160" x2="96" y2="160" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></line><polyline points="208 464 96 352 208 240" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></polyline><line x1="114" y1="352" x2="416" y2="352" style="fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:32px"></line></svg>
+      <span class="mr-1">Convert</span></button>
+
+    <button class="flex gap-2 justify-center items-center mr-4 px-3 py-1 rounded-md text-[#F05137] hover:text-[rgb(255,109,87)] border-2 border-[#F05137] hover:border-[rgb(255,109,87)] shadow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20" height="20" fill="currentColor"><title>ionicons-v5-l</title><path d="M336,64h32a48,48,0,0,1,48,48V432a48,48,0,0,1-48,48H144a48,48,0,0,1-48-48V112a48,48,0,0,1,48-48h32" style="fill:none;stroke:currentColor;stroke-linejoin:round;stroke-width:32px"></path><rect x="176" y="32" width="160" height="64" rx="26.13" ry="26.13" style="fill:none;stroke:currentColor;stroke-linejoin:round;stroke-width:32px"></rect></svg>
+      <span class="mr-1">Copy result</span></button>
+
+    
+
+  <div class="relative">
+
+
+  <button id="headlessui-popover-button-1" type="button" aria-expanded="false" class="cursor-pointer w-10 h-10 flex items-center justify-center bg-zinc-100 dark:bg-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-600 rounded-full text-black dark:text-white"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32" height="32" fill="currentColor"><title>ionicons-v5-m</title><path d="M456.7,242.27l-26.08-4.2a8,8,0,0,1-6.6-6.82c-.5-3.2-1-6.41-1.7-9.51a8.08,8.08,0,0,1,3.9-8.62l23.09-12.82a8.05,8.05,0,0,0,3.9-9.92l-4-11a7.94,7.94,0,0,0-9.4-5l-25.89,5a8,8,0,0,1-8.59-4.11q-2.25-4.2-4.8-8.41a8.16,8.16,0,0,1,.7-9.52l17.29-19.94a8,8,0,0,0,.3-10.62l-7.49-9a7.88,7.88,0,0,0-10.5-1.51l-22.69,13.63a8,8,0,0,1-9.39-.9c-2.4-2.11-4.9-4.21-7.4-6.22a8,8,0,0,1-2.5-9.11l9.4-24.75A8,8,0,0,0,365,78.77l-10.2-5.91a8,8,0,0,0-10.39,2.21L327.77,95.91a7.15,7.15,0,0,1-8.5,2.5s-5.6-2.3-9.8-3.71A8,8,0,0,1,304,87l.4-26.45a8.07,8.07,0,0,0-6.6-8.42l-11.59-2a8.07,8.07,0,0,0-9.1,5.61l-8.6,25.05a8,8,0,0,1-7.79,5.41h-9.8a8.07,8.07,0,0,1-7.79-5.41l-8.6-25.05a8.07,8.07,0,0,0-9.1-5.61l-11.59,2a8.07,8.07,0,0,0-6.6,8.42l.4,26.45a8,8,0,0,1-5.49,7.71c-2.3.9-7.3,2.81-9.7,3.71-2.8,1-6.1.2-8.8-2.91L167.14,75.17A8,8,0,0,0,156.75,73l-10.2,5.91A7.94,7.94,0,0,0,143.25,89l9.4,24.75a8.06,8.06,0,0,1-2.5,9.11c-2.5,2-5,4.11-7.4,6.22a8,8,0,0,1-9.39.9L111,116.14a8,8,0,0,0-10.5,1.51l-7.49,9a8,8,0,0,0,.3,10.62l17.29,19.94a8,8,0,0,1,.7,9.52q-2.55,4-4.8,8.41a8.11,8.11,0,0,1-8.59,4.11l-25.89-5a8,8,0,0,0-9.4,5l-4,11a8.05,8.05,0,0,0,3.9,9.92L85.58,213a7.94,7.94,0,0,1,3.9,8.62c-.6,3.2-1.2,6.31-1.7,9.51a8.08,8.08,0,0,1-6.6,6.82l-26.08,4.2a8.09,8.09,0,0,0-7.1,7.92v11.72a7.86,7.86,0,0,0,7.1,7.92l26.08,4.2a8,8,0,0,1,6.6,6.82c.5,3.2,1,6.41,1.7,9.51a8.08,8.08,0,0,1-3.9,8.62L62.49,311.7a8.05,8.05,0,0,0-3.9,9.92l4,11a7.94,7.94,0,0,0,9.4,5l25.89-5a8,8,0,0,1,8.59,4.11q2.25,4.2,4.8,8.41a8.16,8.16,0,0,1-.7,9.52L93.28,374.62a8,8,0,0,0-.3,10.62l7.49,9a7.88,7.88,0,0,0,10.5,1.51l22.69-13.63a8,8,0,0,1,9.39.9c2.4,2.11,4.9,4.21,7.4,6.22a8,8,0,0,1,2.5,9.11l-9.4,24.75a8,8,0,0,0,3.3,10.12l10.2,5.91a8,8,0,0,0,10.39-2.21l16.79-20.64c2.1-2.6,5.5-3.7,8.2-2.6,3.4,1.4,5.7,2.2,9.9,3.61a8,8,0,0,1,5.49,7.71l-.4,26.45a8.07,8.07,0,0,0,6.6,8.42l11.59,2a8.07,8.07,0,0,0,9.1-5.61l8.6-25a8,8,0,0,1,7.79-5.41h9.8a8.07,8.07,0,0,1,7.79,5.41l8.6,25a8.07,8.07,0,0,0,9.1,5.61l11.59-2a8.07,8.07,0,0,0,6.6-8.42l-.4-26.45a8,8,0,0,1,5.49-7.71c4.2-1.41,7-2.51,9.6-3.51s5.8-1,8.3,2.1l17,20.94A8,8,0,0,0,355,439l10.2-5.91a7.93,7.93,0,0,0,3.3-10.12l-9.4-24.75a8.08,8.08,0,0,1,2.5-9.12c2.5-2,5-4.1,7.4-6.21a8,8,0,0,1,9.39-.9L401,395.66a8,8,0,0,0,10.5-1.51l7.49-9a8,8,0,0,0-.3-10.62l-17.29-19.94a8,8,0,0,1-.7-9.52q2.55-4.05,4.8-8.41a8.11,8.11,0,0,1,8.59-4.11l25.89,5a8,8,0,0,0,9.4-5l4-11a8.05,8.05,0,0,0-3.9-9.92l-23.09-12.82a7.94,7.94,0,0,1-3.9-8.62c.6-3.2,1.2-6.31,1.7-9.51a8.08,8.08,0,0,1,6.6-6.82l26.08-4.2a8.09,8.09,0,0,0,7.1-7.92V250A8.25,8.25,0,0,0,456.7,242.27ZM256,112A143.82,143.82,0,0,1,395.38,220.12,16,16,0,0,1,379.85,240l-105.24,0a16,16,0,0,1-13.91-8.09l-52.1-91.71a16,16,0,0,1,9.85-23.39A146.94,146.94,0,0,1,256,112ZM112,256a144,144,0,0,1,43.65-103.41,16,16,0,0,1,25.17,3.47L233.06,248a16,16,0,0,1,0,15.87l-52.67,91.7a16,16,0,0,1-25.18,3.36A143.94,143.94,0,0,1,112,256ZM256,400a146.9,146.9,0,0,1-38.19-4.95,16,16,0,0,1-9.76-23.44l52.58-91.55a16,16,0,0,1,13.88-8H379.9a16,16,0,0,1,15.52,19.88A143.84,143.84,0,0,1,256,400Z"></path></svg></button>
+      
+</div></div></div>
+    <div class="splitpanes default-theme   splitpanes--vertical  splitpanes--freeze">
+
+
+
+
+<div class="splitpanes__pane " style="min-width: 20%;"><div class="h-full"></div></div>
+      
+
+<div class="splitpanes__splitter "></div>
+
+
+<div class="splitpanes__pane " style="min-width: 20%;"><div class="h-full"></div></div>
+</div></div></div></astro-island>
+</main>
+  </body></html>
