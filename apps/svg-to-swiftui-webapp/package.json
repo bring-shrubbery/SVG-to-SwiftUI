@@ -19,15 +19,18 @@
     "vite": "^3"
   },
   "dependencies": {
+    "@astrojs/image": "^0.12.1",
     "@rgossiaux/svelte-headlessui": "^1.0.2",
     "highlight.js": "^11.7.0",
     "monaco-editor": "^0.34.1",
     "monaco-themes": "^0.4.3",
     "prismjs": "^1.29.0",
+    "sharp": "^0.31.3",
     "svelte-ionicons": "^0.2.3",
     "svelte-splitpanes": "^0.7.6",
     "svg-parser": "^2.0.4",
     "svg-pathdata": "^6.0.3",
-    "svg-to-swiftui-core": "workspace:*"
+    "svg-to-swiftui-core": "workspace:*",
+    "url-join": "^5.0.0"
   }
 }
