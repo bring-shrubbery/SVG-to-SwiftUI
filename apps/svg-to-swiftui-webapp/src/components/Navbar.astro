@@ -6,15 +6,33 @@ import GithubIcon from "./GithubIcon.astro";
 
 <AnnouncementBanner />
 
-<header class="w-full px-6 py-2 mb-1 bg-white dark:bg-stone-900 flex justify-between shadow-sm select-none">
+<header
+  class="w-full px-6 py-2 mb-1 bg-white dark:bg-zinc-800 flex justify-between select-none"
+>
   <div class="flex h-full items-center">
-    <img class="w-16 h-16" src="/svg-to-swiftui-logo-256.png" alt="SVG to SwiftUI Logo" width="64" height="64" />
-    <h1 class="font-bold text-4xl pl-1 pt-1 bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text"
-      style="-webkit-text-fill-color: transparent;">
+    <img
+      class="w-16 h-16"
+      src="/svg-to-swiftui-logo-256.png"
+      alt="SVG to SwiftUI Logo"
+      width="64"
+      height="64"
+    />
+    <h1
+      class="font-bold text-4xl pl-1 pt-1 bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text"
+      style="-webkit-text-fill-color: transparent;"
+    >
       SVG to SwiftUI
     </h1>
-    <iframe src="https://github.com/sponsors/bring-shrubbery/button" title="Sponsor bring-shrubbery" height="32"
-      width="117" style="border: none;" class="mx-6 mt-1" />
+    <div
+      class="mx-6 mt-1 rounded-lg shadow overflow-hidden border-2 border-zinc-500"
+    >
+      <iframe
+        src="https://github.com/sponsors/bring-shrubbery/button"
+        title="Sponsor bring-shrubbery"
+        height="32"
+        width="120"
+        class="block rounded-md"></iframe>
+    </div>
   </div>
 
   <div class="flex items-center text-slate-900 dark:text-slate-50">
@@ -24,8 +42,12 @@ import GithubIcon from "./GithubIcon.astro";
     <DarkModeToggle client:load />
 
     <div
-      class="cursor-pointer w-10 h-10 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full">
-      <a class="cursor-pointer" href="https://github.com/quassum/SVG-to-SwiftUI">
+      class="cursor-pointer w-10 h-10 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-full"
+    >
+      <a
+        class="cursor-pointer"
+        href="https://github.com/quassum/SVG-to-SwiftUI"
+      >
         <GithubIcon />
       </a>
     </div>
