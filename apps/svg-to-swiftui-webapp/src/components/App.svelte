@@ -1,110 +1,147 @@
 <script lang="ts">
   import { convert } from "svg-to-swiftui-core";
+  import type { SwiftUIGeneratorConfig } from "svg-to-swiftui-core";
 
-  let svgInput = "";
-  let swiftOutput = "";
+  import type monaco from "monaco-editor";
+  import { onMount } from "svelte";
 
-  let settingsShown = false;
-  const toggleSettings = () => (settingsShown = !settingsShown);
-  let options = {
+  import { Pane, Splitpanes } from "svelte-splitpanes";
+  import Toolbar from "./Toolbar.svelte";
+
+  let options: SwiftUIGeneratorConfig = {
     structName: "MyCustomShape",
     precision: 5,
-    indentationSize: 4
+    indentationSize: 4,
   };
+
+  let svgDivEl: HTMLDivElement = null;
+  let swiftDivEl: HTMLDivElement = null;
+  let svgEditor: monaco.editor.IStandaloneCodeEditor;
+  let swiftEditor: monaco.editor.IStandaloneCodeEditor;
+  let Monaco: typeof monaco;
+
+  function onClassChange(element, callback) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "class"
+        ) {
+          callback(mutation.target);
+        }
+      });
+    });
+    observer.observe(element, { attributes: true });
+    return observer.disconnect;
+  }
+
+  onMount(async () => {
+    const lightTheme = await import("monaco-themes/themes/IDLE.json");
+    const darkTheme = await import("monaco-themes/themes/idleFingers.json");
+
+    self.MonacoEnvironment = {
+      getWorker: function (workerId: string, label: string) {
+        const getWorkerModule = (moduleUrl: string, label: string): Worker => {
+          // @ts-ignore
+          return new Worker(self.MonacoEnvironment.getWorkerUrl(moduleUrl), {
+            name: label,
+            type: "module",
+          });
+        };
+
+        switch (label) {
+          case "html":
+          case "svg":
+            return getWorkerModule(
+              "/monaco-editor/esm/vs/language/html/html.worker?worker",
+              label
+            );
+          default:
+            return getWorkerModule(
+              "/monaco-editor/esm/vs/editor/editor.worker?worker",
+              label
+            );
+        }
+      },
+    };
+
+    Monaco = await import("monaco-editor");
+
+    // @ts-ignore
+    Monaco.editor.defineTheme("s2s-dark", darkTheme);
+    // @ts-ignore
+    Monaco.editor.defineTheme("s2s-light", lightTheme);
+
+    svgEditor = Monaco.editor.create(svgDivEl, {
+      value: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="50"/>
+</svg>`,
+      language: "xml",
+      automaticLayout: true,
+      minimap: { enabled: false },
+      padding: { top: 16 },
+    });
+
+    swiftEditor = Monaco.editor.create(swiftDivEl, {
+      value: "",
+      language: "swift",
+      automaticLayout: true,
+      readOnly: true,
+      minimap: { enabled: false },
+      padding: { top: 16 },
+    });
+
+    const htmlEl = document.getElementsByTagName("html")[0];
+
+    const updateEditorTheme = () => {
+      if (htmlEl.classList.contains("dark")) {
+        Monaco.editor.setTheme("s2s-dark");
+      } else {
+        Monaco.editor.setTheme("s2s-light");
+      }
+    };
+
+    onClassChange(htmlEl, updateEditorTheme);
+
+    updateEditorTheme();
+
+    return () => {
+      svgEditor.dispose();
+      swiftEditor.dispose();
+    };
+  });
 
   const generateSwiftCode = () => {
     try {
-      swiftOutput = convert(svgInput, options);
+      const swiftOutput = convert(svgEditor.getValue(), options).trim();
+      swiftEditor.setValue(swiftOutput);
+      swiftEditor.focus();
     } catch (e) {
       alert(e);
     }
   };
+
+  const handleCopyResult = () => {
+    const swiftCode = swiftEditor.getValue();
+    if (!swiftCode) return;
+    navigator.clipboard.writeText(swiftCode);
+  };
 </script>
 
-<style>
-  #external-buttons {
-    width: min-content;
-    margin: 0 auto;
-    margin-bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  #external-buttons > iframe:first-child {
-    margin-bottom: 8px;
-  }
-</style>
-
-<main>
-  <h1>Welcome!</h1>
-  <div id="external-buttons">
-    <iframe
-      src="https://ghbtns.com/github-btn.html?user=quassummanus&repo=SVG-to-SwiftUI&type=star&count=true&v=2"
-      frameborder="0"
-      scrolling="0"
-      width="90"
-      height="20"
-      title="GitHub" />
-    <iframe
-      src="https://github.com/sponsors/bring-shrubbery/button"
-      title="Sponsor bring-shrubbery"
-      height="35"
-      width="116"
-      style="border: 0;" />
+<div class="w-full h-full">
+  <div class="flex flex-col w-full h-full">
+    <Toolbar
+      onClickConvert={generateSwiftCode}
+      settingsState={options}
+      onCopy={handleCopyResult}
+    />
+    <Splitpanes>
+      <Pane minSize={20}>
+        <div class="h-full" bind:this={svgDivEl} />
+      </Pane>
+      <Pane minSize={20}>
+        <div class="h-full" bind:this={swiftDivEl} />
+      </Pane>
+    </Splitpanes>
   </div>
-  <div style="margin: 8px auto">
-    <i>
-      Functionality is limited for now, feel free to contribute on
-      <a
-        href="https://github.com/quassummanus/SVG-to-SwiftUI"
-        alt="link to GitHub">
-        Github
-      </a>
-    </i>
-  </div>
-  <div style="margin: 16px 0">
-    <h2 style="display: inline">Paste SVG code below</h2>
-    <img
-      id="settings-button"
-      src="https://img.icons8.com/ios-filled/50/000000/settings.png"
-      alt="settings icon"
-      width="16px"
-      on:click={toggleSettings}
-      title={`${settingsShown ? 'Hide' : 'Show'} settings`} />
-  </div>
-  {#if settingsShown}
-    <ul>
-      <li>
-        <label for="indentation-input">Indentation Spaces:</label>
-        <input
-          id="indentation-input"
-          type="number"
-          min="0"
-          max="12"
-          bind:value={options.indentationSize} />
-      </li>
-      <li>
-        <label for="precision-input">Round to decimal points:</label>
-        <input
-          id="precision-input"
-          type="number"
-          min="0"
-          max="10"
-          bind:value={options.precision} />
-      </li>
-      <li>
-        <label for="name-input">Struct name:</label>
-        <input id="name-input" type="text" bind:value={options.structName} />
-      </li>
-    </ul>
-  {/if}
-  <div>
-    <textarea bind:value={svgInput} placeholder="Paste SVG Code here" />
-  </div>
-  <button on:click={generateSwiftCode}>Convert to SwiftUI Shape!</button>
-  <h2>Swift code will be shown below:</h2>
-  <div>
-    <textarea value={swiftOutput} id="swift-output-area" />
-  </div>
-</main>
+</div>
