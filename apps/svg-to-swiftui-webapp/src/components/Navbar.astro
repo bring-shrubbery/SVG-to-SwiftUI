@@ -2,8 +2,6 @@
 import AnnouncementBanner from "./AnnouncementBanner.astro";
 import DarkModeToggle from "./DarkModeToggle.svelte";
 import GithubIcon from "./GithubIcon.astro";
-
-import { Image } from "@astrojs/image/components";
 ---
 
 <AnnouncementBanner />
@@ -12,9 +10,9 @@ import { Image } from "@astrojs/image/components";
   class="w-full px-6 py-2 mb-1 bg-white dark:bg-zinc-800 flex justify-between select-none"
 >
   <div class="flex h-full items-center">
-    <Image
+    <img
       class="w-16 h-16"
-      src="/SVG-to-SwiftUI/svg-to-swiftui-logo-256.png"
+      src="/SVG-to-SwiftUI/svg-to-swiftui-logo.svg"
       alt="SVG to SwiftUI Logo"
       width="64"
       height="64"
