@@ -21,6 +21,7 @@
   "dependencies": {
     "@astrojs/image": "^0.12.1",
     "@rgossiaux/svelte-headlessui": "^1.0.2",
+    "endent": "^2.1.0",
     "highlight.js": "^11.7.0",
     "monaco-editor": "^0.34.1",
     "monaco-themes": "^0.4.3",
@@ -31,6 +32,7 @@
     "svg-parser": "^2.0.4",
     "svg-pathdata": "^6.0.3",
     "svg-to-swiftui-core": "workspace:*",
-    "url-join": "^5.0.0"
+    "url-join": "^5.0.0",
+    "xml-formatter": "^3.2.0"
   }
 }

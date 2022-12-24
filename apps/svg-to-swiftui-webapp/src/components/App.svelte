@@ -7,6 +7,7 @@
 
   import { Pane, Splitpanes } from "svelte-splitpanes";
   import Toolbar from "./Toolbar.svelte";
+  import { Example } from "../utils/types";
 
   let options: SwiftUIGeneratorConfig = {
     structName: "MyCustomShape",
@@ -19,6 +20,9 @@
   let svgEditor: monaco.editor.IStandaloneCodeEditor;
   let swiftEditor: monaco.editor.IStandaloneCodeEditor;
   let Monaco: typeof monaco;
+
+  let selectedExample: Example | undefined;
+  $: selectedExample && svgEditor.setValue(selectedExample.source);
 
   function onClassChange(element, callback) {
     const observer = new MutationObserver((mutations) => {
@@ -73,9 +77,7 @@
     Monaco.editor.defineTheme("s2s-light", lightTheme);
 
     svgEditor = Monaco.editor.create(svgDivEl, {
-      value: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="50"/>
-</svg>`,
+      value: "",
       language: "xml",
       automaticLayout: true,
       minimap: { enabled: false },
@@ -104,6 +106,12 @@
     onClassChange(htmlEl, updateEditorTheme);
 
     updateEditorTheme();
+
+    svgEditor.onDidChangeModelContent((e) => {
+      if (e.changes.at(0)?.text !== selectedExample?.source) {
+        selectedExample = undefined;
+      }
+    });
 
     return () => {
       svgEditor.dispose();
@@ -134,10 +142,11 @@
       onClickConvert={generateSwiftCode}
       settingsState={options}
       onCopy={handleCopyResult}
+      bind:selectedExample
     />
     <Splitpanes>
       <Pane minSize={20}>
-        <div class="h-full" bind:this={svgDivEl} />
+        <div class="h-full" bind:this={svgDivEl} on:change={console.log} />
       </Pane>
       <Pane minSize={20}>
         <div class="h-full" bind:this={swiftDivEl} />

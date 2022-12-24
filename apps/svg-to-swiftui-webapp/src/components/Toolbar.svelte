@@ -12,7 +12,10 @@
   } from "@rgossiaux/svelte-headlessui";
 
   import type { SwiftUIGeneratorConfig } from "svg-to-swiftui-core";
+  import ExampleListSelect from "./ExampleListSelect.svelte";
+  import type { Example } from "../utils/types";
 
+  export let selectedExample: Example | undefined;
   export let onClickConvert;
   export let settingsState: SwiftUIGeneratorConfig;
   export let onCopy;
@@ -23,7 +26,7 @@
 >
   <div>
     <span>
-      <!-- TODO: Example list. Use Listbox from @rgossiaux/svelte-headlessui -->
+      <ExampleListSelect bind:selectedExample />
     </span>
   </div>
   <div class="flex">
