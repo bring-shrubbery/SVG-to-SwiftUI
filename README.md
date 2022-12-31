@@ -18,7 +18,7 @@ This tool is oriented towards specific implementations where you might otherwise
 
 ### Online
 
-The tool is available online, just follow [this](https://quassum.github.io/SVG-to-SwiftUI/) link.
+The tool is available online, just follow [this](https://svg-to-swiftui.quassum.com/) link.
 
 ### Running locally
 
