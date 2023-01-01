@@ -8,6 +8,7 @@
   import { Pane, Splitpanes } from "svelte-splitpanes";
   import Toolbar from "./Toolbar.svelte";
   import { Example } from "../utils/types";
+  import Ad from "./Ad.svelte";
 
   let options: SwiftUIGeneratorConfig = {
     structName: "MyCustomShape",
@@ -144,7 +145,8 @@
       onCopy={handleCopyResult}
       bind:selectedExample
     />
-    <Splitpanes>
+    <Ad />
+    <Splitpanes class="h-full">
       <Pane minSize={20}>
         <div class="h-full" bind:this={svgDivEl} on:change={console.log} />
       </Pane>
