@@ -1,5 +1,6 @@
 ---
-import App from "./App.svelte"
+import App from "./App.svelte";
+import ConsentToast from "./ConsentToast.astro";
 import Navbar from "./Navbar.astro";
 ---
 
@@ -8,3 +9,5 @@ import Navbar from "./Navbar.astro";
 <main class="block h-[calc(100%-128px)]">
   <App client:load />
 </main>
+
+<ConsentToast />

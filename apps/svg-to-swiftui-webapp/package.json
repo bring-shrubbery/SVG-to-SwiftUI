@@ -21,6 +21,7 @@
   "dependencies": {
     "@astrojs/image": "^0.12.1",
     "@rgossiaux/svelte-headlessui": "^1.0.2",
+    "astro-icon": "^0.8.0",
     "endent": "^2.1.0",
     "highlight.js": "^11.7.0",
     "monaco-editor": "^0.34.1",
