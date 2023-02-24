@@ -137,7 +137,7 @@ export function clampNormalisedSizeProduct(
   } else if (parseFloat(value) === 0) {
     return '0';
   } else {
-    return `${value}*${suffix}`;
+    return `${value} * ${suffix}`;
   }
 }
 
