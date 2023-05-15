@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { XIcon } from "lucide-react";
+import { atom, useAtom } from "jotai";
+
+export const announcementBarAtom = atom(false);
 
 export const AnnouncementBar = () => {
-  const [announcementBarHidden, setAnnouncementBarHidden] = useState(false);
+  const [announcementBarHidden, setAnnouncementBarHidden] =
+    useAtom(announcementBarAtom);
 
   return (
     <div

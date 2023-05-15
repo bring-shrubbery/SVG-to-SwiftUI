@@ -20,19 +20,25 @@ import { Input } from "./input";
 import { Slider } from "./slider";
 import Link from "next/link";
 
-export const Toolbar = () => {
+export interface ToolbarProps {
+  onConvert: () => void;
+  onCopyResult: () => void;
+  onExampleSelect: (exampleId: string) => void;
+}
+
+export const Toolbar = (props: ToolbarProps) => {
   return (
     <div className="w-full flex justify-between py-2 px-2 md:px-4 bg-white dark:bg-zinc-800">
       <div>
-        <ToolbarExamples />
+        <ToolbarExamples onExampleSelect={props.onExampleSelect} />
       </div>
 
       <div className="flex gap-2">
-        <Button>
+        <Button onClick={props.onConvert}>
           <ArrowLeftRightIcon className="w-4 h-4 mr-2" />
           Convert
         </Button>
-        <Button variant="outline">
+        <Button variant="outline" onClick={props.onCopyResult}>
           <ClipboardIcon className="w-4 h-4 mr-2" />
           Copy result
         </Button>
@@ -43,7 +49,13 @@ export const Toolbar = () => {
   );
 };
 
-const ToolbarExamples = () => {
+const ToolbarExamples = (props: {
+  onExampleSelect: (exampleId: string) => void;
+}) => {
+  // const createExampleClickHandler = (id: string) => {
+  //   return () => props.onExampleSelect(id);
+  // };
+
   return (
     <Popover>
       <PopoverTrigger asChild>

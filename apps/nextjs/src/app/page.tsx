@@ -1,17 +1,20 @@
 import { Navbar } from "@/components/Navbar";
 import { AnnouncementBar } from "@/components/announcement-bar";
 import { Toolbar } from "@/components/toolbar";
-import { cookies } from "next/headers";
+
+import { Allotment } from "allotment";
+import "allotment/dist/style.css";
+import { App } from "./App";
 
 export default function Home() {
   return (
     <>
       <AnnouncementBar />
       <Navbar />
-      <main className="block h-[calc(100%-128px)]">
-        <Toolbar />
+      <main className="block text-black dark:text-white">
+        <App />
       </main>
-      ;{/* <ConsentToast /> */}
+      {/* <ConsentToast /> */}
     </>
   );
 }

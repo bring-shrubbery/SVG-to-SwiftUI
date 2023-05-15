@@ -36,11 +36,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="h-[100vh]">
       <body
         className={[
           inter.className,
-          "bg-zinc-50 dark:bg-zinc-900 text-black dark:text-zinc-50 w-full",
+          "h-full bg-zinc-50 dark:bg-zinc-800 text-black dark:text-zinc-50 w-full",
         ].join(" ")}
       >
         <Providers>{children}</Providers>

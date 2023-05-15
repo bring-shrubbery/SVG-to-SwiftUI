@@ -25,6 +25,8 @@ export const Navbar = () => {
           <Link
             href="https://quassum.com"
             className="absolute -bottom-5 right-0 flex items-bottom"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             <span className="mr-1 text-sm">by</span>
             <QuassumType className="h-4 w-auto" />
