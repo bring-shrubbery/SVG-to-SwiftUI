@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { PropsWithChildren } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
+import { Toaster } from "@/components/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,10 +41,11 @@ export default function RootLayout({ children }: PropsWithChildren) {
       <body
         className={[
           inter.className,
-          "h-full bg-zinc-50 dark:bg-zinc-800 text-black dark:text-zinc-50 w-full",
+          "h-full bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 w-full",
         ].join(" ")}
       >
         <Providers>{children}</Providers>
+        <Toaster />
       </body>
       <Analytics />
     </html>

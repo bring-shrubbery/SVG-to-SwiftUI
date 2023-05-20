@@ -1,13 +1,7 @@
 "use client";
 
 import { MoonIcon, SunIcon } from "lucide-react";
-import { Toggle } from "./toggle";
-
-import useDarkMode from "beautiful-react-hooks/useDarkMode";
-import { useEffect } from "react";
 import { Button } from "./button";
-
-import useCookie from "beautiful-react-hooks/useCookie";
 import { useTheme } from "next-themes";
 
 export const DarkmodeToggle = () => {
