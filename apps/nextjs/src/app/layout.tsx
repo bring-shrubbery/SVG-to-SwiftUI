@@ -30,6 +30,10 @@ export const metadata: Metadata = {
       name: "Antoni Silvestrovic",
       url: "https://github.com/bring-shrubbery",
     },
+    {
+      name: "Quassum",
+      url: "https://quassum.com/",
+    },
   ],
   alternates: {
     canonical: "https://svg-to-swiftui.quassum.com/",
