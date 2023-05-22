@@ -14,11 +14,20 @@ import DARK_THEME from "monaco-themes/themes/idleFingers.json";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useToast } from "@/components/use-toast";
+import { Settings } from "@/lib/store";
+import urlJoin from "url-join";
+import xmlFormat from "xml-formatter";
 
-export const App = () => {
+export const App = ({
+  exampleList,
+}: {
+  exampleList: { example: string; content: string }[];
+}) => {
   const svgRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const { toast } = useToast();
 
+  // Hooks
+
+  const { toast } = useToast();
   const { theme } = useTheme();
   const monaco = useMonaco();
 
@@ -29,13 +38,25 @@ export const App = () => {
 
   const [result, setResult] = useState("");
 
+  // Settings
+
+  const [structName] = useAtom(Settings.structName);
+  const [precision] = useAtom(Settings.precision);
+  const [indentation] = useAtom(Settings.indentation);
+
+  // Handlers
+
   const handleConvert = () => {
     const svgCode = svgRef.current?.getValue();
 
     if (!svgCode) return;
 
     try {
-      const result = convert(svgCode);
+      const result = convert(svgCode, {
+        structName,
+        precision,
+        indentationSize: indentation,
+      });
 
       setResult(result);
     } catch (e) {
@@ -47,6 +68,36 @@ export const App = () => {
     }
   };
 
+  const handleCopyResult = () => {
+    navigator.clipboard
+      .writeText(result)
+      .then(() => {
+        toast({
+          title: "Success!",
+          description: "Code was successfully copied into clipboard.",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Copy failed!",
+          description: "Could not copy result into clipboard.",
+          variant: "destructive",
+        });
+      });
+  };
+
+  const handleExampleSelect = (iconName: string) => {
+    fetch(urlJoin("/lucide", iconName))
+      .then((res) => res.text())
+      .then((text) => {
+        const formattedSVG = xmlFormat(text);
+        svgRef.current?.setValue(formattedSVG);
+        svgRef.current?.focus();
+      });
+  };
+
+  // Effects
+
   useEffect(() => {
     if (theme) monaco?.editor.setTheme(theme);
   }, [theme]);
@@ -54,9 +105,10 @@ export const App = () => {
   return (
     <>
       <Toolbar
+        exampleList={exampleList}
         onConvert={handleConvert}
-        onCopyResult={console.log}
-        onExampleSelect={console.log}
+        onCopyResult={handleCopyResult}
+        onExampleSelect={handleExampleSelect}
       />
 
       <Allotment className={height}>

@@ -1,8 +1,12 @@
 import "./globals.css";
-import { Inter } from "next/font/google";
+import "allotment/dist/style.css";
+
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import type { PropsWithChildren } from "react";
+
 import { Analytics } from "@vercel/analytics/react";
+
 import { Providers } from "./providers";
 import { Toaster } from "@/components/toaster";
 

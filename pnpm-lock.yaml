@@ -166,6 +166,9 @@ importers:
       usehooks-ts:
         specifier: ^2.9.1
         version: 2.9.1(react-dom@18.2.0)(react@18.2.0)
+      xml-formatter:
+        specifier: ^3.2.0
+        version: 3.2.0
       zustand:
         specifier: ^4.3.8
         version: 4.3.8(react@18.2.0)
