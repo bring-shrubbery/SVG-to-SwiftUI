@@ -28,4 +28,4 @@ jobs:
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: apps/nextjs/dist # The folder the action should deploy.
+          folder: apps/nextjs/out # The folder the action should deploy.
