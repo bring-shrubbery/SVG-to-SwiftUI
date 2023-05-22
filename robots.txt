@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://svg-to-swiftui.quassum.com/sitemap.xml
