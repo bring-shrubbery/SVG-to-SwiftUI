@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { PropsWithChildren } from "react";
 
-import { Analytics } from "@vercel/analytics/react";
+// import { Analytics } from "@vercel/analytics/react";
 
 import { Providers } from "./providers";
 import { Toaster } from "@/components/toaster";
@@ -55,7 +55,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <Providers>{children}</Providers>
         <Toaster />
       </body>
-      <Analytics />
+      {/* <Analytics /> */}
     </html>
   );
 }
