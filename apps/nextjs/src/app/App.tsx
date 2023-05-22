@@ -17,6 +17,7 @@ import { useToast } from "@/components/use-toast";
 import { Settings } from "@/lib/store";
 import urlJoin from "url-join";
 import xmlFormat from "xml-formatter";
+import { analyticsAtom } from "@/components/analytics";
 
 export const App = ({
   exampleList,
@@ -37,6 +38,8 @@ export const App = ({
     : "min-h-[calc(100vh-200px)]";
 
   const [result, setResult] = useState("");
+
+  const [analytics] = useAtom(analyticsAtom);
 
   // Settings
 
@@ -76,12 +79,20 @@ export const App = ({
           title: "Success!",
           description: "Code was successfully copied into clipboard.",
         });
+
+        analytics.track("convert_click", {
+          status: "success",
+        });
       })
       .catch(() => {
         toast({
           title: "Copy failed!",
           description: "Could not copy result into clipboard.",
           variant: "destructive",
+        });
+
+        analytics.track("convert_click", {
+          status: "failure",
         });
       });
   };

@@ -3,8 +3,6 @@ import { ArrowLeftRightIcon, ClipboardIcon } from "lucide-react";
 import { Button } from "./button";
 
 import { ToolbarSettings } from "./toolbar-settings";
-import { useAtom } from "jotai";
-import { analyticsAtom } from "./analytics";
 // import { ToolbarExamples } from "./toolbar-examples";
 
 export interface ToolbarProps {
@@ -20,8 +18,6 @@ export const Toolbar = ({
   onConvert,
   onCopyResult,
 }: ToolbarProps) => {
-  const [analytics] = useAtom(analyticsAtom);
-
   return (
     <div className="w-full flex justify-between py-2 px-2 md:px-4 bg-white dark:bg-zinc-800">
       <div />
@@ -30,7 +26,6 @@ export const Toolbar = ({
       <div className="flex gap-2">
         <Button
           onClick={() => {
-            analytics.track("convert_click");
             onConvert();
           }}
         >
