@@ -23,7 +23,7 @@ export const Navbar = () => {
           </h1>
 
           <Link
-            href="https://quassum.com"
+            href="https://quassum.com/?utm_source=svg-to-swiftui"
             className="absolute -bottom-5 right-0 flex items-bottom"
             target="_blank"
             rel="noopener noreferrer"
