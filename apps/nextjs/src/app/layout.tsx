@@ -9,6 +9,7 @@ import type { PropsWithChildren } from "react";
 
 import { Providers } from "./providers";
 import { Toaster } from "@/components/toaster";
+import { AnalyticsProvider } from "@/components/analytics";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -55,7 +56,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <Providers>{children}</Providers>
         <Toaster />
       </body>
-      {/* <Analytics /> */}
+      <AnalyticsProvider />
     </html>
   );
 }

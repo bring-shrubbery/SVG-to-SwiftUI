@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@analytics/google-tag-manager": "^0.5.3",
     "@monaco-editor/react": "^4.5.1",
     "@radix-ui/react-alert-dialog": "^1.0.3",
     "@radix-ui/react-checkbox": "^1.0.3",
@@ -32,6 +33,7 @@
     "@radix-ui/react-tooltip": "^1.0.5",
     "@vercel/analytics": "^1.0.1",
     "allotment": "^1.19.0",
+    "analytics": "^0.8.1",
     "autoprefixer": "10.4.14",
     "class-variance-authority": "^0.6.0",
     "clsx": "^1.2.1",

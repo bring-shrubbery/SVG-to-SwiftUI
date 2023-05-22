@@ -3,7 +3,9 @@ import { ArrowLeftRightIcon, ClipboardIcon } from "lucide-react";
 import { Button } from "./button";
 
 import { ToolbarSettings } from "./toolbar-settings";
-import { ToolbarExamples } from "./toolbar-examples";
+import { useAtom } from "jotai";
+import { analyticsAtom } from "./analytics";
+// import { ToolbarExamples } from "./toolbar-examples";
 
 export interface ToolbarProps {
   exampleList: { example: string; content: string }[];
@@ -13,18 +15,25 @@ export interface ToolbarProps {
 }
 
 export const Toolbar = ({
-  exampleList,
+  // exampleList,
+  // onExampleSelect,
   onConvert,
   onCopyResult,
-  onExampleSelect,
 }: ToolbarProps) => {
+  const [analytics] = useAtom(analyticsAtom);
+
   return (
     <div className="w-full flex justify-between py-2 px-2 md:px-4 bg-white dark:bg-zinc-800">
       <div />
       {/* <ToolbarExamples {...{ onExampleSelect, exampleList }} /> */}
 
       <div className="flex gap-2">
-        <Button onClick={onConvert}>
+        <Button
+          onClick={() => {
+            analytics.track("convert_click");
+            onConvert();
+          }}
+        >
           <ArrowLeftRightIcon className="w-4 h-4 mr-2" />
           Convert
         </Button>

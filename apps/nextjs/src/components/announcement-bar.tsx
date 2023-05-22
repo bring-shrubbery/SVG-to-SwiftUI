@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { XIcon } from "lucide-react";
 import { atom, useAtom } from "jotai";
+import { analyticsAtom } from "./analytics";
 
 export const announcementBarAtom = atom(false);
 
 export const AnnouncementBar = () => {
   const [announcementBarHidden, setAnnouncementBarHidden] =
     useAtom(announcementBarAtom);
+  const [analytics] = useAtom(analyticsAtom);
 
   return (
     <div
@@ -39,7 +41,10 @@ export const AnnouncementBar = () => {
       </p>
       <span
         className="absolute px-2 right-0 top-0 h-full flex items-center"
-        onClick={() => setAnnouncementBarHidden(true)}
+        onClick={() => {
+          analytics.track("announcement_bar_close");
+          setAnnouncementBarHidden(true);
+        }}
       >
         <XIcon className="w-6 h-6 p-1 hover:bg-zinc-50 dark:hover:bg-zinc-600 rounded-full cursor-pointer" />
       </span>
