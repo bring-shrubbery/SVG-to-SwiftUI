@@ -19,9 +19,9 @@ export const analyticsAtom = atom(
       gtm({
         containerId: "G-ZFKXYDSQD7",
       }),
-      googleAnalytics({
-        trackingId: "G-ZFKXYDSQD7",
-      }),
+      // googleAnalytics({
+      //   trackingId: "G-ZFKXYDSQD7",
+      // }),
     ],
   })
 );
