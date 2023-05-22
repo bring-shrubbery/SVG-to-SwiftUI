@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@analytics/google-analytics": "^1.0.5",
     "@analytics/google-tag-manager": "^0.5.3",
     "@monaco-editor/react": "^4.5.1",
     "@radix-ui/react-alert-dialog": "^1.0.3",

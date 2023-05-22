@@ -3,6 +3,8 @@
 import { Analytics } from "analytics";
 // @ts-ignore
 import gtm from "@analytics/google-tag-manager";
+// @ts-ignore
+import googleAnalytics from "@analytics/google-analytics";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -16,6 +18,9 @@ export const analyticsAtom = atom(
     plugins: [
       gtm({
         containerId: "G-ZFKXYDSQD7",
+      }),
+      googleAnalytics({
+        trackingId: "G-ZFKXYDSQD7",
       }),
     ],
   })

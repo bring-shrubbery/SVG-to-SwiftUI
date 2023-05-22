@@ -16,6 +16,9 @@ importers:
 
   apps/nextjs:
     dependencies:
+      '@analytics/google-analytics':
+        specifier: ^1.0.5
+        version: 1.0.5
       '@analytics/google-tag-manager':
         specifier: ^0.5.3
         version: 0.5.3
@@ -373,6 +376,10 @@ packages:
     resolution: {integrity: sha512-DzOCd0qK7PGnz/dgBYNzLmaFBkxcEHM6/CpWMY7hel1IBUldMsyet4sdRgI2Nk+Wc6B/YvqVqos68p5ntB59zA==}
     dependencies:
       '@analytics/type-utils': 0.6.0
+    dev: false
+
+  /@analytics/google-analytics@1.0.5:
+    resolution: {integrity: sha512-I/yfiCVQo8AeT72KPa6z571LJKDbLdm4ntDqOHiE2Xehw9UjKcXQWiKTHL1/nfOOiekfpLf/6rFS5P6dQ0vImw==}
     dev: false
 
   /@analytics/google-tag-manager@0.5.3:
