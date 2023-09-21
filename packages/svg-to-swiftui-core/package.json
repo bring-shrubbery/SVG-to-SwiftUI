@@ -23,12 +23,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/quassummanus/svg-to-swiftui-core.git"
+    "url": "git+https://github.com/quassum/svg-to-swiftui-core.git"
   },
   "bugs": {
-    "url": "https://github.com/quassummanus/svg-to-swiftui-core/issues"
+    "url": "https://github.com/quassum/svg-to-swiftui-core/issues"
   },
-  "homepage": "https://github.com/quassummanus/svg-to-swiftui-core#readme",
+  "homepage": "https://github.com/quassum/svg-to-swiftui-core#readme",
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --minify --external react",
     "clean": "rimraf dist",

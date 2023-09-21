@@ -1,0 +1,13 @@
+{
+  "name": "Path to SwiftUI",
+  "id": "svg-to-swiftui",
+  "api": "1.0.0",
+  "main": "dist/index.global.js",
+  "capabilities": ["codegen"],
+  "enableProposedApi": false,
+  "editorType": ["dev"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  },
+  "codegenLanguages": [{ "label": "SwiftUI", "value": "swiftui" }]
+}
