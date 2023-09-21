@@ -1,6 +1,6 @@
 {
-  "name": "Path to SwiftUI",
-  "id": "svg-to-swiftui",
+  "name": "SwiftUI Code Generator",
+  "id": "1286775547400510368",
   "api": "1.0.0",
   "main": "dist/index.global.js",
   "capabilities": ["codegen"],
