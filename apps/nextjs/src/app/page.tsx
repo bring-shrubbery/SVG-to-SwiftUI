@@ -1,18 +1,24 @@
 import { Navbar } from "@/components/Navbar";
 import { AnnouncementBar } from "@/components/announcement-bar";
 import { App } from "./App";
-import { getIconContent, getIconList } from "@/lib/utils";
+import {
+  getGithubStarsForRepo,
+  getIconContent,
+  getIconList,
+} from "@/lib/utils";
 
 export default async function Home() {
-  const iconList = await getIconList();
-  const content = await getIconContent(iconList);
+  // const iconList = await getIconList();
+  // const content = await getIconContent(iconList);
+
+  const githubStars = await getGithubStarsForRepo("quassum/SVG-to-SwiftUI");
 
   return (
     <>
       <AnnouncementBar />
-      <Navbar />
+      <Navbar githubStars={githubStars} />
       <main className="block text-black dark:text-white">
-        <App exampleList={content} />
+        <App exampleList={[]} />
       </main>
       {/* <ConsentToast /> */}
     </>

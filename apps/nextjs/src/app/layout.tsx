@@ -8,10 +8,13 @@ import type { PropsWithChildren } from "react";
 // import { Analytics } from "@vercel/analytics/react";
 
 import { Providers } from "./providers";
-import { Toaster } from "@/components/toaster";
+import { Toaster } from "@/components/ui/toaster";
 import { AnalyticsProvider } from "@/components/analytics";
 
-const inter = Inter({ subsets: ["latin"] });
+export const fontSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "SVG to SwiftUI Converter",
@@ -49,8 +52,8 @@ export default function RootLayout({ children }: PropsWithChildren) {
     <html lang="en" suppressHydrationWarning className="h-[100vh]">
       <body
         className={[
-          inter.className,
-          "h-full bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 w-full",
+          fontSans.className,
+          "antialiased h-full bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 w-full font-sans",
         ].join(" ")}
       >
         <Providers>{children}</Providers>

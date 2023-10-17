@@ -1,6 +1,7 @@
 "use client";
+
 import { ArrowLeftRightIcon, ClipboardIcon } from "lucide-react";
-import { Button } from "./button";
+import { Button } from "@/components/ui/button";
 
 import { ToolbarSettings } from "./toolbar-settings";
 // import { ToolbarExamples } from "./toolbar-examples";

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link, { type LinkProps } from "next/link";
 import { PropsWithChildren } from "react";
-import { toggleVariants } from "./toggle";
+import { toggleVariants } from "@/components/ui/toggle";
 
 export const IconLink = ({
   href,

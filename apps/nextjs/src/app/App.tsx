@@ -13,7 +13,7 @@ import LIGHT_THEME from "monaco-themes/themes/IDLE.json";
 import DARK_THEME from "monaco-themes/themes/idleFingers.json";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { useToast } from "@/components/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Settings } from "@/lib/store";
 import urlJoin from "url-join";
 import xmlFormat from "xml-formatter";

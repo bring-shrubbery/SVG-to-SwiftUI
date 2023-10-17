@@ -1,18 +1,21 @@
 "use client";
 
 import { AlertCircleIcon, GripIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { Button } from "./button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import {
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "./card";
+} from "@/components/ui/card";
 import Link from "next/link";
-import urlJoin from "url-join";
-import { ScrollArea } from "./scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useState } from "react";
 
 const ToolbarExampleItem = ({

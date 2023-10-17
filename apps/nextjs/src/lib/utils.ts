@@ -1,4 +1,4 @@
-import { ClassValue, clsx } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import urlJoin from "url-join";
 
@@ -30,4 +30,11 @@ export const getIconContent = async (
         .then((content) => ({ content, example: iconName }))
     )
   );
+};
+
+export const getGithubStarsForRepo = async (repo: string) => {
+  const res = await fetch(`https://api.github.com/repos/${repo}`);
+  const data = await res.json();
+  const stars = parseInt(data.stargazers_count);
+  return isNaN(stars) ? undefined : stars;
 };
