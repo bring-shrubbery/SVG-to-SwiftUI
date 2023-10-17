@@ -18,9 +18,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "@changesets/cli": "^2.26.1",
+    "@changesets/cli": "^2.26.2",
     "prettier": "^2.8.8",
-    "turbo": "^1.9.8"
+    "turbo": "^1.10.15"
   },
   "engines": {
     "npm": ">=7.0.0",
