@@ -7,7 +7,7 @@ import { QuassumType } from "./quassum-type";
 
 export const Navbar = () => {
   return (
-    <header className="w-full px-6 py-2 bg-white dark:bg-zinc-800 flex justify-between select-none items-center">
+    <header className="w-full px-6 py-2 bg-white dark:bg-zinc-900/40 flex justify-between select-none items-center">
       {/* Left side content */}
       <div className="flex h-full items-center">
         <SVGtoSwiftUILogo width={64} height={64} className="w-16 h-16" />

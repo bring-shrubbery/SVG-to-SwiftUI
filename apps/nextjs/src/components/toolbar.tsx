@@ -19,7 +19,7 @@ export const Toolbar = ({
   onCopyResult,
 }: ToolbarProps) => {
   return (
-    <div className="w-full flex justify-between py-2 px-2 md:px-4 bg-white dark:bg-zinc-800">
+    <div className="w-full flex justify-between py-2 px-2 md:px-4 bg-white dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-700">
       <div />
       {/* <ToolbarExamples {...{ onExampleSelect, exampleList }} /> */}
 
