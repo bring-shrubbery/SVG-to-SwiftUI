@@ -15,7 +15,7 @@ export const AnnouncementBar = () => {
   return (
     <div
       className={
-        "relative w-full py-3 bg-zinc-200 text-black dark:bg-zinc-700 dark:text-white"
+        "relative w-full py-3 bg-zinc-100 text-black dark:bg-zinc-800 dark:text-white"
       }
       style={{
         display: announcementBarHidden ? "none" : "block",
