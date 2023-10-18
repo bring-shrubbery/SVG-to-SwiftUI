@@ -34,10 +34,6 @@ yarn
 yarn dev
 ```
 
-## Functionality Coverage
-
-This repository is just a front-end wrapper over our [svg-to-swiftui-core](https://github.com/quassum/svg-to-swiftui-core) ([npm link](https://www.npmjs.com/package/svg-to-swiftui-core)) package. You can find the functionality coverage on that package's page. We encourage you checking it out and maybe starring it on GitHub 😍!
-
 ## Example usage
 
 To demonstrate this tool I created a thicc plus sign with rounded corners (created it in Sketch, so shapes from Sketch should work fine with this tool).
