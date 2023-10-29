@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["figma-to-swiftui", "ts-config", "nextjs"]
+  "ignore": ["figma-to-swiftui", "tsconfig", "nextjs"]
 }
