@@ -13,10 +13,13 @@ test('conversion-1', () => {
 test('convert-circle', () => {
   const rawSVG = loadContentFile('circle.svg');
   const expectedResult = loadContentFile('circle.swift');
+
   const result = convert(rawSVG, {
     precision: 2,
     structName: 'CircleShape',
   });
+  console.log('expectedResult', expectedResult);
+  console.log('result', result);
   expect(result).toBe(expectedResult);
 });
 
