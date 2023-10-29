@@ -29,6 +29,7 @@ if (figma.editorType === "dev" && figma.mode === "codegen") {
 
     const swiftUI = convert(SVG_TEMPLATE, {
       structName: node.name.replace(/\s/g, ""),
+      usageCommentPrefix: true,
     });
 
     return [
