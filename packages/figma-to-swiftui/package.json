@@ -1,6 +1,5 @@
 {
   "name": "figma-to-swiftui",
-  "version": "0.0.0",
   "description": "Convert Figma Paths to SwiftUI",
   "private": true,
   "scripts": {
