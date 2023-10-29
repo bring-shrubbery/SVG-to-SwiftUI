@@ -1,7 +1,7 @@
 {
   "name": "nextjs",
   "version": "3.0.0",
-  "private": false,
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
