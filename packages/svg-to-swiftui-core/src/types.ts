@@ -2,6 +2,7 @@ export interface SwiftUIGeneratorConfig {
   structName?: string;
   precision?: number;
   indentationSize?: number;
+  usageCommentPrefix?: boolean;
 }
 
 export interface TranspilerOptions {

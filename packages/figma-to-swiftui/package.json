@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format iife --target es5",
     "clean": "rimraf dist",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "coverage": "jest --ci --coverage",
     "lint": "eslint ./src/**/*",
     "lint:fix": "eslint ./src/**/* --fix",
