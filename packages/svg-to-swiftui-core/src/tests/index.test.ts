@@ -18,8 +18,6 @@ test('convert-circle', () => {
     precision: 2,
     structName: 'CircleShape',
   });
-  console.log('expectedResult', expectedResult);
-  console.log('result', result);
   expect(result).toBe(expectedResult);
 });
 
