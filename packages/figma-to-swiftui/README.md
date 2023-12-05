@@ -22,5 +22,5 @@ This plugin lets you export paths from Figma to SwiftUI Shape structure.
 
 Wanna suggest some changes or just to say hi? Join our community here:
 
-- [Github Discussions](https://github.com/quassum/SVG-to-SwiftUI/discussions)
+- [Github Discussions](https://github.com/bring-shrubbery/SVG-to-SwiftUI/discussions)
 - [Quassum Discord](https://discord.gg/VzpZ7np622)

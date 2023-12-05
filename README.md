@@ -28,7 +28,7 @@ The tool is available online, just follow [this](https://svg-to-swiftui.quassum.
 ### Running locally
 
 ```
-git clone https://github.com/quassum/SVG-to-SwiftUI
+git clone https://github.com/bring-shrubbery/SVG-to-SwiftUI
 cd SVG-to-SwiftUI
 yarn
 yarn dev
@@ -58,4 +58,4 @@ It's saved as `content/demo-plus.svg` file in this repository. You can see below
 
 ## License
 
-[MIT](https://github.com/quassum/SVG-to-SwiftUI/blob/master/LICENSE)
+[MIT](https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/master/LICENSE)

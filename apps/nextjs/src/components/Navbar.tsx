@@ -54,7 +54,7 @@ export function Navbar({ githubStars }: { githubStars?: number }) {
 
         <DarkModeToggle />
 
-        {/* <IconLink href="https://github.com/quassum/SVG-to-SwiftUI">
+        {/* <IconLink href="https://github.com/bring-shrubbery/SVG-to-SwiftUI">
           <IoLogoGithub className="w-8 h-8" />
         </IconLink> */}
       </div>
@@ -75,7 +75,7 @@ export const StarOnGithubButton = ({
           "gap-2 whitespace-pre md:flex overflow-hidden h-[34px]",
           "group relative justify-center transition-all duration-300 ease-out"
         )}
-        href={"https://github.com/quassum/SVG-to-SwiftUI"}
+        href={"https://github.com/bring-shrubbery/SVG-to-SwiftUI"}
       >
         <span className="absolute -right-10 -mt-12 h-32 w-8 translate-x-16 rotate-45 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40 blur-lg" />
         <IoLogoGithub className="h-4 w-4" />

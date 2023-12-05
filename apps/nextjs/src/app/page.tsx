@@ -11,7 +11,7 @@ export default async function Home() {
   // const iconList = await getIconList();
   // const content = await getIconContent(iconList);
 
-  const githubStars = await getGithubStarsForRepo("quassum/SVG-to-SwiftUI");
+  const githubStars = await getGithubStarsForRepo("bring-shrubbery/SVG-to-SwiftUI");
 
   return (
     <>

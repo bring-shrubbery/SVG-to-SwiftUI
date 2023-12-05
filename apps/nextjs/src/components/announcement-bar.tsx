@@ -25,7 +25,7 @@ export const AnnouncementBar = () => {
         🥳 Welcome to the redesigned SVG to SwiftUI converter! Functionality is
         limited for now, feel free to contribute on{" "}
         <Link
-          href="https://github.com/quassum/SVG-to-SwiftUI"
+          href="https://github.com/bring-shrubbery/SVG-to-SwiftUI"
           className="text-blue-500 dark:text-blue-300 hover:text-blue-600 dark:hover:text-blue-400 active:text-blue-700 dark:active:text-blue-200 visited:text-purple-700 dark:visited:text-purple-300 font-normal"
         >
           Github
