@@ -7,6 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getHostname = () => {
+  if ("VERCEL" in process.env && process.env["VERCEL"] === "1") {
+    return `https://${process.env["VERCEL_URL"]}`;
+  }
+
   return process.env.NODE_ENV === "production"
     ? "https://svg-to-swiftui.quassum.com"
     : "http://localhost:3000";
