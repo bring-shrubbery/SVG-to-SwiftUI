@@ -9,6 +9,7 @@ import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { AnalyticsProvider } from "@/components/analytics";
 import { Analytics } from "@vercel/analytics/react";
+import Script from "next/script";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -58,8 +59,16 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <Providers>{children}</Providers>
         <Toaster />
       </body>
+
       <AnalyticsProvider />
       <Analytics />
+
+      {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}
+      <Script
+        async
+        src="/stats/script.js"
+        data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853"
+      />
     </html>
   );
 }
