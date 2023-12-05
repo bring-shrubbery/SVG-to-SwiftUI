@@ -9,6 +9,6 @@
     "react-library.json"
   ],
   "dependencies": {
-    "@tsconfig/svelte": "^3.0.0"
+    "@tsconfig/svelte": "^5.0.2"
   }
 }
