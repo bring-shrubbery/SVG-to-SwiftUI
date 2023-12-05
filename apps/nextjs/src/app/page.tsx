@@ -1,17 +1,12 @@
 import { Navbar } from "@/components/Navbar";
 import { AnnouncementBar } from "@/components/announcement-bar";
 import { App } from "./App";
-import {
-  getGithubStarsForRepo,
-  getIconContent,
-  getIconList,
-} from "@/lib/utils";
+import { getGithubStarsForRepo } from "@/lib/utils";
 
 export default async function Home() {
-  // const iconList = await getIconList();
-  // const content = await getIconContent(iconList);
-
-  const githubStars = await getGithubStarsForRepo("bring-shrubbery/SVG-to-SwiftUI");
+  const githubStars = await getGithubStarsForRepo(
+    "bring-shrubbery/SVG-to-SwiftUI"
+  );
 
   return (
     <>
