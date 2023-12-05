@@ -5,11 +5,10 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { PropsWithChildren } from "react";
 
-// import { Analytics } from "@vercel/analytics/react";
-
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { AnalyticsProvider } from "@/components/analytics";
+import { Analytics } from "@vercel/analytics/react";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -60,6 +59,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <Toaster />
       </body>
       <AnalyticsProvider />
+      <Analytics />
     </html>
   );
 }
