@@ -37,7 +37,11 @@ export const getIconContent = async (
 };
 
 export const getGithubStarsForRepo = async (repo: string) => {
-  const res = await fetch(`https://api.github.com/repos/${repo}`);
+  const res = await fetch(`https://api.github.com/repos/${repo}`, {
+    next: {
+      revalidate: 60,
+    },
+  });
   const data = await res.json();
   const stars = parseInt(data.stargazers_count);
   return isNaN(stars) ? undefined : stars;

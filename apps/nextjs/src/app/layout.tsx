@@ -11,7 +11,7 @@ import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 import { AnalyticsProvider } from "@/components/analytics";
 
-export const fontSans = Inter({
+const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
 });
