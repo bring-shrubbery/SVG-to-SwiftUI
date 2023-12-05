@@ -58,10 +58,9 @@ export default function RootLayout({ children }: PropsWithChildren) {
       >
         <Providers>{children}</Providers>
         <Toaster />
+        <Analytics />
+        <AnalyticsProvider />
       </body>
-
-      <AnalyticsProvider />
-      <Analytics />
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}
       <Script
