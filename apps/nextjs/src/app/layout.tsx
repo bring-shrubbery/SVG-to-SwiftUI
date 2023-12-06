@@ -71,11 +71,13 @@ export default function RootLayout({ children }: PropsWithChildren) {
       </body>
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}
-      <Script
-        async
-        src="/stats/script.js"
-        data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853"
-      />
+      {process.env.NODE_ENV === "production" && (
+        <Script
+          async
+          src="/stats/script.js"
+          data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853"
+        />
+      )}
     </html>
   );
 }
