@@ -117,6 +117,43 @@ export const App = ({
     if (theme) monaco?.editor.setTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    if ("adsbygoogle" in window) {
+      // @ts-ignore
+      window.adsbygoogle.push({});
+    } else {
+      // @ts-ignore
+      window.adsbygoogle = window.adsbygoogle || [];
+    }
+  }, []);
+
+  useEffect(() => {
+    const pushAd = () => {
+      try {
+        // @ts-ignore
+        const adsbygoogle = window.adsbygoogle;
+        console.log({ adsbygoogle });
+        adsbygoogle.push({});
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    let interval = setInterval(() => {
+      // Check if Adsense script is loaded every 300ms
+      // @ts-ignore
+      if (window.adsbygoogle) {
+        pushAd();
+        // clear the interval once the ad is pushed so that function isn't called indefinitely
+        clearInterval(interval);
+      }
+    }, 300);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <>
       <Toolbar
@@ -173,13 +210,20 @@ export const App = ({
       </Allotment>
 
       {ads && (
-        <Adsense
+        // <Adsense
+        //   client="ca-pub-3063505422248547"
+        //   slot="7774359292"
+        //   style={{ display: "block", height: 100 }}
+        //   format="auto"
+        //   responsive="true"
+        // />
+        <ins
           className="adsbygoogle"
-          client="ca-pub-3063505422248547"
-          slot="7774359292"
           style={{ display: "block", height: 100 }}
-          format="auto"
-          responsive="true"
+          data-ad-client="ca-pub-3063505422248547"
+          data-ad-slot="7774359292"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
         />
       )}
     </>

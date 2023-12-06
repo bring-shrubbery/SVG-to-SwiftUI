@@ -50,6 +50,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en" suppressHydrationWarning className="h-[100vh]">
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body
         className={[
           fontSans.className,
@@ -67,14 +74,6 @@ export default function RootLayout({ children }: PropsWithChildren) {
         async
         src="/stats/script.js"
         data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853"
-      />
-
-      <Script
-        async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
-        strategy="afterInteractive"
-        crossOrigin="anonymous"
-        id="adsbygoogle-init"
       />
     </html>
   );

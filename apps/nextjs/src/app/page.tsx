@@ -11,6 +11,8 @@ export default async function Home() {
 
   const adsEnabled = (await get("svg-to-swiftui_ads_enabled")) ?? false;
 
+  console.log("adsEnabled", adsEnabled);
+
   return (
     <>
       <AnnouncementBar />
