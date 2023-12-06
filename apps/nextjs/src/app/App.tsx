@@ -118,16 +118,6 @@ export const App = ({
   }, [theme]);
 
   useEffect(() => {
-    if ("adsbygoogle" in window) {
-      // @ts-ignore
-      window.adsbygoogle.push({});
-    } else {
-      // @ts-ignore
-      window.adsbygoogle = window.adsbygoogle || [];
-    }
-  }, []);
-
-  useEffect(() => {
     const pushAd = () => {
       try {
         // @ts-ignore
