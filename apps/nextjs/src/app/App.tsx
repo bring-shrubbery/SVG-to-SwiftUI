@@ -217,7 +217,7 @@ export const App = ({
         //   format="auto"
         //   responsive="true"
         // />
-        <div className="mx-auto">
+        <div className="mx-auto h-[100px]">
           <ins
             className="adsbygoogle"
             style={{ display: "block", height: 100 }}
