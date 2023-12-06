@@ -217,14 +217,16 @@ export const App = ({
         //   format="auto"
         //   responsive="true"
         // />
-        <ins
-          className="adsbygoogle"
-          style={{ display: "block", height: 100 }}
-          data-ad-client="ca-pub-3063505422248547"
-          data-ad-slot="7774359292"
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        />
+        <div className="mx-auto">
+          <ins
+            className="adsbygoogle"
+            style={{ display: "block", height: 100 }}
+            data-ad-client="ca-pub-3063505422248547"
+            data-ad-slot="7774359292"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          />
+        </div>
       )}
     </>
   );
