@@ -4,6 +4,10 @@
     {
       "source": "/stats/:match*",
       "destination": "https://analytics.quassum.com/:match*"
+    },
+    {
+      "source": "/pagead/:match*",
+      "destination": "https://pagead2.googlesyndication.com/pagead/:match*"
     }
   ]
 }

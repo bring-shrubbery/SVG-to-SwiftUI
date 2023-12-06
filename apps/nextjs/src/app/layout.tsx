@@ -52,7 +52,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
     <html lang="en" suppressHydrationWarning className="h-[100vh]">
       <head>
         <Script
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
+          src="/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
           crossOrigin="anonymous"
         />
       </head>
