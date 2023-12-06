@@ -53,7 +53,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
       <head>
         <Script
           src="/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
-          crossOrigin="anonymous"
+          // crossOrigin="anonymous"
         />
       </head>
       <body
