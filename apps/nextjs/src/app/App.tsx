@@ -19,9 +19,13 @@ import urlJoin from "url-join";
 import xmlFormat from "xml-formatter";
 import { analyticsAtom } from "@/components/analytics";
 
+import { Adsense } from "@ctrl/react-adsense";
+
 export const App = ({
   exampleList,
+  ads,
 }: {
+  ads?: boolean;
   exampleList: { example: string; content: string }[];
 }) => {
   const svgRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -34,8 +38,8 @@ export const App = ({
 
   const [announcementBarHidden] = useAtom(announcementBarAtom);
   const height = announcementBarHidden
-    ? "min-h-[calc(100vh-136px)]"
-    : "min-h-[calc(100vh-200px)]";
+    ? "min-h-[calc(100vh-236px)]"
+    : "min-h-[calc(100vh-300px)]";
 
   const [result, setResult] = useState("");
 
@@ -167,6 +171,17 @@ export const App = ({
           />
         </Allotment.Pane>
       </Allotment>
+
+      {ads && (
+        <Adsense
+          className="adsbygoogle"
+          client="ca-pub-3063505422248547"
+          slot="7774359292"
+          style={{ display: "block", height: 100 }}
+          format="auto"
+          responsive="true"
+        />
+      )}
     </>
   );
 };

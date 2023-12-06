@@ -68,6 +68,14 @@ export default function RootLayout({ children }: PropsWithChildren) {
         src="/stats/script.js"
         data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853"
       />
+
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
+        strategy="afterInteractive"
+        crossOrigin="anonymous"
+        id="adsbygoogle-init"
+      />
     </html>
   );
 }
