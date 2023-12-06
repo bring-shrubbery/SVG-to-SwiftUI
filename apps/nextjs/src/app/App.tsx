@@ -117,32 +117,32 @@ export const App = ({
     if (theme) monaco?.editor.setTheme(theme);
   }, [theme]);
 
-  useEffect(() => {
-    const pushAd = () => {
-      try {
-        // @ts-ignore
-        const adsbygoogle = window.adsbygoogle;
-        console.log({ adsbygoogle });
-        adsbygoogle.push({});
-      } catch (e) {
-        console.error(e);
-      }
-    };
+  // useEffect(() => {
+  //   const pushAd = () => {
+  //     try {
+  //       // @ts-ignore
+  //       const adsbygoogle = window.adsbygoogle;
+  //       console.log({ adsbygoogle });
+  //       adsbygoogle.push({});
+  //     } catch (e) {
+  //       console.error(e);
+  //     }
+  //   };
 
-    let interval = setInterval(() => {
-      // Check if Adsense script is loaded every 300ms
-      // @ts-ignore
-      if (window.adsbygoogle) {
-        pushAd();
-        // clear the interval once the ad is pushed so that function isn't called indefinitely
-        clearInterval(interval);
-      }
-    }, 300);
+  //   let interval = setInterval(() => {
+  //     // Check if Adsense script is loaded every 300ms
+  //     // @ts-ignore
+  //     if (window.adsbygoogle) {
+  //       pushAd();
+  //       // clear the interval once the ad is pushed so that function isn't called indefinitely
+  //       clearInterval(interval);
+  //     }
+  //   }, 300);
 
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
+  //   return () => {
+  //     clearInterval(interval);
+  //   };
+  // }, []);
 
   return (
     <>
@@ -199,7 +199,7 @@ export const App = ({
         </Allotment.Pane>
       </Allotment>
 
-      {ads && (
+      {/* {ads && (
         // <Adsense
         //   client="ca-pub-3063505422248547"
         //   slot="7774359292"
@@ -217,7 +217,7 @@ export const App = ({
             data-full-width-responsive="true"
           />
         </div>
-      )}
+      )} */}
     </>
   );
 };
