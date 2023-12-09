@@ -49,15 +49,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="en" suppressHydrationWarning className="h-[100vh]">
-      <head>
-        <Script
-          async
-          src="/pagead/js/adsbygoogle.js?client=ca-pub-3063505422248547"
-          strategy="afterInteractive"
-          // crossOrigin="anonymous"
-        />
-      </head>
+    <html lang="en" suppressHydrationWarning className="h-screen">
       <body
         className={[
           fontSans.className,

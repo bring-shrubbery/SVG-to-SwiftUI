@@ -26,9 +26,6 @@ importers:
       '@analytics/google-tag-manager':
         specifier: ^0.5.5
         version: 0.5.5
-      '@ctrl/react-adsense':
-        specifier: ^1.7.0
-        version: 1.7.0
       '@hookform/resolvers':
         specifier: ^3.3.2
         version: 3.3.2(react-hook-form@7.48.2)
@@ -1052,12 +1049,6 @@ packages:
       human-id: 1.0.2
       prettier: 2.8.8
     dev: true
-
-  /@ctrl/react-adsense@1.7.0:
-    resolution: {integrity: sha512-TrDGbAo8KRPHnX/Jtv9CkMV90vK7M/sz8KNECTQgcsHO4e5GyNZL3jqCY4WA0MCwfT48NH34qzyV9e2SWsceLw==}
-    dependencies:
-      tslib: 2.6.2
-    dev: false
 
   /@emnapi/runtime@0.44.0:
     resolution: {integrity: sha512-ZX/etZEZw8DR7zAB1eVQT40lNo0jeqpb6dCgOvctB6FIQ5PoXfMuNY8+ayQfu8tNQbAB8gQWSSJupR8NxeiZXw==}

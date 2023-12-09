@@ -19,13 +19,9 @@ import urlJoin from "url-join";
 import xmlFormat from "xml-formatter";
 import { analyticsAtom } from "@/components/analytics";
 
-import { Adsense } from "@ctrl/react-adsense";
-
 export const App = ({
   exampleList,
-  ads,
 }: {
-  ads?: boolean;
   exampleList: { example: string; content: string }[];
 }) => {
   const svgRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -117,33 +113,6 @@ export const App = ({
     if (theme) monaco?.editor.setTheme(theme);
   }, [theme]);
 
-  // useEffect(() => {
-  //   const pushAd = () => {
-  //     try {
-  //       // @ts-ignore
-  //       const adsbygoogle = window.adsbygoogle;
-  //       console.log({ adsbygoogle });
-  //       adsbygoogle.push({});
-  //     } catch (e) {
-  //       console.error(e);
-  //     }
-  //   };
-
-  //   let interval = setInterval(() => {
-  //     // Check if Adsense script is loaded every 300ms
-  //     // @ts-ignore
-  //     if (window.adsbygoogle) {
-  //       pushAd();
-  //       // clear the interval once the ad is pushed so that function isn't called indefinitely
-  //       clearInterval(interval);
-  //     }
-  //   }, 300);
-
-  //   return () => {
-  //     clearInterval(interval);
-  //   };
-  // }, []);
-
   return (
     <>
       <Toolbar
@@ -198,26 +167,6 @@ export const App = ({
           />
         </Allotment.Pane>
       </Allotment>
-
-      {/* {ads && (
-        // <Adsense
-        //   client="ca-pub-3063505422248547"
-        //   slot="7774359292"
-        //   style={{ display: "block", height: 100 }}
-        //   format="auto"
-        //   responsive="true"
-        // />
-        <div className="mx-auto h-[100px]">
-          <ins
-            className="adsbygoogle"
-            style={{ display: "block", height: 100 }}
-            data-ad-client="ca-pub-3063505422248547"
-            data-ad-slot="7774359292"
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
-        </div>
-      )} */}
     </>
   );
 };
