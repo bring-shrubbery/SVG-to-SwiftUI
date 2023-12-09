@@ -49,11 +49,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="en" suppressHydrationWarning className="h-screen">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={[
           fontSans.className,
-          "antialiased h-full bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 w-full font-sans",
+          "antialiased h-screen bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 w-full font-sans",
         ].join(" ")}
       >
         <Providers>{children}</Providers>

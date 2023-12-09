@@ -3,6 +3,9 @@ import { AnnouncementBar } from "@/components/announcement-bar";
 import { App } from "./App";
 import { getGithubStarsForRepo } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+export const runtime = "edge";
+
 export default async function Home() {
   const githubStars = await getGithubStarsForRepo(
     "bring-shrubbery/SVG-to-SwiftUI"
