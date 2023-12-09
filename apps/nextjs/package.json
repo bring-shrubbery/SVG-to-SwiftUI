@@ -56,7 +56,7 @@
     "edge-config": "link:@vercel/edge-config",
     "eslint": "^8.55.0",
     "eslint-config-next": "14.0.3",
-    "framer-motion": "^10.16.14",
+    "framer-motion": "^10.16.16",
     "highlight.js": "^11.9.0",
     "jotai": "^2.6.0",
     "lucide-react": "^0.294.0",
@@ -76,7 +76,7 @@
     "tailwind-merge": "^2.1.0",
     "tailwindcss": "^3.3.6",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.3.2",
+    "typescript": "^5.3.3",
     "url-join": "^5.0.0",
     "usehooks-ts": "^2.9.1",
     "xml-formatter": "^3.6.0",
@@ -85,7 +85,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.10",
-    "@types/node": "^18.19.2",
+    "@types/node": "^18.19.3",
     "@types/react": "18.2.42",
     "@types/react-dom": "18.2.17"
   }
