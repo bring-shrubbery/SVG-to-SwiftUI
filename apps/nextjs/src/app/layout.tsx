@@ -18,6 +18,7 @@ const fontSans = Inter({
 
 export const metadata: Metadata = {
   title: "SVG to SwiftUI Converter",
+  applicationName: "SVG to SwiftUI Converter",
   description:
     "SVG to SwiftUI converter let's you convert raw svg code into a SwiftUI Shape structure. Just paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app!",
   robots: {
@@ -39,6 +40,8 @@ export const metadata: Metadata = {
       url: "https://quassum.com/",
     },
   ],
+  publisher: "Quassum",
+  creator: "Antoni Silvestrovic",
   alternates: {
     canonical: "https://svg-to-swiftui.quassum.com/",
     languages: {
