@@ -23,10 +23,10 @@ export const metadata: Metadata = {
     "SVG to SwiftUI converter let's you convert raw svg code into a SwiftUI Shape structure. Just paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app!",
   robots: {
     index: true,
-    follow: true,
+    follow: false,
     googleBot: {
       index: true,
-      follow: true,
+      follow: false,
     },
   },
   category: "Development tools",
