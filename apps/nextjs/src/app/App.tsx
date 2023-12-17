@@ -34,8 +34,8 @@ export const App = ({
 
   const [announcementBarHidden] = useAtom(announcementBarAtom);
   const height = announcementBarHidden
-    ? "min-h-[calc(100vh-236px)]"
-    : "min-h-[calc(100vh-300px)]";
+    ? "min-h-[calc(100vh-136px)]"
+    : "min-h-[calc(100vh-200px)]";
 
   const [result, setResult] = useState("");
 
