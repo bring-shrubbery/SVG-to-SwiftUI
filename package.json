@@ -20,7 +20,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
     "prettier": "^2.8.8",
-    "turbo": "^1.11.1"
+    "turbo": "^1.11.2"
   },
   "engines": {
     "npm": ">=7.0.0",
