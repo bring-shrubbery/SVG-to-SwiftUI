@@ -5,7 +5,6 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/_next/*", "/api/*", "/pagead/*", "/stats/*"],
     },
     sitemap: "https://svg-to-swiftui.quassum.com/sitemap.xml",
   };
