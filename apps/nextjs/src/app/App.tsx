@@ -145,7 +145,7 @@ export const App = ({
                 },
               });
 
-              m.editor.setTheme(theme === "dark" ? "dark" : "light");
+              m.editor.setTheme(theme === "light" ? "light" : "dark");
             }}
             options={{ minimap: { enabled: false }, automaticLayout: true }}
           />
