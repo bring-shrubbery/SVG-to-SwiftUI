@@ -48,6 +48,26 @@ export const metadata: Metadata = {
       en: "https://svg-to-swiftui.quassum.com/",
     },
   },
+  keywords: [
+    "svg",
+    "swiftui",
+    "converter",
+    "svg to swiftui",
+    "svg to swiftui converter",
+    "swiftui converter",
+    "svg converter",
+    "svg to swift",
+    "svg to swift converter",
+    "swift converter",
+    "swiftui code",
+    "swift code",
+    "swiftui shape",
+    "swift shape",
+    "how to convert svg to swiftui",
+    "convert svg to swiftui",
+    "convert svg to swift",
+    "ios"
+  ]
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {

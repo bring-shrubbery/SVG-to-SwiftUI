@@ -35,7 +35,7 @@ export const ToolbarSettings = () => {
 
           <div className="w-auto pt-4 grid grid-cols-[auto,200px] gap-x-4 gap-y-6 items-center">
             <Label htmlFor="struct-name" className="whitespace-nowrap">
-              Struct Name
+              {"Struct Name"}
             </Label>
             <Input
               id="struct-name"
@@ -57,7 +57,7 @@ export const ToolbarSettings = () => {
             />
 
             <Label htmlFor="indentation" className="whitespace-nowrap">
-              Indentation
+              {"Indentation"}
             </Label>
             <Input
               type="number"
