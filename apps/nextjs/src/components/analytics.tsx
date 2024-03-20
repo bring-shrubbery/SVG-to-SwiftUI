@@ -33,7 +33,7 @@ export const AnalyticsProvider = () => {
   /* Track a page view */
   useEffect(() => {
     analytics.page();
-  }, [router]);
+  }, [analytics, router]);
 
   return null;
 };

@@ -1,5 +1,5 @@
 {
-  "extends": "tsconfig/base.json",
+  "extends": "@svg-to-swiftui/tsconfig/base.json",
   "compilerOptions": {
     "module": "es2015",
     "target": "es6",

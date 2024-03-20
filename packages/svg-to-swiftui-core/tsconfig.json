@@ -1,5 +1,5 @@
 {
-  "extends": "tsconfig/react-library.json",
+  "extends": "@svg-to-swiftui/tsconfig/react-library.json",
   "compilerOptions": {
     "module": "es2015",
     "target": "es5",

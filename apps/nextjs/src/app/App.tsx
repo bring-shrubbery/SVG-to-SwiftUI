@@ -111,7 +111,7 @@ export const App = ({
 
   useEffect(() => {
     if (theme) monaco?.editor.setTheme(theme);
-  }, [theme]);
+  }, [monaco?.editor, theme]);
 
   return (
     <>

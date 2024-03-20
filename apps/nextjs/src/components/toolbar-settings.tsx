@@ -30,7 +30,7 @@ export const ToolbarSettings = () => {
         <CardHeader className="p-0 w-fit">
           <CardTitle>Settings</CardTitle>
           <CardDescription>
-            Modify settings, then click "Convert" again.
+            {'Modify settings, then click "Convert" again.'}
           </CardDescription>
 
           <div className="w-auto pt-4 grid grid-cols-[auto,200px] gap-x-4 gap-y-6 items-center">

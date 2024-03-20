@@ -1,0 +1,12 @@
+{
+  "name": "@svg-to-swiftui/tsconfig",
+  "private": true,
+  "version": "0.1.0",
+  "files": [
+    "base.json",
+    "astro.json",
+    "nextjs.json",
+    "react-library.json",
+    "svelte.json"
+  ]
+}

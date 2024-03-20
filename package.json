@@ -1,30 +1,35 @@
 {
   "name": "svg-to-swiftui-monorepo",
-  "version": "0.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
     "coverage": "turbo run coverage",
-    "lint": "turbo run lint",
     "prepare-version": "pnpm changeset",
     "ci:version": "changeset version",
     "ci:publish": "changeset tag && pnpm -r publish",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "clean": "git clean -xdf node_modules",
+    "clean:workspaces": "turbo clean",
+    "format": "turbo format --continue -- --cache --cache-location node_modules/.cache/.prettiercache",
+    "format:fix": "turbo format --continue -- --write --cache --cache-location node_modules/.cache/.prettiercache",
+    "lint": "turbo lint --continue -- --cache --cache-location node_modules/.cache/.eslintcache",
+    "lint:fix": "turbo lint --continue -- --fix --cache --cache-location node_modules/.cache/.eslintcache",
+    "lint:ws": "pnpm dlx sherif@latest",
+    "postinstall": "pnpm lint:ws",
+    "typecheck": "turbo typecheck"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
-    "prettier": "^2.8.8",
-    "turbo": "^1.11.2"
+    "@svg-to-swiftui/prettier-config": "workspace:*",
+    "@turbo/gen": "^1.12.5",
+    "prettier": "^3.2.5",
+    "turbo": "^1.12.5",
+    "typescript": "^5.4.2"
   },
   "engines": {
-    "npm": ">=7.0.0",
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@7.8.0"
+  "packageManager": "pnpm@8.15.4",
+  "prettier": "@svg-to-swiftui/prettier-config"
 }

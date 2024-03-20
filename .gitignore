@@ -11,13 +11,24 @@ coverage
 # next.js
 .next/
 out/
+next-env.d.ts
+
+# nitro
+.nitro/
+.output/
+
+# expo
+.expo/
+dist/
+expo-env.d.ts
+apps/expo/.gitignore
+
+# production
 build
-dist
 
 # misc
 .DS_Store
 *.pem
-.npmrc
 
 # debug
 npm-debug.log*
@@ -31,10 +42,16 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
 
 # turbo
 .turbo
 
 # pnpm
 .pnpm-store
-.vercel
