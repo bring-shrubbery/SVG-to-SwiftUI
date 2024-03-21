@@ -58,6 +58,7 @@ export default function CountingNumbers({
         }
       }, interval);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInView]);
 
   return (
