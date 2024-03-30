@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowLeftRightIcon, ClipboardIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ArrowLeftRightIcon, ClipboardIcon } from "lucide-react";
 
 import { ToolbarSettings } from "./toolbar-settings";
+
 // import { ToolbarExamples } from "./toolbar-examples";
 
 export interface ToolbarProps {
@@ -20,7 +21,7 @@ export const Toolbar = ({
   onCopyResult,
 }: ToolbarProps) => {
   return (
-    <div className="w-full flex justify-between py-2 px-2 md:px-4 bg-white dark:bg-zinc-900/40 border-b border-zinc-200 dark:border-zinc-700">
+    <div className="flex w-full justify-between border-b border-border p-2 md:px-4">
       <div />
       {/* <ToolbarExamples {...{ onExampleSelect, exampleList }} /> */}
 
@@ -30,11 +31,11 @@ export const Toolbar = ({
             onConvert();
           }}
         >
-          <ArrowLeftRightIcon className="w-4 h-4 mr-2" />
+          <ArrowLeftRightIcon className="mr-2 h-4 w-4" />
           Convert
         </Button>
         <Button variant="outline" onClick={onCopyResult}>
-          <ClipboardIcon className="w-4 h-4 mr-2" />
+          <ClipboardIcon className="mr-2 h-4 w-4" />
           Copy result
         </Button>
 

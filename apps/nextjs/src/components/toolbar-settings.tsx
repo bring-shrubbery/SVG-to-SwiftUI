@@ -1,18 +1,18 @@
 "use client";
 
-import { SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { useAtom } from "jotai";
 import { Settings } from "@/lib/store";
+import { useAtom } from "jotai";
+import { SettingsIcon } from "lucide-react";
 
 export const ToolbarSettings = () => {
   const [structName, setStructName] = useAtom(Settings.structName);
@@ -22,18 +22,18 @@ export const ToolbarSettings = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button className="rounded-full p-0 w-10 h-10" variant="ghost">
+        <Button className="h-10 w-10 rounded-full p-0" variant="ghost">
           <SettingsIcon />
         </Button>
       </PopoverTrigger>
+
       <PopoverContent className="mx-4 w-fit">
-        <CardHeader className="p-0 w-fit">
+        <CardHeader className="w-fit p-0">
           <CardTitle>Settings</CardTitle>
           <CardDescription>
             {'Modify settings, then click "Convert" again.'}
           </CardDescription>
-
-          <div className="w-auto pt-4 grid grid-cols-[auto,200px] gap-x-4 gap-y-6 items-center">
+          <div className="grid w-auto grid-cols-[auto,200px] items-center gap-x-4 gap-y-6 pt-4">
             <Label htmlFor="struct-name" className="whitespace-nowrap">
               {"Struct Name"}
             </Label>
@@ -44,16 +44,19 @@ export const ToolbarSettings = () => {
               onChange={(e) => setStructName(e.target.value)}
             />
 
-            <Label htmlFor="float-precision" className="whitespace-nowrap">
-              Float Precision ({"5"})
+            <Label
+              htmlFor="float-precision"
+              className="min-w-[130px] whitespace-nowrap"
+            >
+              {`Float Precision (${precision})`}
             </Label>
             <Slider
               min={1}
-              max={15}
+              max={12}
               defaultValue={[precision]}
               className="my-2"
               value={[precision]}
-              onValueCommit={([v]) => v && setPrecision(v)}
+              onValueChange={([v]) => v && setPrecision(v)}
             />
 
             <Label htmlFor="indentation" className="whitespace-nowrap">

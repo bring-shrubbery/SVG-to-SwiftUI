@@ -1,24 +1,25 @@
-import { SVGtoSwiftUILogo } from "./icons/S2SLogo";
-import { IoLogoGithub } from "react-icons/io5";
-import { IconLink } from "./IconLink";
-import { DarkModeToggle } from "./darkmode-toggle";
 import Link from "next/link";
-import { QuassumType } from "./icons/quassum-type";
-import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { StarIcon } from "lucide-react";
+import { IoLogoGithub } from "react-icons/io5";
+
 import CountingNumbers from "./counting-numbers";
+import { DarkModeToggle } from "./darkmode-toggle";
+import { IconLink } from "./IconLink";
+import { QuassumType } from "./icons/quassum-type";
+import { SVGtoSwiftUILogo } from "./icons/S2SLogo";
 
 export function Navbar({ githubStars }: { githubStars?: number }) {
   return (
-    <header className="w-full px-6 py-2 bg-white dark:bg-zinc-900/40 flex justify-between select-none items-center">
+    <header className="flex w-full select-none items-center justify-between px-6 py-2">
       {/* Left side content */}
       <div className="flex h-full items-center">
-        <SVGtoSwiftUILogo width={64} height={64} className="w-16 h-16" />
+        <SVGtoSwiftUILogo width={64} height={64} className="h-16 w-16" />
 
         <div className="relative hidden sm:block ">
           <h1
-            className="font-bold text-4xl pl-3 pt-1 bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text"
+            className="bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text pl-3 pt-1 text-4xl font-bold"
             style={{
               WebkitTextFillColor: "transparent",
             }}
@@ -28,7 +29,7 @@ export function Navbar({ githubStars }: { githubStars?: number }) {
 
           <Link
             href="https://quassum.com/?utm_source=svg-to-swiftui"
-            className="absolute -bottom-5 right-0 flex items-bottom"
+            className="items-bottom absolute -bottom-5 right-0 flex"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -39,8 +40,8 @@ export function Navbar({ githubStars }: { githubStars?: number }) {
       </div>
 
       {/* Right side content */}
-      <div className="flex items-center text-slate-900 dark:text-slate-50">
-        <div className="mx-4 rounded-lg overflow-hidden border-2 border-transparent hidden md:block">
+      <div className="flex items-center">
+        <div className="mx-4 hidden overflow-hidden rounded-lg border-2 border-transparent md:block">
           <iframe
             src="https://github.com/sponsors/bring-shrubbery/button"
             title="Sponsor bring-shrubbery"
@@ -72,16 +73,16 @@ export const StarOnGithubButton = ({
       <Link
         className={cn(
           buttonVariants({ variant: "outline" }),
-          "gap-2 whitespace-pre md:flex overflow-hidden h-[34px]",
-          "group relative justify-center transition-all duration-300 ease-out"
+          "h-[34px] gap-2 overflow-hidden whitespace-pre md:flex",
+          "group relative justify-center transition-all duration-300 ease-out",
         )}
         href={"https://github.com/bring-shrubbery/SVG-to-SwiftUI"}
       >
-        <span className="absolute -right-10 -mt-12 h-32 w-8 translate-x-16 rotate-45 transform bg-white opacity-10 transition-all duration-1000 ease-out group-hover:-translate-x-40 blur-lg" />
+        <span className="absolute -right-10 -mt-12 h-32 w-8 translate-x-16 rotate-45 transform bg-white opacity-10 blur-lg transition-all duration-1000 ease-out group-hover:-translate-x-40" />
         <IoLogoGithub className="h-4 w-4" />
         Star on GitHub
-        <div className="hidden lg:flex items-center gap-1 text-sm text-zinc-50 w-[54px]">
-          <StarIcon className="h-4 w-4 group-hover:text-yellow-300 transition-all duration-300" />
+        <div className="hidden w-[54px] items-center gap-1 text-sm text-zinc-50 lg:flex">
+          <StarIcon className="h-4 w-4 transition-all duration-300 group-hover:text-yellow-300" />
           <CountingNumbers
             value={githubStars}
             className="font-display font-medium text-white"

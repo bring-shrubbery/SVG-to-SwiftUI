@@ -18,7 +18,7 @@ export default async function Home() {
     <>
       <AnnouncementBar adsEnabled={!!adsEnabled} />
       <Navbar githubStars={githubStars} />
-      <main className="block text-black dark:text-white">
+      <main>
         <App exampleList={[]} />
       </main>
       {/* <ConsentToast /> */}

@@ -17,7 +17,7 @@ export const AnnouncementBar = ({ adsEnabled }: { adsEnabled: boolean }) => {
   return (
     <div
       className={
-        "relative w-full bg-zinc-100 py-3 text-black dark:bg-zinc-800 dark:text-white"
+        "relative w-full bg-zinc-100 py-3 text-black dark:bg-zinc-800/80 dark:text-white"
       }
       style={{
         display: announcementBarHidden ? "none" : "block",

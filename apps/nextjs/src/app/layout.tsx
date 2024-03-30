@@ -2,14 +2,15 @@ import "./globals.css";
 import "allotment/dist/style.css";
 
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import type { PropsWithChildren } from "react";
+import { Inter } from "next/font/google";
+import Script from "next/script";
+import { AnalyticsProvider } from "@/components/analytics";
+import { Toaster } from "@/components/ui/toaster";
+import { cn } from "@/lib/utils";
+import { Analytics } from "@vercel/analytics/react";
 
 import { Providers } from "./providers";
-import { Toaster } from "@/components/ui/toaster";
-import { AnalyticsProvider } from "@/components/analytics";
-import { Analytics } from "@vercel/analytics/react";
-import Script from "next/script";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -66,18 +67,18 @@ export const metadata: Metadata = {
     "how to convert svg to swiftui",
     "convert svg to swiftui",
     "convert svg to swift",
-    "ios"
-  ]
+    "ios",
+  ],
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={[
-          fontSans.className,
-          "antialiased h-screen bg-white dark:bg-zinc-800 text-black dark:text-zinc-50 w-full font-sans",
-        ].join(" ")}
+        className={cn(
+          "h-screen w-full bg-background font-sans text-foreground antialiased",
+          fontSans.variable,
+        )}
       >
         <Providers>{children}</Providers>
         <Toaster />
