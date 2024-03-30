@@ -24,6 +24,7 @@ export const App = ({
   exampleList: { example: string; content: string }[];
 }) => {
   const svgRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const [svgValue, setSvgValue] = useState<string | undefined>("");
 
   // Hooks
 
@@ -54,13 +55,13 @@ export const App = ({
     if (!svgCode) return;
 
     try {
-      const result = convert(svgCode, {
+      const res = convert(svgCode, {
         structName,
         precision,
         indentationSize: indentation,
       });
 
-      setResult(result);
+      setResult(res);
     } catch (e) {
       toast({
         title: "Conversion error",
@@ -121,8 +122,8 @@ export const App = ({
         onExampleSelect={handleExampleSelect}
       />
 
-      <Allotment className={cn(height, "bg-background")}>
-        <Allotment.Pane className={height}>
+      <Allotment className={cn(height)}>
+        <Allotment.Pane className={cn(height, "relative")}>
           <Editor
             height="100%"
             className="py-2"
@@ -147,9 +148,15 @@ export const App = ({
               m.editor.setTheme(theme === "light" ? "light" : "dark");
             }}
             options={{ minimap: { enabled: false }, automaticLayout: true }}
+            onChange={(val) => setSvgValue(val)}
           />
+          {!svgValue && (
+            <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 font-light italic text-muted-foreground">
+              Paste your SVG here
+            </div>
+          )}
         </Allotment.Pane>
-        <Allotment.Pane className={height}>
+        <Allotment.Pane className={cn(height, "relative")}>
           <Editor
             height="100%"
             className="py-2"
@@ -164,6 +171,11 @@ export const App = ({
               // swiftRef.current = e;
             }}
           />
+          {!result && (
+            <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 font-light italic text-muted-foreground">
+              SwiftUI code will appear here
+            </div>
+          )}
         </Allotment.Pane>
       </Allotment>
     </>
