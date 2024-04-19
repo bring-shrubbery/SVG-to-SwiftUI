@@ -50,6 +50,8 @@ export const metadata: Metadata = {
     },
   },
   keywords: [
+    "how to convert svg to swiftui",
+    "how to get svg into swift code",
     "svg",
     "swiftui",
     "converter",
@@ -64,7 +66,6 @@ export const metadata: Metadata = {
     "swift code",
     "swiftui shape",
     "swift shape",
-    "how to convert svg to swiftui",
     "convert svg to swiftui",
     "convert svg to swift",
     "ios",
