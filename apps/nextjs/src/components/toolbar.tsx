@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
+import { VideoTutorialPopover } from "./video-tutorial-popover";
 
 export interface ToolbarProps {
   exampleList: { example: string; content: string }[];
@@ -34,13 +35,15 @@ export const Toolbar = ({
 
   return (
     <div className="flex w-full justify-between border-b border-border p-2 md:px-4">
-      <div />
+      <div>
+        <VideoTutorialPopover />
+      </div>
       {/* <ToolbarExamples {...{ onExampleSelect, exampleList }} /> */}
 
       <div className="flex gap-2">
         <TooltipProvider>
-          <Tooltip open={!didConvertOnce}>
-            <TooltipTrigger>
+          <Tooltip defaultOpen={!didConvertOnce}>
+            <TooltipTrigger asChild>
               <Button
                 onClick={() => {
                   onConvert();
@@ -51,6 +54,7 @@ export const Toolbar = ({
                 Convert
               </Button>
             </TooltipTrigger>
+
             <TooltipContent side="left">
               {'Paste SVG below and click "Convert" to get SwiftUI code.'}
             </TooltipContent>
