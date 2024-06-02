@@ -20,12 +20,12 @@
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.1",
+    "@changesets/cli": "^2.27.5",
     "@svg-to-swiftui/prettier-config": "workspace:*",
-    "@turbo/gen": "^1.13.0",
-    "prettier": "^3.2.5",
-    "turbo": "^1.13.0",
-    "typescript": "^5.4.3"
+    "@turbo/gen": "^1.13.3",
+    "prettier": "^3.3.0",
+    "turbo": "^1.13.3",
+    "typescript": "^5.4.5"
   },
   "engines": {
     "node": ">=18.0.0"
