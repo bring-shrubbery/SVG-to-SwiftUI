@@ -11,7 +11,7 @@ import { atom, useAtom } from "jotai";
 export const analyticsAtom = atom(
   Analytics({
     app: "svg-to-swiftui.quassum.com",
-    version: "333",
+    // version: "333",
     plugins: [
       gtm({
         containerId: "G-ZFKXYDSQD7",

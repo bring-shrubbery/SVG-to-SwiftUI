@@ -1,6 +1,7 @@
 {
   "extends": "@svg-to-swiftui/tsconfig/base.json",
   "compilerOptions": {
+    "incremental": true,
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
   },
   "include": ["."],
