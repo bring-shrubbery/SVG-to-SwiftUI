@@ -15,13 +15,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@next/eslint-plugin-next": "^14.2.3",
-    "@typescript-eslint/eslint-plugin": "^7.11.0",
-    "@typescript-eslint/parser": "^7.11.0",
-    "eslint-config-turbo": "^1.13.3",
+    "@next/eslint-plugin-next": "^14.2.4",
+    "@typescript-eslint/eslint-plugin": "^7.13.1",
+    "@typescript-eslint/parser": "^7.13.1",
+    "eslint-config-turbo": "^1.13.4",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jsx-a11y": "^6.8.0",
-    "eslint-plugin-react": "^7.34.2",
+    "eslint-plugin-jsx-a11y": "^6.9.0",
+    "eslint-plugin-react": "^7.34.3",
     "eslint-plugin-react-hooks": "^4.6.2"
   },
   "devDependencies": {
@@ -29,8 +29,8 @@
     "@svg-to-swiftui/tsconfig": "workspace:*",
     "@types/eslint": "^8.56.10",
     "eslint": "^8.57.0",
-    "prettier": "^3.3.0",
-    "typescript": "^5.4.5"
+    "prettier": "^3.3.2",
+    "typescript": "^5.5.2"
   },
   "eslintConfig": {
     "root": true,
