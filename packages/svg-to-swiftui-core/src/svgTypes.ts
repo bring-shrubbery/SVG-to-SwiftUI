@@ -24,6 +24,11 @@ export interface SVGEllipseAttributes extends SVGBaseAttributes {
   pathLength?: string;
 }
 
+export interface SVGPolygonAttributes extends SVGBaseAttributes {
+  points?: string;
+  fill?: string;
+}
+
 export interface SVGRectAttributes extends SVGBaseAttributes {
   x: string;
   y: string;
