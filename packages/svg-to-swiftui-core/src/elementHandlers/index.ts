@@ -5,6 +5,7 @@ import handleEllipseElement from './ellipseElementHandler';
 import handleGroupElement from './groupElementHandler';
 import handlePathElement from './pathElementHandler';
 import handleRectElement from './rectElementHandler';
+import handlePolygonElement from './polygonElementHandler';
 
 export function handleElement(
   element: ElementNode,
@@ -28,6 +29,9 @@ export function handleElement(
 
     case 'ellipse':
       return handleEllipseElement(element, options);
+
+    case 'polygon':
+      return handlePolygonElement(element, options);
 
     default:
       console.error(
