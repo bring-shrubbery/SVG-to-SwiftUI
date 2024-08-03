@@ -1,15 +1,16 @@
-import {ElementNode} from 'svg-parser';
-import {SVGCircleAttributes} from '../svgTypes';
-import {TranspilerOptions} from '../types';
+import type { ElementNode } from "svg-parser";
+
+import type { SVGCircleAttributes } from "../svgTypes";
+import type { TranspilerOptions } from "../types";
 import {
   clampNormalisedSizeProduct,
   normaliseRectValues,
   stringifyRectValues,
-} from '../utils';
+} from "../utils";
 
 export default function handleCircleElement(
   element: ElementNode,
-  options: TranspilerOptions
+  options: TranspilerOptions,
 ): string[] {
   // TODO: Add styles support
   // const style = {
@@ -25,7 +26,7 @@ export default function handleCircleElement(
     // Check if required properties are provided.
     if (!circleProps.cx || !circleProps.cy || !circleProps.r) {
       throw new Error(
-        'Circle element has to contain cx, cy, and r properties!'
+        "Circle element has to contain cx, cy, and r properties!",
       );
     }
 
@@ -42,23 +43,26 @@ export default function handleCircleElement(
 
     // Normalise all values to be based on fraction of width/height.
     const normalisedRect = normaliseRectValues(
-      {x, y, width, height},
-      options.viewBox
+      { x, y, width, height },
+      options.viewBox,
     );
 
     // Stringify values to the fixed precision point.
     const SR = stringifyRectValues(normalisedRect, options.precision);
 
     // Append the width and height multipliers after normalisation.
-    const strX = clampNormalisedSizeProduct(SR.x, 'width');
-    const strY = clampNormalisedSizeProduct(SR.y, 'height');
-    const strWidth = clampNormalisedSizeProduct(SR.width!, 'width');
-    const strHeight = clampNormalisedSizeProduct(SR.height!, 'height');
+    const strX = clampNormalisedSizeProduct(SR.x, "width");
+    const strY = clampNormalisedSizeProduct(SR.y, "height");
+    const strWidth = clampNormalisedSizeProduct(SR.width ?? "unknown", "width");
+    const strHeight = clampNormalisedSizeProduct(
+      SR.height ?? "unknown",
+      "height",
+    );
 
     // Generate SwiftUI string.
     const CGRect = `CGRect(x: ${strX}, y: ${strY}, width: ${strWidth}, height: ${strHeight})`;
     return [`path.addEllipse(in: ${CGRect})`];
   } else {
-    throw new Error('Circle element has to some properties');
+    throw new Error("Circle element has to some properties");
   }
 }

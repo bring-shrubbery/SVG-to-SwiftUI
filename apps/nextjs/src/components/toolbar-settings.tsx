@@ -10,14 +10,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { Settings } from "@/lib/store";
+import {
+  SettingsIndentation,
+  SettingsPrecision,
+  SettingsStructName,
+} from "@/lib/store";
 import { useAtom } from "jotai";
 import { SettingsIcon } from "lucide-react";
 
 export const ToolbarSettings = () => {
-  const [structName, setStructName] = useAtom(Settings.structName);
-  const [precision, setPrecision] = useAtom(Settings.precision);
-  const [indentation, setIndentation] = useAtom(Settings.indentation);
+  const [structName, setStructName] = useAtom(SettingsStructName);
+  const [precision, setPrecision] = useAtom(SettingsPrecision);
+  const [indentation, setIndentation] = useAtom(SettingsIndentation);
 
   return (
     <Popover>

@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { getGithubStarsForRepo } from "@/lib/utils";
-import { PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 
 export default async function Layout({ children }: PropsWithChildren) {
   const githubStars = await getGithubStarsForRepo(

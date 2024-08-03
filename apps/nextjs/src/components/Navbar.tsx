@@ -6,7 +6,6 @@ import { IoLogoGithub } from "react-icons/io5";
 
 import CountingNumbers from "./counting-numbers";
 import { DarkModeToggle } from "./darkmode-toggle";
-import { IconLink } from "./IconLink";
 import { QuassumType } from "./icons/quassum-type";
 import { SVGtoSwiftUILogo } from "./icons/S2SLogo";
 

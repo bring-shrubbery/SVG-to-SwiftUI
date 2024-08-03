@@ -1,7 +1,7 @@
 "use client";
 
-import { useInView } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useInView } from "framer-motion";
 
 export default function CountingNumbers({
   value,
@@ -28,18 +28,18 @@ export default function CountingNumbers({
 
   useEffect(() => {
     if (isInView) {
-      let timer = setInterval(() => {
+      const timer = setInterval(() => {
         if (reverse) {
           if (number > value) {
             setNumber((num) => {
               let newValue = num - increment;
               if (newValue < value) {
                 newValue = value;
-                if (timer) clearInterval(timer);
+                if (typeof timer !== "undefined") clearInterval(timer);
               }
               return newValue;
             });
-          } else if (timer) {
+          } else if (typeof timer !== "undefined") {
             clearInterval(timer);
           }
         } else {
@@ -48,17 +48,17 @@ export default function CountingNumbers({
               let newValue = num + increment;
               if (newValue > value) {
                 newValue = value;
-                if (timer) clearInterval(timer);
+                if (typeof timer !== "undefined") clearInterval(timer);
               }
               return newValue;
             });
-          } else if (timer) {
+          } else if (typeof timer !== "undefined") {
             clearInterval(timer);
           }
         }
       }, interval);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInView]);
 
   return (

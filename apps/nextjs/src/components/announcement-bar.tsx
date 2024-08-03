@@ -1,18 +1,15 @@
 "use client";
 
-import { MouseEventHandler } from "react";
+import type { MouseEventHandler } from "react";
 import Link from "next/link";
 import { atom, useAtom } from "jotai";
 import { XIcon } from "lucide-react";
-
-import { analyticsAtom } from "./analytics";
 
 export const announcementBarAtom = atom(false);
 
 export const AnnouncementBar = ({ adsEnabled }: { adsEnabled: boolean }) => {
   const [announcementBarHidden, setAnnouncementBarHidden] =
     useAtom(announcementBarAtom);
-  const [analytics] = useAtom(analyticsAtom);
 
   return (
     <div
@@ -23,17 +20,10 @@ export const AnnouncementBar = ({ adsEnabled }: { adsEnabled: boolean }) => {
         display: announcementBarHidden ? "none" : "block",
       }}
     >
-      {adsEnabled ? (
-        <Banner2 onClick={() => analytics.track("banner_ad_quassum_design")} />
-      ) : (
-        <Banner1 />
-      )}
+      {adsEnabled ? <Banner2 /> : <Banner1 />}
       <span
         className="absolute right-0 top-0 flex h-full items-center px-2"
-        onClick={() => {
-          analytics.track("announcement_bar_close");
-          setAnnouncementBarHidden(true);
-        }}
+        onClick={() => setAnnouncementBarHidden(true)}
       >
         <XIcon className="h-6 w-6 cursor-pointer rounded-full p-1 hover:bg-zinc-50 dark:hover:bg-zinc-600" />
       </span>
@@ -64,11 +54,7 @@ const Banner1 = () => {
   );
 };
 
-const Banner2 = ({
-  onClick,
-}: {
-  onClick: MouseEventHandler<HTMLAnchorElement>;
-}) => {
+const Banner2 = () => {
   return (
     <p className="mx-auto w-fit px-8 text-center text-sm">
       Looking for a gift for a classy friend? 🎁 Check out our 3D printing
@@ -76,7 +62,6 @@ const Banner2 = ({
       <Link
         href="http://quassum.design/"
         className="font-normal text-blue-500 visited:text-purple-700 hover:text-blue-600 active:text-blue-700 dark:text-blue-300 dark:visited:text-purple-300 dark:hover:text-blue-400 dark:active:text-blue-200"
-        onClick={onClick}
       >
         quassum.design
       </Link>

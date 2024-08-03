@@ -2,11 +2,14 @@
 
 import type { editor } from "monaco-editor";
 import { useEffect, useRef, useState } from "react";
-import { analyticsAtom } from "@/components/analytics";
 import { announcementBarAtom } from "@/components/announcement-bar";
 import { Toolbar } from "@/components/toolbar";
 import { useToast } from "@/components/ui/use-toast";
-import { Settings } from "@/lib/store";
+import {
+  SettingsIndentation,
+  SettingsPrecision,
+  SettingsStructName,
+} from "@/lib/store";
 import { cn } from "@/lib/utils";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import { Allotment } from "allotment";
@@ -39,13 +42,11 @@ export const App = ({
 
   const [result, setResult] = useState("");
 
-  const [analytics] = useAtom(analyticsAtom);
-
   // Settings
 
-  const [structName] = useAtom(Settings.structName);
-  const [precision] = useAtom(Settings.precision);
-  const [indentation] = useAtom(Settings.indentation);
+  const [structName] = useAtom(SettingsStructName);
+  const [precision] = useAtom(SettingsPrecision);
+  const [indentation] = useAtom(SettingsIndentation);
 
   // Handlers
 
@@ -79,20 +80,12 @@ export const App = ({
           title: "Success!",
           description: "Code was successfully copied into clipboard.",
         });
-
-        analytics.track("convert_click", {
-          status: "success",
-        });
       })
       .catch(() => {
         toast({
           title: "Copy failed!",
           description: "Could not copy result into clipboard.",
           variant: "destructive",
-        });
-
-        analytics.track("convert_click", {
-          status: "failure",
         });
       });
   };
@@ -104,7 +97,8 @@ export const App = ({
         const formattedSVG = xmlFormat(text);
         svgRef.current?.setValue(formattedSVG);
         svgRef.current?.focus();
-      });
+      })
+      .catch(console.error);
   };
 
   // Effects
@@ -131,12 +125,12 @@ export const App = ({
             theme="dark"
             onMount={(e, m) => {
               svgRef.current = e;
-              // @ts-ignore
+              // @ts-expect-error No types
               m.editor.defineTheme("light", {
                 ...LIGHT_THEME,
                 colors: { ...LIGHT_THEME.colors },
               });
-              // @ts-ignore
+              // @ts-expect-error No types
               m.editor.defineTheme("dark", {
                 ...DARK_THEME,
                 colors: {
@@ -167,9 +161,6 @@ export const App = ({
             }}
             value={result}
             language="swift"
-            onMount={(e, m) => {
-              // swiftRef.current = e;
-            }}
           />
           {!result && (
             <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 font-light italic text-muted-foreground">

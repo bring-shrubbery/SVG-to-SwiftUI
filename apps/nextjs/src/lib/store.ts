@@ -1,7 +1,5 @@
 import { atom } from "jotai";
 
-export namespace Settings {
-  export const structName = atom("MyIcon");
-  export const precision = atom(5);
-  export const indentation = atom(4);
-}
+export const SettingsStructName = atom("MyIcon");
+export const SettingsPrecision = atom(5);
+export const SettingsIndentation = atom(4);

@@ -1,5 +1,6 @@
-import {ElementNode, RootNode, TextNode} from 'svg-parser';
-import {SVGElementProperties, ViewBoxData} from './types';
+import type { ElementNode, RootNode, TextNode } from "svg-parser";
+
+import type { SVGElementProperties, ViewBoxData } from "./types";
 
 /**
  * Converts number with unit suffix to pixels.
@@ -7,33 +8,33 @@ import {SVGElementProperties, ViewBoxData} from './types';
  */
 export function convertToPixels(num: string | number) {
   // If number is provided, just return that number.
-  if (typeof num === 'number') return num;
+  if (typeof num === "number") return num;
 
   // If the value is a string, handle the conversion.
   const unit = String(num).substr(-2, 2);
   if (unit.search(/^[a-z]{2}$/i) !== -1) {
     switch (unit) {
-      case 'em':
+      case "em":
         // TODO: Convert correctly from em.
         return parseFloat(num);
-      case 'ex':
+      case "ex":
         // TODO: Convert correctly from ex.
         return parseFloat(num);
-      case 'px':
+      case "px":
         return parseFloat(num);
-      case 'pt':
+      case "pt":
         // TODO: Convert correctly from pt.
         return parseFloat(num);
-      case 'pc':
+      case "pc":
         // TODO: Convert correctly from pc.
         return parseFloat(num);
-      case 'cm':
+      case "cm":
         // TODO: Convert correctly from cm.
         return parseFloat(num);
-      case 'mm':
+      case "mm":
         // TODO: Convert correctly from mm.
         return parseFloat(num);
-      case 'in':
+      case "in":
         // TODO: Convert correctly from in.
         return parseFloat(num);
       default:
@@ -59,27 +60,32 @@ export function extractSVGProperties(svg: ElementNode): SVGElementProperties {
   const viewBoxProvided = !!viewBox;
   if (!sizeProvided && !viewBoxProvided) {
     throw new Error(
-      'Width and height or viewBox must be provided on <svg> element!'
+      "Width and height or viewBox must be provided on <svg> element!",
     );
   }
 
   // Validiate and parse view box.
   const viewBoxElements = String(viewBox)
-    .split(' ')
-    .map(n => parseFloat(n));
+    .split(" ")
+    .map((n) => parseFloat(n));
   const [vbx, vby, vbWidth, vbHeight] = viewBoxElements;
-  const viewBoxValid = viewBoxElements.every(value => !isNaN(value));
+  const viewBoxValid = viewBoxElements.every((value) => !isNaN(value));
 
   // Parse width and height with units.
-  const widthUnit = convertToPixels(width || vbWidth);
-  const heightUnit = convertToPixels(height || vbHeight);
+  const widthUnit = convertToPixels(width ?? vbWidth ?? "100");
+  const heightUnit = convertToPixels(height ?? vbHeight ?? "100");
 
   return {
     width: widthUnit,
     height: heightUnit,
     viewBox: viewBoxValid
-      ? {x: vbx, y: vby, width: vbWidth, height: vbHeight} // If view box is provided, use this.
-      : {x: 0, y: 0, width: widthUnit, height: heightUnit}, // Otherwise use width and height.
+      ? {
+          x: vbx ?? 0,
+          y: vby ?? 0,
+          width: vbWidth ?? 100,
+          height: vbHeight ?? 100,
+        } // If view box is provided, use this.
+      : { x: 0, y: 0, width: widthUnit, height: heightUnit }, // Otherwise use width and height.
   };
 }
 
@@ -96,15 +102,15 @@ export function getSVGElement(rootNode: RootNode): ElementNode | undefined {
     const currentNode = frontier.shift();
 
     // Ignore undefined and string nodes.
-    if (currentNode && typeof currentNode !== 'string') {
-      if (currentNode.type === 'root') {
+    if (currentNode && typeof currentNode !== "string") {
+      if (currentNode.type === "root") {
         // Only need children from the root node, so add them
         // to frontier and continue.
         frontier.push(...currentNode.children);
         continue;
-      } else if (currentNode.type === 'element') {
+      } else if (currentNode.type === "element") {
         // If the element node is the svg element, return it.
-        if (currentNode.tagName === 'svg') return currentNode;
+        if (currentNode.tagName === "svg") return currentNode;
 
         // Otherwise push children to the frontier and continue.
         frontier.push(...currentNode.children);
@@ -130,12 +136,12 @@ export function getSVGElement(rootNode: RootNode): ElementNode | undefined {
  */
 export function clampNormalisedSizeProduct(
   value: string,
-  suffix: string
+  suffix: string,
 ): string {
   if (parseFloat(value) === 1) {
     return suffix;
   } else if (parseFloat(value) === 0) {
-    return '0';
+    return "0";
   } else {
     return `${value}*${suffix}`;
   }
@@ -158,7 +164,7 @@ interface RectOrPosition {
  */
 export function normaliseRectValues(
   rect: RectOrPosition,
-  viewBox: ViewBoxData
+  viewBox: ViewBoxData,
 ): RectOrPosition {
   if (rect.width && rect.height) {
     return {
@@ -184,11 +190,11 @@ interface RectOrPositionString {
 
 export function stringifyRectValues(
   rect: RectOrPosition,
-  precision: number
+  precision: number,
 ): RectOrPositionString {
   // Function to convert all numbers the same way.
   const toFixed = (value: number) => {
-    return value.toFixed(precision).replace(/0+$/, '');
+    return value.toFixed(precision).replace(/0+$/, "");
   };
 
   if (!rect.width || !rect.height) {

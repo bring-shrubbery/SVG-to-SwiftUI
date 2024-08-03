@@ -1,0 +1,1 @@
+import "@figma/plugin-typings";

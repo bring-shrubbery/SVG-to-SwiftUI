@@ -1,16 +1,17 @@
-import {ElementNode, parse} from 'svg-parser';
-import {SwiftUIGeneratorConfig, TranspilerOptions} from './types';
+import type { ElementNode } from "svg-parser";
+import { parse } from "svg-parser";
 
-import {handleElement} from './elementHandlers';
-import {extractSVGProperties, getSVGElement} from './utils';
-import {DEFAULT_CONFIG} from './constants';
+import type { SwiftUIGeneratorConfig, TranspilerOptions } from "./types";
+import { DEFAULT_CONFIG } from "./constants";
+import { handleElement } from "./elementHandlers";
 import {
   createFunctionTemplate,
   createStructTemplate,
   createUsageCommentTemplate,
-} from './templates';
+} from "./templates";
+import { extractSVGProperties, getSVGElement } from "./utils";
 
-export * from './types';
+export * from "./types";
 
 /**
  * This function converts SVG string into SwiftUI
@@ -20,7 +21,7 @@ export * from './types';
  */
 export function convert(
   rawSVGString: string,
-  config?: SwiftUIGeneratorConfig
+  config?: SwiftUIGeneratorConfig,
 ): string {
   const AST = parse(rawSVGString);
   const svgElement = getSVGElement(AST);
@@ -28,7 +29,7 @@ export function convert(
     return swiftUIGenerator(svgElement, config);
   } else {
     throw new Error(
-      'Could not find SVG element, please provide full SVG source!'
+      "Could not find SVG element, please provide full SVG source!",
     );
   }
 }
@@ -40,16 +41,16 @@ export function convert(
  */
 function swiftUIGenerator(
   svgElement: ElementNode,
-  config?: SwiftUIGeneratorConfig
+  config?: SwiftUIGeneratorConfig,
 ): string {
   const svgProperties = extractSVGProperties(svgElement);
 
   // The initial options passed to the first element.
   const rootTranspilerOptions: TranspilerOptions = {
     ...svgProperties,
-    precision: config?.precision || 10,
+    precision: config?.precision ?? 10,
     lastPathId: 0,
-    indentationSize: config?.indentationSize || 4,
+    indentationSize: config?.indentationSize ?? 4,
     currentIndentationLevel: 0,
     parentStyle: {},
   };
@@ -63,20 +64,21 @@ function swiftUIGenerator(
   const generatedBody = handleElement(svgElement, rootTranspilerOptions);
 
   const fullSwiftUIShape = createStructTemplate({
-    name: configWithDefaults.structName!,
+    name:
+      configWithDefaults.structName ?? DEFAULT_CONFIG.structName ?? "SVGShape",
     indent: configWithDefaults.indentationSize,
-    returnType: 'Shape',
+    returnType: "Shape",
     body: createFunctionTemplate({
-      name: 'path',
-      parameters: [['in rect', 'CGRect']],
-      returnType: 'Path',
+      name: "path",
+      parameters: [["in rect", "CGRect"]],
+      returnType: "Path",
       indent: configWithDefaults.indentationSize,
       body: [
-        'var path = Path()',
-        'let width = rect.size.width',
-        'let height = rect.size.height',
+        "var path = Path()",
+        "let width = rect.size.width",
+        "let height = rect.size.height",
         ...generatedBody,
-        'return path',
+        "return path",
       ],
     }),
   });
@@ -87,8 +89,8 @@ function swiftUIGenerator(
       viewBox: svgProperties.viewBox,
     });
 
-    return [...usageComment, '', ...fullSwiftUIShape].join('\n');
+    return [...usageComment, "", ...fullSwiftUIShape].join("\n");
   }
 
-  return fullSwiftUIShape.join('\n');
+  return fullSwiftUIShape.join("\n");
 }

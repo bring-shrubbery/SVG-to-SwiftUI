@@ -1,11 +1,6 @@
 "use client";
 
-import { AlertCircleIcon, GripIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   CardContent,
@@ -14,9 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Link from "next/link";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useEffect, useState } from "react";
+import { AlertCircleIcon, GripIcon } from "lucide-react";
 
 const ToolbarExampleItem = ({
   exampleName,
@@ -29,12 +28,12 @@ const ToolbarExampleItem = ({
 }) => {
   return (
     <div
-      className="w-8 h-8 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-600 rounded-md cursor-pointer"
+      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-600"
       onClick={() => onClick(exampleName)}
     >
       <div
         dangerouslySetInnerHTML={{ __html: exampleContent }}
-        className="w-6 h-6"
+        className="h-6 w-6"
       />
     </div>
   );
@@ -52,16 +51,16 @@ export const ToolbarExamples = (props: {
           <span className="ml-2 hidden sm:inline">Examples</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 mx-4">
+      <PopoverContent className="mx-4 w-96">
         <CardHeader className="px-0 pt-0">
           <CardTitle>Examples</CardTitle>
           <CardDescription>
             Pick one of the example icons to see this tool in action.
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-0 w-full h-48">
+        <CardContent className="h-48 w-full px-0">
           <ScrollArea className="h-44">
-            <div className="w-full grid gap-2 grid-cols-8">
+            <div className="grid w-full grid-cols-8 gap-2">
               {props.exampleList.map(({ example, content }, i) => (
                 <ToolbarExampleItem
                   key={i}
@@ -75,7 +74,7 @@ export const ToolbarExamples = (props: {
         </CardContent>
 
         <CardFooter className="p-0 text-sm text-red-600">
-          <AlertCircleIcon className="w-6 h-6 mr-2 p-0" />
+          <AlertCircleIcon className="mr-2 h-6 w-6 p-0" />
           <span>
             Icons in this list are coming from{" "}
             <Link

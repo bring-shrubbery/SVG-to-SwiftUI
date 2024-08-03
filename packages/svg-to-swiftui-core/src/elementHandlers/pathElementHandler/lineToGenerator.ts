@@ -1,20 +1,20 @@
-import {clampNormalisedSizeProduct, stringifyRectValues} from '../../utils';
-import {SwiftGenerator} from '../types';
+import type { SwiftGenerator } from "../types";
+import { clampNormalisedSizeProduct, stringifyRectValues } from "../../utils";
 
-export const generateLineToSwift: SwiftGenerator<{x: number; y: number}> = (
+export const generateLineToSwift: SwiftGenerator<{ x: number; y: number }> = (
   data,
-  options
+  options,
 ) => {
   const xy = stringifyRectValues(
     {
       x: data.x / options.viewBox.width,
       y: data.y / options.viewBox.height,
     },
-    options.precision
+    options.precision,
   );
 
-  const new_x = clampNormalisedSizeProduct(xy.x, 'width');
-  const new_y = clampNormalisedSizeProduct(xy.y, 'height');
+  const new_x = clampNormalisedSizeProduct(xy.x, "width");
+  const new_y = clampNormalisedSizeProduct(xy.y, "height");
 
   return [`path.addLine(to: CGPoint(x: ${new_x}, y: ${new_y}))`];
 };

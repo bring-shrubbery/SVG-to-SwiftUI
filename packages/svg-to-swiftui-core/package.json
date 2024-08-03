@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
+  "type": "module",
   "files": [
     "dist"
   ],
@@ -43,18 +44,18 @@
     "@svg-to-swiftui/eslint-config": "workspace:*",
     "@svg-to-swiftui/prettier-config": "workspace:*",
     "@svg-to-swiftui/tsconfig": "workspace:*",
-    "@swc/core": "^1.6.5",
+    "@swc/core": "^1.7.5",
     "@swc/jest": "^0.2.36",
     "@types/hast": "^3.0.4",
     "@types/jest": "^29.5.12",
     "@types/node": "catalog:",
     "@types/svg-parser": "^2.0.6",
-    "@typescript-eslint/parser": "^7.13.1",
+    "@typescript-eslint/parser": "^8.0.0",
     "eslint": "catalog:",
     "jest": "^29.7.0",
     "prettier": "catalog:",
-    "ts-jest": "^29.1.5",
-    "tsup": "catalog:",
+    "ts-jest": "^29.2.4",
+    "tsup": "^8.2.4",
     "typescript": "catalog:"
   },
   "dependencies": {

@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import {SwiftGenerator} from '../types';
+import type { SwiftGenerator } from "../types";
 
 export const generateClosePathSwift: SwiftGenerator<unknown> = (
   _data,
-  _options
+  _options,
 ) => {
-  return ['path.closeSubpath()'];
+  return ["path.closeSubpath()"];
 };

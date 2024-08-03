@@ -1,7 +1,7 @@
 "use client";
 
 import type { LinkProps } from "next/link";
-import { PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 import Link from "next/link";
 import { toggleVariants } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";

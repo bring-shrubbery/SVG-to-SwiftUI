@@ -1,4 +1,4 @@
-import {SwiftUIGeneratorConfig, ViewBoxData} from './types';
+import type { SwiftUIGeneratorConfig, ViewBoxData } from "./types";
 
 export const createUsageCommentTemplate = ({
   config,
@@ -7,19 +7,25 @@ export const createUsageCommentTemplate = ({
   config: SwiftUIGeneratorConfig;
   viewBox: ViewBoxData;
 }) => [
-  '// To use this shape, just add it to your SwiftUI View:',
+  "// To use this shape, just add it to your SwiftUI View:",
   `// ${config.structName}().fill().frame(width: ${viewBox.width}, height: ${viewBox.height})`,
 ];
 
 type ParameterName = string;
 type ParameterType = string;
 
-const indentStrings = ({indent, body}: {indent: number; body: string[]}) => {
-  return body.map(row => `${new Array(indent).fill(' ').join('')}${row}`);
+const indentStrings = ({
+  indent,
+  body,
+}: {
+  indent: number;
+  body: string[];
+}) => {
+  return body.map((row) => `${new Array(indent).fill(" ").join("")}${row}`);
 };
 
 const parametersToStrings = (parameters: [ParameterName, ParameterType][]) => {
-  return parameters.map(([name, type]) => `${name}: ${type}`).join(', ');
+  return parameters.map(([name, type]) => `${name}: ${type}`).join(", ");
 };
 
 export const createFunctionTemplate = ({
@@ -39,7 +45,7 @@ export const createFunctionTemplate = ({
 
   return [
     `func ${name}(${parametersString}) -> ${returnType} {`,
-    ...indentStrings({body, indent}),
+    ...indentStrings({ body, indent }),
     `}`,
   ];
 };
@@ -57,7 +63,7 @@ export const createStructTemplate = ({
 }) => {
   return [
     `struct ${name}: ${returnType} {`,
-    ...indentStrings({body, indent}),
+    ...indentStrings({ body, indent }),
     `}`,
   ];
 };

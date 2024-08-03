@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import type { PropsWithChildren } from "react";
 import { Inter } from "next/font/google";
 import Script from "next/script";
-import { AnalyticsProvider } from "@/components/analytics";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { Analytics } from "@vercel/analytics/react";
@@ -84,7 +83,6 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <Providers>{children}</Providers>
         <Toaster />
         <Analytics />
-        <AnalyticsProvider />
       </body>
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}

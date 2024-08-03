@@ -1,15 +1,16 @@
-import {ElementNode} from 'svg-parser';
-import {SVGEllipseAttributes} from '../svgTypes';
-import {TranspilerOptions} from '../types';
+import type { ElementNode } from "svg-parser";
+
+import type { SVGEllipseAttributes } from "../svgTypes";
+import type { TranspilerOptions } from "../types";
 import {
   clampNormalisedSizeProduct,
   normaliseRectValues,
   stringifyRectValues,
-} from '../utils';
+} from "../utils";
 
 export default function handleEllipseElement(
   element: ElementNode,
-  options: TranspilerOptions
+  options: TranspilerOptions,
 ): string[] {
   // TODO: style
   const props = element.properties;
@@ -24,7 +25,7 @@ export default function handleEllipseElement(
       !ellipseProps.ry
     ) {
       throw new Error(
-        'Ellipse element has to contain cx, cy, rx and ry properties!'
+        "Ellipse element has to contain cx, cy, rx and ry properties!",
       );
     }
 
@@ -42,21 +43,24 @@ export default function handleEllipseElement(
 
     // Normalization
     const normalizedRect = normaliseRectValues(
-      {x, y, width, height},
-      options.viewBox
+      { x, y, width, height },
+      options.viewBox,
     );
 
     const SR = stringifyRectValues(normalizedRect, options.precision);
-    const strX = clampNormalisedSizeProduct(SR.x, 'width');
-    const strY = clampNormalisedSizeProduct(SR.y, 'height');
-    const strWidth = clampNormalisedSizeProduct(SR.width!, 'width');
-    const strHeight = clampNormalisedSizeProduct(SR.height!, 'height');
+    const strX = clampNormalisedSizeProduct(SR.x, "width");
+    const strY = clampNormalisedSizeProduct(SR.y, "height");
+    const strWidth = clampNormalisedSizeProduct(SR.width ?? "unknown", "width");
+    const strHeight = clampNormalisedSizeProduct(
+      SR.height ?? "unknown",
+      "height",
+    );
 
     // Generate SwiftUI string
     const CGrect = `CGRect(x: ${strX}, y: ${strY}, width: ${strWidth}, height: ${strHeight})`;
 
     return [`path.addEllipse(in: ${CGrect})`];
   } else {
-    throw new Error('Ellipse element has to some properties');
+    throw new Error("Ellipse element has to some properties");
   }
 }

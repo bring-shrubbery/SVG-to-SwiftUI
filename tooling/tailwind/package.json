@@ -16,14 +16,14 @@
   },
   "dependencies": {
     "postcss": "catalog:",
-    "tailwindcss": "catalog:",
+    "tailwindcss": "^3.4.7",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
     "@svg-to-swiftui/eslint-config": "workspace:*",
     "@svg-to-swiftui/prettier-config": "workspace:*",
     "@svg-to-swiftui/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:"

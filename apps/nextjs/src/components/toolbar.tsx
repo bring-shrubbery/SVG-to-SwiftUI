@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { TooltipArrow } from "@radix-ui/react-tooltip";
 import { ArrowLeftRightIcon, ClipboardIcon } from "lucide-react";
 // import { ToolbarExamples } from "./toolbar-examples";
 import useLocalStorage from "use-local-storage";
