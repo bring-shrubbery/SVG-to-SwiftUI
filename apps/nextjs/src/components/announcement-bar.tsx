@@ -1,6 +1,5 @@
 "use client";
 
-import type { MouseEventHandler } from "react";
 import Link from "next/link";
 import { atom, useAtom } from "jotai";
 import { XIcon } from "lucide-react";

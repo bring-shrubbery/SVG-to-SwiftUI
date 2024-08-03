@@ -11,6 +11,10 @@
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "module": "esnext"
   },
-  "include": [".", ".next/types/**/*.ts"],
+  "include": [
+    ".",
+    ".next/types/**/*.ts",
+    "../../packages/svg-to-swiftui-core/eslint.config copy.js"
+  ],
   "exclude": ["node_modules"]
 }
