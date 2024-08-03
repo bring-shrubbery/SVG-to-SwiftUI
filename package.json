@@ -22,7 +22,6 @@
   "devDependencies": {
     "@changesets/cli": "^2.27.5",
     "@svg-to-swiftui/prettier-config": "workspace:*",
-    "@turbo/gen": "^2.0.4",
     "prettier": "^3.3.2",
     "turbo": "^2.0.4",
     "typescript": "^5.5.2"
@@ -30,6 +29,6 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@8.15.5",
+  "packageManager": "pnpm@9.6.0",
   "prettier": "@svg-to-swiftui/prettier-config"
 }

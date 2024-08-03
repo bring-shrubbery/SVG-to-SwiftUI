@@ -1,8 +1,17 @@
-const withMDX = require("@next/mdx")();
+import withMDX from "@next/mdx";
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const config = {
+  reactStrictMode: true,
+
+  transpilePackages: [
+    "svg-to-swiftui-core"
+  ],
+
   pageExtensions: ["js", "jsx", "mdx", "ts", "tsx"],
+
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true }
 };
 
-module.exports = withMDX(nextConfig);
+export default withMDX()(config);

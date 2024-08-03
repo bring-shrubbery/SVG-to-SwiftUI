@@ -11,7 +11,7 @@ const config = {
     "prettier-plugin-tailwindcss",
   ],
   tailwindConfig: fileURLToPath(
-    new URL("../../tooling/tailwind/web.ts", import.meta.url)
+    new URL("../../tooling/tailwind/web.ts", import.meta.url),
   ),
   tailwindFunctions: ["cn", "cva"],
   importOrder: [
@@ -21,8 +21,8 @@ const config = {
     "^(expo(.*)$)|^(expo$)",
     "<THIRD_PARTY_MODULES>",
     "",
-    "<TYPES>^@svg-to-swiftui",
-    "^@svg-to-swiftui/(.*)$",
+    "<TYPES>^@acme",
+    "^@acme/(.*)$",
     "",
     "<TYPES>^[.|..|~]",
     "^~/",
@@ -31,6 +31,20 @@ const config = {
   ],
   importOrderParserPlugins: ["typescript", "jsx", "decorators-legacy"],
   importOrderTypeScriptVersion: "4.4.0",
+  overrides: [
+    {
+      files: "*.json.hbs",
+      options: {
+        parser: "json",
+      },
+    },
+    {
+      files: "*.js.hbs",
+      options: {
+        parser: "babel",
+      },
+    },
+  ],
 };
 
 export default config;

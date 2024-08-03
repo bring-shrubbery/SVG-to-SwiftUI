@@ -17,7 +17,7 @@
     "@swc/jest": "^0.2.36",
     "@types/hast": "^3.0.4",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.14.8",
+    "@types/node": "catalog:",
     "@types/svg-parser": "^2.0.6",
     "@typescript-eslint/parser": "^7.13.1",
     "eslint": "^8.57.0",

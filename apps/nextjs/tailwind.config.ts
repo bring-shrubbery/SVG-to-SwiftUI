@@ -1,8 +1,11 @@
-const { fontFamily } = require("tailwindcss/defaultTheme");
+import type { Config } from "tailwindcss";
+import { fontFamily } from "tailwindcss/defaultTheme";
 
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: ["class"],
+import baseConfig from "@svg-to-swiftui/tailwind-config/web";
+
+export default {
+  // We need to append the path to the UI package to the content array so that
+  // those classes are included correctly.
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -10,14 +13,8 @@ module.exports = {
     "./src/**/*.{ts,tsx}",
     "./mdx-components.tsx",
   ],
+  presets: [baseConfig],
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
       fontFamily: {
         sans: ["var(--font-sans)", ...fontFamily.sans],
@@ -64,12 +61,12 @@ module.exports = {
       },
       keyframes: {
         "accordion-down": {
-          from: { height: 0 },
+          from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
+          to: { height: "0" },
         },
       },
       animation: {
@@ -79,4 +76,4 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
-};
+} satisfies Config;

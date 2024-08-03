@@ -12,13 +12,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ianvs/prettier-plugin-sort-imports": "^4.2.1",
-    "prettier": "^3.3.2",
+    "@ianvs/prettier-plugin-sort-imports": "^4.3.0",
+    "prettier": "catalog:",
     "prettier-plugin-tailwindcss": "^0.6.5"
   },
   "devDependencies": {
     "@svg-to-swiftui/tsconfig": "workspace:*",
-    "typescript": "^5.5.2"
+    "typescript": "catalog:"
   },
   "prettier": "@svg-to-swiftui/prettier-config"
 }
