@@ -2,7 +2,8 @@ import "./globals.css";
 import "allotment/dist/style.css";
 
 import type { Metadata } from "next";
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import { Toaster } from "@/components/ui/toaster";
@@ -71,7 +72,10 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RootLayout({ children }: PropsWithChildren) {
+export default function RootLayout({
+  children,
+  announcement,
+}: PropsWithChildren<{ announcement: ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -80,7 +84,10 @@ export default function RootLayout({ children }: PropsWithChildren) {
           fontSans.variable,
         )}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense>{announcement}</Suspense>
+          {children}
+        </Providers>
         <Toaster />
         <Analytics />
       </body>

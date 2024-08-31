@@ -10,6 +10,9 @@ import { QuassumType } from "./icons/quassum-type";
 import { SVGtoSwiftUILogo } from "./icons/S2SLogo";
 
 export function Navbar({ githubStars }: { githubStars?: number }) {
+  // Active after September 17th 2024
+  const isProductHuntActive = Date.now() > new Date("2024-09-17").getTime();
+
   return (
     <header className="flex w-full select-none items-center justify-between px-6 py-2">
       {/* Left side content */}
@@ -23,7 +26,7 @@ export function Navbar({ githubStars }: { githubStars?: number }) {
               WebkitTextFillColor: "transparent",
             }}
           >
-            SVG to SwiftUI
+            {"SVG to SwiftUI"}
           </h1>
 
           <Link
@@ -40,21 +43,36 @@ export function Navbar({ githubStars }: { githubStars?: number }) {
 
       {/* Right side content */}
       <div className="flex items-center">
-        <Link
-          href="https://github.com/sponsors/bring-shrubbery"
-          className="mx-4 hidden overflow-hidden rounded-lg border-2 border-transparent md:block"
-        >
+        {isProductHuntActive ? (
+          <a
+            href="https://www.producthunt.com/posts/svg-to-swiftui-converter?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-svg&#0045;to&#0045;swiftui&#0045;converter"
+            target="_blank"
+            className="mx-4 hidden md:block"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=485547&theme=dark"
+              alt="SVG&#0032;to&#0032;SwiftUI&#0032;Converter - SVG&#0032;icons&#0032;in&#0032;your&#0032;SwiftUI&#0032;project&#0032;in&#0032;a&#0032;minute&#0033; | Product Hunt"
+              style={{ width: "176px", height: "38px" }}
+              width="170"
+              height="36"
+            />
+          </a>
+        ) : (
           <Button
             variant="secondary"
-            className="group flex gap-2 border border-zinc-200 dark:border-zinc-700"
+            className="group mx-4 hidden gap-2 overflow-hidden rounded-lg border border-transparent border-zinc-200 dark:border-zinc-700 md:flex"
+            asChild
           >
-            <HeartIcon
-              size={20}
-              className="h-5 w-5 min-w-5 text-pink-500 transition-transform group-hover:scale-110"
-            />
-            Sponsor
+            <Link href="https://github.com/sponsors/bring-shrubbery">
+              <HeartIcon
+                size={20}
+                className="-ml-1 h-5 w-5 min-w-5 text-pink-500 transition-transform group-hover:scale-110"
+              />
+              Sponsor
+            </Link>
           </Button>
-        </Link>
+        )}
 
         {githubStars && <StarOnGithubButton githubStars={githubStars} />}
 

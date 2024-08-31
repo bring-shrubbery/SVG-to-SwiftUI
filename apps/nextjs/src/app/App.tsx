@@ -2,7 +2,6 @@
 
 import type { editor } from "monaco-editor";
 import { useEffect, useRef, useState } from "react";
-import { announcementBarAtom } from "@/components/announcement-bar";
 import { Toolbar } from "@/components/toolbar";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -30,15 +29,11 @@ export const App = ({
   const [svgValue, setSvgValue] = useState<string | undefined>("");
 
   // Hooks
-
   const { toast } = useToast();
   const { theme } = useTheme();
   const monaco = useMonaco();
 
-  const [announcementBarHidden] = useAtom(announcementBarAtom);
-  const height = announcementBarHidden
-    ? "min-h-[calc(100vh-136px)]"
-    : "min-h-[calc(100vh-200px)]";
+  const height = "min-h-[calc(100vh-200px)]";
 
   const [result, setResult] = useState("");
 
