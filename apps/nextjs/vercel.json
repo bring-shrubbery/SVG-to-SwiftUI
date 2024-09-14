@@ -4,6 +4,10 @@
     {
       "source": "/stats/:match*",
       "destination": "https://analytics.quassum.com/:match*"
+    },
+    {
+      "source": "/plausible/:match*",
+      "destination": "https://plausible.io/:match*"
     }
   ]
 }
