@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "postcss": "catalog:",
-    "tailwindcss": "^3.4.10",
+    "tailwindcss": "^3.4.11",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
