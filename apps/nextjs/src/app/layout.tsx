@@ -82,7 +82,7 @@ export default function RootLayout({
         <script
           defer
           data-domain="svg-to-swiftui.quassum.com"
-          src="/plausible/js/script.hash.outbound-links.pageview-props.tagged-events.js"
+          src="https://plausible.io/js/script.hash.outbound-links.pageview-props.tagged-events.js"
         />
         <script
           dangerouslySetInnerHTML={{
