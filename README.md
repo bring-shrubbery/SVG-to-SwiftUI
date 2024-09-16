@@ -4,7 +4,7 @@
 
 Tool to convert SVG to SwiftUI's Shape structure. This approach is much more memory efficient than introducing a SVG library for rendering.
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/bring.shrubbery)
+<a href="https://www.producthunt.com/posts/svg-to-swiftui-converter?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-svg&#0045;to&#0045;swiftui&#0045;converter" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=485547&theme=dark" alt="SVG&#0032;to&#0032;SwiftUI&#0032;Converter - SVG&#0032;icons&#0032;in&#0032;your&#0032;SwiftUI&#0032;project&#0032;in&#0032;a&#0032;minute&#0033; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 ## Disclaimer (Before you use this tool)
 
@@ -55,6 +55,8 @@ It's saved as `content/demo-plus.svg` file in this repository. You can see below
 ## Author
 
 [Antoni Silvestrovic](https://github.com/bring-shrubbery)
+
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/bring.shrubbery)
 
 ## License
 
