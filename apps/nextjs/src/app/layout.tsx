@@ -78,19 +78,6 @@ export default function RootLayout({
 }: PropsWithChildren<{ announcement: ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          defer
-          data-domain="svg-to-swiftui.quassum.com"
-          src="https://plausible.io/js/script.hash.outbound-links.pageview-props.tagged-events.js"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }`,
-          }}
-        />
-      </head>
-
       <body
         className={cn(
           "h-screen w-full bg-background font-sans text-foreground antialiased",

@@ -15,6 +15,7 @@ import { Allotment } from "allotment";
 import { useAtom } from "jotai";
 import LIGHT_THEME from "monaco-themes/themes/IDLE.json";
 import DARK_THEME from "monaco-themes/themes/idleFingers.json";
+import { usePlausible } from "next-plausible";
 import { useTheme } from "next-themes";
 import { convert } from "svg-to-swiftui-core";
 import urlJoin from "url-join";
@@ -25,6 +26,8 @@ export const App = ({
 }: {
   exampleList: { example: string; content: string }[];
 }) => {
+  const plausible = usePlausible();
+
   const svgRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const [svgValue, setSvgValue] = useState<string | undefined>("");
 
@@ -58,12 +61,16 @@ export const App = ({
       });
 
       setResult(res);
+
+      plausible("convert_success");
     } catch (e) {
       toast({
         title: "Conversion error",
         description: String(e),
         variant: "destructive",
       });
+
+      plausible("convert_fail", { props: { svgCode } });
     }
   };
 
