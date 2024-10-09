@@ -27,6 +27,8 @@ export const Toolbar = ({
   onConvert,
   onCopyResult,
 }: ToolbarProps) => {
+  const [analyticsAccepted] = useLocalStorage("analytics_accepted", false);
+
   const [didConvertOnce, setDidConvertOnce] = useLocalStorage(
     "didConvertOnce",
     "",
@@ -41,13 +43,16 @@ export const Toolbar = ({
 
       <div className="flex gap-2">
         <TooltipProvider>
-          <Tooltip defaultOpen={!didConvertOnce}>
+          <Tooltip defaultOpen={!didConvertOnce || !analyticsAccepted}>
             <TooltipTrigger asChild>
               <Button
                 onClick={() => {
+                  if (!analyticsAccepted) return;
+
                   onConvert();
                   setDidConvertOnce("true");
                 }}
+                disabled={!analyticsAccepted}
               >
                 <ArrowLeftRightIcon className="mr-2 h-4 w-4" />
                 Convert
@@ -55,12 +60,18 @@ export const Toolbar = ({
             </TooltipTrigger>
 
             <TooltipContent side="left">
-              {'Paste SVG below and click "Convert" to get SwiftUI code.'}
+              {!analyticsAccepted
+                ? "Click accept on analytics popup before converting."
+                : 'Paste SVG below and click "Convert" to get SwiftUI code.'}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
-        <Button variant="outline" onClick={onCopyResult}>
+        <Button
+          variant="outline"
+          onClick={onCopyResult}
+          disabled={!analyticsAccepted}
+        >
           <ClipboardIcon className="mr-2 h-4 w-4" />
           Copy result
         </Button>

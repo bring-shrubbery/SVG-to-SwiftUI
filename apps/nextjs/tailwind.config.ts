@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
-import { fontFamily } from "tailwindcss/defaultTheme";
-
 import baseConfig from "@svg-to-swiftui/tailwind-config/web";
+import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
   // We need to append the path to the UI package to the content array so that
@@ -68,10 +67,16 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "background-position-spin": {
+          "0%": { backgroundPosition: "top center" },
+          "100%": { backgroundPosition: "bottom center" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "background-position-spin":
+          "background-position-spin 3000ms infinite alternate",
       },
     },
   },
