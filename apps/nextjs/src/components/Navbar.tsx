@@ -16,18 +16,22 @@ export function Navbar({ githubStars }: { githubStars?: number }) {
   return (
     <header className="flex w-full select-none items-center justify-between px-6 py-2">
       {/* Left side content */}
-      <div className="flex h-full items-center">
-        <SVGtoSwiftUILogo width={64} height={64} className="h-16 w-16" />
+      <div className="flex h-full w-fit items-center">
+        <a href="/" className="block">
+          <SVGtoSwiftUILogo width={64} height={64} className="h-16 w-16" />
+        </a>
 
         <div className="relative hidden sm:block">
-          <h1
-            className="bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text pl-3 pt-1 text-4xl font-bold"
-            style={{
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {"SVG to SwiftUI"}
-          </h1>
+          <a href="/">
+            <h1
+              className="bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text pl-3 pt-1 text-4xl font-bold"
+              style={{
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              {"SVG to SwiftUI"}
+            </h1>
+          </a>
 
           <Link
             href="https://quassum.com/?utm_source=svg-to-swiftui"

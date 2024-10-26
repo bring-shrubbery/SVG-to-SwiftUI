@@ -25,10 +25,10 @@ export const metadata: Metadata = {
     "SVG to SwiftUI converter let's you convert raw svg code into a SwiftUI Shape structure. Just paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app!",
   robots: {
     index: true,
-    follow: false,
+    follow: true,
     googleBot: {
       index: true,
-      follow: false,
+      follow: true,
     },
   },
   category: "Development tools",
@@ -53,6 +53,9 @@ export const metadata: Metadata = {
   keywords: [
     "how to convert svg to swiftui",
     "how to get svg into swift code",
+    "import svg into swiftui",
+    "import svg into xcode",
+    "svg on ios",
     "svg",
     "swiftui",
     "converter",
@@ -71,6 +74,7 @@ export const metadata: Metadata = {
     "convert svg to swift",
     "ios",
   ],
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
