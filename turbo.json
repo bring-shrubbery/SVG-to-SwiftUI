@@ -21,6 +21,11 @@
       "dependsOn": ["^topo", "^build"],
       "outputs": ["node_modules/.cache/.eslintcache"]
     },
+    "test": {
+      "dependsOn": ["^topo", "^build"],
+      "outputs": ["node_modules/.cache/.jestcache"],
+      "outputLogs": "new-only"
+    },
     "typecheck": {
       "dependsOn": ["^topo", "^build"],
       "outputs": ["node_modules/.cache/tsbuildinfo.json"]

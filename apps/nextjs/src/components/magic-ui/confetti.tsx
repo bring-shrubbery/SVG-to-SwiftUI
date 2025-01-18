@@ -1,9 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { ButtonProps } from "@/components/ui/button";
 import type {
   GlobalOptions as ConfettiGlobalOptions,
@@ -52,6 +46,7 @@ const Confetti = forwardRef<ConfettiRef, Props>((props, ref) => {
     // https://react.dev/reference/react-dom/components/common#ref-callback
     // https://reactjs.org/docs/refs-and-the-dom.html#callback-refs
     (node: HTMLCanvasElement) => {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (node !== null) {
         // <canvas> is mounted => create the confetti instance
         if (instanceRef.current) return; // if not already created
@@ -87,7 +82,7 @@ const Confetti = forwardRef<ConfettiRef, Props>((props, ref) => {
 
   useEffect(() => {
     if (!manualstart) {
-      fire();
+      fire()?.catch(console.error);
     }
   }, [manualstart, fire]);
 
@@ -110,13 +105,14 @@ function ConfettiButton({ options, children, ...props }: ConfettiButtonProps) {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
+
     confetti({
       ...options,
       origin: {
         x: x / window.innerWidth,
         y: y / window.innerHeight,
       },
-    });
+    })?.catch(console.error);
   };
 
   return (
