@@ -1,7 +1,7 @@
 export default {
-  testEnvironment: 'node',
-  rootDir: 'src',
+  testEnvironment: "node",
+  rootDir: "src",
   transform: {
-    '^.+\\.(t|j)sx?$': ['@swc/jest'],
+    "^.+\\.(t|j)sx?$": ["@swc/jest"],
   },
 };

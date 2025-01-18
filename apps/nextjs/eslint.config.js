@@ -1,4 +1,6 @@
-import baseConfig, { restrictEnvAccess } from "@svg-to-swiftui/eslint-config/base";
+import baseConfig, {
+  restrictEnvAccess,
+} from "@svg-to-swiftui/eslint-config/base";
 import nextjsConfig from "@svg-to-swiftui/eslint-config/nextjs";
 import reactConfig from "@svg-to-swiftui/eslint-config/react";
 

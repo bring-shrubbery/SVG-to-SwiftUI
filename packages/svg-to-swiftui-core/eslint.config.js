@@ -1,4 +1,6 @@
-import baseConfig, { restrictEnvAccess } from "@svg-to-swiftui/eslint-config/base";
+import baseConfig, {
+  restrictEnvAccess,
+} from "@svg-to-swiftui/eslint-config/base";
 
 /** @type {import('typescript-eslint').Config} */
 export default [
