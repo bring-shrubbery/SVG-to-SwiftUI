@@ -9,10 +9,10 @@ export default async function Layout({ children }: PropsWithChildren) {
 
   return (
     <>
-      <Navbar githubStars={githubStars} />
+      <Navbar githubStars={githubStars} sticky />
 
       <main className="w-full bg-white dark:bg-background">
-        <article className="prose prose-zinc dark:prose-invert mx-auto max-w-screen-md px-4 pb-32 pt-12">
+        <article className="prose prose-zinc dark:prose-invert mx-auto max-w-screen-md px-4 pb-32 pt-32">
           {children}
         </article>
       </main>

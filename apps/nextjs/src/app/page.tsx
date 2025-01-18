@@ -14,9 +14,8 @@ export default async function Home() {
     <>
       <Navbar githubStars={githubStars} />
       <main>
-        <App exampleList={[]} />
+        <App />
       </main>
-      {/* <ConsentToast /> */}
     </>
   );
 }

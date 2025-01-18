@@ -14,7 +14,7 @@ export const AnnouncementProductHuntOutNow = () => {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Check it out!
+          Upvote us!
         </a>{" "}
         {"💛"}
       </AnnouncementContainer>

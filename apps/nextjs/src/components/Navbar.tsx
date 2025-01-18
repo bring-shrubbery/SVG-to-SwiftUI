@@ -9,12 +9,23 @@ import { DarkModeToggle } from "./darkmode-toggle";
 import { QuassumType } from "./icons/quassum-type";
 import { SVGtoSwiftUILogo } from "./icons/S2SLogo";
 
-export function Navbar({ githubStars }: { githubStars?: number }) {
+export function Navbar({
+  githubStars,
+  sticky,
+}: {
+  githubStars?: number;
+  sticky?: boolean;
+}) {
   // Active after September 17th 2024
   const isProductHuntActive = Date.now() > new Date("2024-09-17").getTime();
 
   return (
-    <header className="flex w-full select-none items-center justify-between px-6 py-2">
+    <header
+      className={cn(
+        "flex w-full select-none items-center justify-between px-6 py-2",
+        sticky && "fixed top-0 z-50 w-full bg-white dark:bg-background",
+      )}
+    >
       {/* Left side content */}
       <div className="flex h-full w-fit items-center">
         <a href="/" className="block">

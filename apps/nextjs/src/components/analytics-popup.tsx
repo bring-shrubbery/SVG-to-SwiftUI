@@ -53,13 +53,12 @@ export const AnalyticsPopup = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  if (analyticsAccepted) return null;
-
   return (
     <NeonGradientCard
       className={cn(
         "fixed bottom-4 left-4 h-fit min-h-48 w-[400px] p-0 opacity-100 transition-opacity",
         status === "hidden" && "opacity-0",
+        analyticsAccepted && "hidden",
       )}
     >
       <div className="space-y-2">
@@ -82,7 +81,11 @@ export const AnalyticsPopup = () => {
           </div>
 
           <div className="relative flex w-fit gap-2">
-            <Button onClick={handleAccept} className="gap-2">
+            <Button
+              onClick={handleAccept}
+              className="gap-2"
+              disabled={!!analyticsAccepted}
+            >
               <StatusIcon status={status} />
               Accept
             </Button>

@@ -18,14 +18,8 @@ import DARK_THEME from "monaco-themes/themes/idleFingers.json";
 import { usePlausible } from "next-plausible";
 import { useTheme } from "next-themes";
 import { convert } from "svg-to-swiftui-core";
-import urlJoin from "url-join";
-import xmlFormat from "xml-formatter";
 
-export const App = ({
-  exampleList,
-}: {
-  exampleList: { example: string; content: string }[];
-}) => {
+export const App = () => {
   const plausible = usePlausible();
 
   const svgRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -63,6 +57,8 @@ export const App = ({
       setResult(res);
 
       plausible("convert_success");
+
+      handleCopyResult();
     } catch (e) {
       toast({
         title: "Conversion error",
@@ -92,17 +88,6 @@ export const App = ({
       });
   };
 
-  const handleExampleSelect = (iconName: string) => {
-    fetch(urlJoin("/lucide", iconName))
-      .then((res) => res.text())
-      .then((text) => {
-        const formattedSVG = xmlFormat(text);
-        svgRef.current?.setValue(formattedSVG);
-        svgRef.current?.focus();
-      })
-      .catch(console.error);
-  };
-
   // Effects
 
   useEffect(() => {
@@ -111,12 +96,7 @@ export const App = ({
 
   return (
     <>
-      <Toolbar
-        exampleList={exampleList}
-        onConvert={handleConvert}
-        onCopyResult={handleCopyResult}
-        onExampleSelect={handleExampleSelect}
-      />
+      <Toolbar onConvert={handleConvert} />
 
       <Allotment className={cn(height)}>
         <Allotment.Pane className={cn(height, "relative")}>
@@ -147,7 +127,7 @@ export const App = ({
             onChange={(val) => setSvgValue(val)}
           />
           {!svgValue && (
-            <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 font-light italic text-muted-foreground">
+            <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 select-none font-light italic text-muted-foreground">
               Paste your SVG here
             </div>
           )}
@@ -165,7 +145,7 @@ export const App = ({
             language="swift"
           />
           {!result && (
-            <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 font-light italic text-muted-foreground">
+            <div className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 select-none font-light italic text-muted-foreground">
               SwiftUI code will appear here
             </div>
           )}
