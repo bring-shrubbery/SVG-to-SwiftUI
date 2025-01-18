@@ -58,7 +58,7 @@ export const AnalyticsPopup = () => {
   return (
     <NeonGradientCard
       className={cn(
-        "fixed bottom-4 left-4 h-fit w-[400px] p-0 opacity-100 transition-opacity",
+        "fixed bottom-4 left-4 h-fit min-h-48 w-[400px] p-0 opacity-100 transition-opacity",
         status === "hidden" && "opacity-0",
       )}
     >
