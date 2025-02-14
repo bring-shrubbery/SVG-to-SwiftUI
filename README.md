@@ -54,7 +54,7 @@ It's saved as `content/demo-plus.svg` file in this repository. You can see below
 
 ## Author
 
-Please consider following this project's author, Antoni Silvestrovič on [Github](https://github.com/bring-shrubbery) or [Bluesky](https://bsky.app/profile/bring-shrubbery.bsky.social), and consider starring the project to show your ❤️ and support.
+Please consider following this project's author, Antoni Silvestrovič on [Github](https://github.com/bring-shrubbery) or [Bluesky](https://bsky.app/profile/bring-shrubbery.bsky.social), or by starring the project to show your ❤️ and support.
 
 ## License
 
