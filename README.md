@@ -54,9 +54,7 @@ It's saved as `content/demo-plus.svg` file in this repository. You can see below
 
 ## Author
 
-[Antoni Silvestrovic](https://github.com/bring-shrubbery)
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/bring.shrubbery)
+Please consider following this project's author, Antoni Silvestrovič on [Github](https://github.com/bring-shrubbery) or [Bluesky](https://bsky.app/profile/bring-shrubbery.bsky.social), and consider starring the project to show your ❤️ and support.
 
 ## License
 
