@@ -20,7 +20,7 @@
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.12",
+    "@changesets/cli": "^2.28.0",
     "@svg-to-swiftui/prettier-config": "workspace:*",
     "prettier": "^3.5.1",
     "turbo": "^2.4.2",
