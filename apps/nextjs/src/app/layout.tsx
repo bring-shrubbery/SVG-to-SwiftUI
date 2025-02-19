@@ -6,7 +6,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import Script from "next/script";
-import { AnalyticsPopup } from "@/components/analytics-popup";
+import { AnalyticsPopupDynamic } from "@/components/analytics-popup.dynamic";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { Analytics } from "@vercel/analytics/react";
@@ -103,9 +103,7 @@ export default function RootLayout({
         <Toaster />
         <Analytics />
 
-        <Suspense>
-          <AnalyticsPopup />
-        </Suspense>
+        <AnalyticsPopupDynamic />
       </body>
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}

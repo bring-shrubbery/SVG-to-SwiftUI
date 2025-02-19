@@ -18,7 +18,6 @@ export interface ToolbarProps {
 }
 
 export const Toolbar = ({ onConvert }: ToolbarProps) => {
-  const [analyticsAccepted] = useLocalStorage("analytics_accepted", false);
   const [didConvertOnce, setDidConvertOnce] = useLocalStorage(
     "didConvertOnce",
     false,
@@ -34,16 +33,13 @@ export const Toolbar = ({ onConvert }: ToolbarProps) => {
 
       <div className="flex gap-2">
         <TooltipProvider>
-          <Tooltip defaultOpen={!didConvertOnce || !analyticsAccepted}>
+          <Tooltip defaultOpen={!didConvertOnce}>
             <Button
               asChild
               onClick={() => {
-                if (!analyticsAccepted) return;
-
                 onConvert();
                 setDidConvertOnce(true);
               }}
-              disabled={!analyticsAccepted}
             >
               <TooltipTrigger>
                 <ArrowLeftRightIcon className="mr-2 h-4 w-4" />
@@ -52,9 +48,7 @@ export const Toolbar = ({ onConvert }: ToolbarProps) => {
             </Button>
 
             <TooltipContent side="left">
-              {!analyticsAccepted
-                ? "Click accept on analytics popup before converting."
-                : 'Paste SVG below and click "Convert" to get SwiftUI code.'}
+              {'Paste SVG below and click "Convert" to get SwiftUI code.'}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

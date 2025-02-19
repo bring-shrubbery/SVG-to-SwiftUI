@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CheckCircle2Icon, CheckIcon, LoaderCircleIcon } from "lucide-react";
@@ -9,11 +7,12 @@ import useLocalStorage from "use-local-storage";
 import { NeonGradientCard } from "./magic-ui/neon-gradient-card";
 import { Button } from "./ui/button";
 
-export const AnalyticsPopup = () => {
+const AnalyticsPopup = () => {
   const plausible = usePlausible();
   const [status, setStatus] = useState<
     "idle" | "loading" | "success-initial" | "success-final" | "hidden"
   >("idle");
+
   const [analyticsAccepted, setAnalyticsAccepted] = useLocalStorage(
     "analytics_accepted",
     false,
@@ -62,7 +61,7 @@ export const AnalyticsPopup = () => {
       )}
     >
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Before you continue 🍪</h2>
+        <h2 className="text-lg font-semibold">We value your privacy 🍪</h2>
         <p className="text-sm text-muted-foreground">
           <b>We collect anonymous analytics</b>. You can see more information
           about what we collect in our{" "}
@@ -75,21 +74,14 @@ export const AnalyticsPopup = () => {
           . Your code never leaves your browser.
         </p>
 
-        <div className="flex w-full items-center justify-between">
-          <div className="text-xs">
-            Before continuing, confirm that you're ok with that.{" "}
-          </div>
-
-          <div className="relative flex w-fit gap-2">
-            <Button
-              onClick={handleAccept}
-              className="gap-2"
-              disabled={!!analyticsAccepted}
-            >
-              <StatusIcon status={status} />
-              Accept
-            </Button>
-          </div>
+        <div className="relative flex w-fit gap-2 pt-2">
+          <Button
+            onClick={handleAccept}
+            className="gap-2"
+            disabled={status !== "idle"}
+          >
+            <StatusIcon status={status} /> I understand
+          </Button>
         </div>
       </div>
     </NeonGradientCard>
@@ -120,3 +112,5 @@ const StatusIcon = ({
       );
   }
 };
+
+export default AnalyticsPopup;
