@@ -8,7 +8,7 @@ Tool to convert SVG to SwiftUI's Shape structure. This approach is much more mem
 
 ## Disclaimer (Before you use this tool)
 
-This tool is oriented towards specific implementations where you might otherwise need to convert the icon into SwiftUI Shape manually, for example when you need a custom animatable icon, need to use SFSymbol in your macOS app, etc. For general purpose icons it might be better to use [this](https://developer.apple.com/documentation/uikit/uiimage/creating_custom_symbol_images_for_your_app) guide to create an SF Symbol instead.
+This tool is oriented towards use cases, where creating an SF symbol is not viable, for example for complex animations. This tool also works great if you're under time pressure or just lazy, and need to have your icon in the app as fast as possible. For general purpose icons it might be better to use [this](https://developer.apple.com/documentation/uikit/uiimage/creating_custom_symbol_images_for_your_app) guide to create an SF Symbol instead.
 
 ## Quick Links
 
