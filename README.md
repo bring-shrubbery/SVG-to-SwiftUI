@@ -21,17 +21,17 @@ This tool is oriented towards use cases, where creating an SF symbol is not viab
 
 ⭐️ Star this repository! ⭐️
 
-### Online
+### Step 2.1: Online
 
 The tool is available online, just follow [this](https://svg-to-swiftui.quassum.com/) link.
 
-### Running locally
+### Step 2.2: Running locally
 
 ```
 git clone https://github.com/bring-shrubbery/SVG-to-SwiftUI
 cd SVG-to-SwiftUI
-yarn
-yarn dev
+pnpm install
+pnpm dev
 ```
 
 ## Example usage
