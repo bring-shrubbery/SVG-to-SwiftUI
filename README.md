@@ -34,7 +34,7 @@ pnpm install
 pnpm dev
 ```
 
-## Example usage
+## Demo preview
 
 To demonstrate this tool I created a thicc plus sign with rounded corners (created it in Sketch, so shapes from Sketch should work fine with this tool).
 It's saved as `content/demo-plus.svg` file in this repository. You can see below how it looks like in the browser, and how it looks like after converting into SwiftUI Shape.
