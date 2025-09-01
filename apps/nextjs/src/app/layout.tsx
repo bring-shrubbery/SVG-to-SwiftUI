@@ -2,11 +2,9 @@ import "./globals.css";
 import "allotment/dist/style.css";
 
 import type { Metadata } from "next";
-import type { PropsWithChildren, ReactNode } from "react";
-import { Suspense } from "react";
+import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import Script from "next/script";
-import { AnalyticsPopupDynamic } from "@/components/analytics-popup.dynamic";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { Analytics } from "@vercel/analytics/react";
@@ -83,10 +81,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-  announcement,
-}: PropsWithChildren<{ announcement: ReactNode }>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -95,15 +90,9 @@ export default function RootLayout({
           fontSans.variable,
         )}
       >
-        <Providers>
-          <Suspense>{announcement}</Suspense>
-
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
         <Toaster />
         <Analytics />
-
-        <AnalyticsPopupDynamic />
       </body>
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}

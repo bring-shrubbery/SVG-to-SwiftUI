@@ -26,8 +26,11 @@ export const ToolbarSettings = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button className="h-10 w-10 rounded-full p-0" variant="ghost">
-          <SettingsIcon />
+        <Button
+          className="flex h-10 w-10 items-center justify-center rounded-full p-0"
+          variant="ghost"
+        >
+          <SettingsIcon className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
 

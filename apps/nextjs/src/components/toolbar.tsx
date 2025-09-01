@@ -24,28 +24,27 @@ export const Toolbar = ({ onConvert }: ToolbarProps) => {
   );
 
   return (
-    <div className="flex w-full justify-between border-b border-border p-2 md:px-4">
+    <div className="flex w-full items-center justify-between border-b border-border p-2 md:px-4">
       <div>
         <VideoTutorialPopover />
       </div>
 
       {/* <ToolbarExamples {...{ onExampleSelect, exampleList }} /> */}
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <TooltipProvider>
           <Tooltip defaultOpen={!didConvertOnce}>
-            <Button
-              asChild
-              onClick={() => {
-                onConvert();
-                setDidConvertOnce(true);
-              }}
-            >
-              <TooltipTrigger>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => {
+                  onConvert();
+                  setDidConvertOnce(true);
+                }}
+              >
                 <ArrowLeftRightIcon className="mr-2 h-4 w-4" />
                 Convert & Copy
-              </TooltipTrigger>
-            </Button>
+              </Button>
+            </TooltipTrigger>
 
             <TooltipContent side="left">
               {'Paste SVG below and click "Convert" to get SwiftUI code.'}
