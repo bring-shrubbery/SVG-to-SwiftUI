@@ -28,12 +28,12 @@ export function Navbar({
     >
       {/* Left side content */}
       <div className="flex h-full w-fit items-center">
-        <a href="/" className="block">
+        <Link href="/" className="block">
           <SVGtoSwiftUILogo width={64} height={64} className="h-16 w-16" />
-        </a>
+        </Link>
 
         <div className="relative hidden sm:block">
-          <a href="/">
+          <Link href="/">
             <h1
               className="bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text pl-3 pt-1 text-4xl font-bold"
               style={{
@@ -42,13 +42,12 @@ export function Navbar({
             >
               {"SVG to SwiftUI"}
             </h1>
-          </a>
+          </Link>
 
           <Link
             href="https://quassum.com/?utm_source=svg-to-swiftui"
             className="items-bottom absolute -bottom-5 right-0 flex"
             target="_blank"
-            rel="noopener noreferrer"
           >
             <span className="mr-1 text-sm">by</span>
             <QuassumType className="h-4 w-auto" />

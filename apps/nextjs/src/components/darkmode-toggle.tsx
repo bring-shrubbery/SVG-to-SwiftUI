@@ -1,7 +1,7 @@
 "use client";
 
-import { MoonIcon, SunIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 export const DarkModeToggle = () => {
@@ -11,7 +11,7 @@ export const DarkModeToggle = () => {
 
   return (
     <Button
-      className="p-0 w-10 h-10 rounded-full"
+      className="h-10 w-10 rounded-full p-0"
       variant="ghost"
       onClick={toggleTheme}
     >

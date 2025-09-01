@@ -23,7 +23,7 @@
     },
     "test": {
       "dependsOn": ["^topo", "^build"],
-      "outputs": ["node_modules/.cache/.jestcache"],
+      "outputs": [],
       "outputLogs": "new-only"
     },
     "typecheck": {
@@ -47,6 +47,16 @@
     "ui-add": {
       "cache": false,
       "interactive": true
+    },
+    "coverage": {
+      "dependsOn": ["^topo", "^build"],
+      "outputs": []
+    },
+    "knip": {
+      "outputs": [],
+      "cache": false,
+      "interactive": false,
+      "persistent": false
     }
   },
   "globalEnv": [
