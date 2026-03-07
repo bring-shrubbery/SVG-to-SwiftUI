@@ -1,9 +1,10 @@
 struct LnIcon: Shape {
+    static let eoFill = true
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let width = rect.size.width
         let height = rect.size.height
-        path.addRect(CGRect(x: 0, y: 0, width: width, height: height))
+        path.addRoundedRect(in: CGRect(x: 0, y: 0, width: width, height: height), cornerSize: CGSize(width: 0.095238*width, height: 0.095238*height))
         path.move(to: CGPoint(x: 0.884836*width, y: 0.863637*height))
         path.addLine(to: CGPoint(x: 0.884836*width, y: 0.863606*height))
         path.addLine(to: CGPoint(x: 0.885027*width, y: 0.863606*height))

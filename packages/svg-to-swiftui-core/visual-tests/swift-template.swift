@@ -39,6 +39,9 @@ struct Path {
     mutating func addRect(_ rect: CGRect) {
         _path.addRect(rect)
     }
+    mutating func addRoundedRect(in rect: CGRect, cornerSize: CGSize) {
+        _path.addRoundedRect(in: rect, cornerWidth: cornerSize.width, cornerHeight: cornerSize.height)
+    }
     mutating func closeSubpath() {
         _path.closeSubpath()
     }
@@ -98,10 +101,10 @@ ctx.fill(rect)
 ctx.translateBy(x: 0, y: CGFloat(renderHeight))
 ctx.scaleBy(x: 1, y: -1)
 
-// Fill path in black
+// Fill path with dominant SVG fill color
 ctx.addPath(shapePath.cgPath)
-ctx.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
-ctx.fillPath()
+ctx.setFillColor(red: __FILL_R__, green: __FILL_G__, blue: __FILL_B__, alpha: 1)
+ctx.fillPath(using: __FILL_RULE__)
 
 // Save as PNG
 guard let image = ctx.makeImage() else {

@@ -1,9 +1,10 @@
 struct FaIcon: Shape {
+    static let eoFill = true
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let width = rect.size.width
         let height = rect.size.height
-        path.addRect(CGRect(x: 0, y: 0, width: width, height: height))
+        path.addRoundedRect(in: CGRect(x: 0, y: 0, width: width, height: height), cornerSize: CGSize(width: 0.2*width, height: 0.2*height))
         path.move(to: CGPoint(x: 0.55886*width, y: height))
         path.addLine(to: CGPoint(x: 0.55886*width, y: 0.61328*height))
         path.addLine(to: CGPoint(x: 0.68923*width, y: 0.61328*height))

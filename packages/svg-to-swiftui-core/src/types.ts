@@ -14,6 +14,8 @@ export interface TranspilerOptions {
   indentationSize: number;
   currentIndentationLevel: number;
   parentStyle: Record<string, string | number>;
+  fillColors: Set<string>;
+  strokeExpansion: number;
 }
 
 export interface ViewBoxData {

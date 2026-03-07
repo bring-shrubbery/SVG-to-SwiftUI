@@ -55,18 +55,73 @@ function renderSvg(
 // Swift → PNG  (swiftc + CoreGraphics)
 // ---------------------------------------------------------------------------
 
+interface FillColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+function extractDominantFillColor(svgString: string): FillColor {
+  // Find all fill color attributes (not "none" or "white")
+  const fillRegex = /fill\s*[:=]\s*"?([^";>\s]+)/gi;
+  const colors: string[] = [];
+  let match;
+  while ((match = fillRegex.exec(svgString)) !== null) {
+    const c = match[1]!.toLowerCase();
+    if (c !== "none" && c !== "white" && c !== "#fff" && c !== "#ffffff") {
+      colors.push(c);
+    }
+  }
+
+  // Parse the most common non-black fill color
+  for (const c of colors) {
+    if (c === "black" || c === "#000" || c === "#000000") continue;
+    const parsed = parseColor(c);
+    if (parsed) return parsed;
+  }
+
+  return { r: 0, g: 0, b: 0 }; // default black
+}
+
+function parseColor(c: string): FillColor | null {
+  if (c.startsWith("#")) {
+    const hex = c.slice(1);
+    if (hex.length === 3) {
+      return {
+        r: parseInt(hex[0]! + hex[0]!, 16) / 255,
+        g: parseInt(hex[1]! + hex[1]!, 16) / 255,
+        b: parseInt(hex[2]! + hex[2]!, 16) / 255,
+      };
+    }
+    if (hex.length === 6) {
+      return {
+        r: parseInt(hex.slice(0, 2), 16) / 255,
+        g: parseInt(hex.slice(2, 4), 16) / 255,
+        b: parseInt(hex.slice(4, 6), 16) / 255,
+      };
+    }
+  }
+  return null;
+}
+
 function renderSwift(
   swiftCode: string,
   width: number,
   height: number,
   outputPath: string,
+  fillColor: FillColor,
 ): void {
   const template = readFileSync(TEMPLATE_PATH, "utf-8");
+  const useEoFill = swiftCode.includes("eoFill = true");
   const source = template
     .replaceAll("__SHAPE_CODE__", swiftCode)
     .replaceAll("__SHAPE_NAME__", STRUCT_NAME)
     .replaceAll("__WIDTH__", String(width))
-    .replaceAll("__HEIGHT__", String(height));
+    .replaceAll("__HEIGHT__", String(height))
+    .replaceAll("__FILL_RULE__", useEoFill ? ".evenOdd" : ".winding")
+    .replaceAll("__FILL_R__", String(fillColor.r))
+    .replaceAll("__FILL_G__", String(fillColor.g))
+    .replaceAll("__FILL_B__", String(fillColor.b));
 
   const id = `svg-swiftui-vtest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const srcPath = join(tmpdir(), `${id}.swift`);
@@ -186,8 +241,9 @@ function runTest(svgFile: string): TestResult {
       precision: 5,
     });
 
-    // 3. Render Swift
-    renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng);
+    // 3. Render Swift (using SVG's dominant fill color for accurate comparison)
+    const fillColor = extractDominantFillColor(svgString);
+    renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng, fillColor);
 
     // 4. Compare
     const score = compareImages(svgPng, swiftPng, diffPng);

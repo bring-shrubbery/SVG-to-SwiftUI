@@ -15,6 +15,7 @@ interface PresentationStyle {
   strokeWidth: number;
   strokeLinecap: string;
   strokeLinejoin: string;
+  strokeMiterlimit: number;
 }
 
 function extractPresentationStyle(
@@ -33,6 +34,9 @@ function extractPresentationStyle(
         : 1,
       strokeLinecap: (style["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (style["stroke-linejoin"] as string) || "miter",
+      strokeMiterlimit: style["stroke-miterlimit"]
+        ? parseFloat(String(style["stroke-miterlimit"]))
+        : 4, // SVG default is 4
     };
   } catch {
     return {
@@ -41,6 +45,7 @@ function extractPresentationStyle(
       strokeWidth: 1,
       strokeLinecap: "butt",
       strokeLinejoin: "miter",
+      strokeMiterlimit: 4,
     };
   }
 }
@@ -57,19 +62,11 @@ const LINE_JOIN_MAP: Record<string, string> = {
   bevel: ".bevel",
 };
 
-function wrapWithStroke(
+function buildStrokeLines(
   lines: string[],
   style: PresentationStyle,
   options: TranspilerOptions,
 ): string[] {
-  // Invisible element — no fill, no stroke
-  if (!style.hasFill && !style.hasStroke) return [];
-
-  // Fill + stroke: return fill geometry only.
-  // In SwiftUI, stroke is applied as a view modifier, not baked into the Shape.
-  if (style.hasFill) return lines;
-
-  // Stroke only (fill="none"): convert stroke outline into filled geometry
   const normalizedWidth = style.strokeWidth / options.viewBox.width;
   const strokeWidthStr = clampNormalisedSizeProduct(
     normalizedWidth.toFixed(options.precision).replace(/0+$/, ""),
@@ -84,23 +81,50 @@ function wrapWithStroke(
   return [
     `var ${varName} = Path()`,
     ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
-    `path.addPath(${varName}.strokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin})))`,
+    `path.addPath(${varName}.strokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
   ];
+}
+
+function wrapWithStroke(
+  lines: string[],
+  style: PresentationStyle,
+  options: TranspilerOptions,
+): string[] {
+  // Invisible element — no fill, no stroke
+  if (!style.hasFill && !style.hasStroke) return [];
+
+  // Fill only: no wrapping needed
+  if (style.hasFill && !style.hasStroke) return lines;
+
+  // Fill + stroke: return fill geometry (expanded by half stroke width)
+  if (style.hasFill && style.hasStroke) return lines;
+
+  // Stroke only (fill="none"): convert stroke outline into filled geometry
+  return buildStrokeLines(lines, style, options);
 }
 
 export function handleElement(
   element: ElementNode,
   options: TranspilerOptions,
 ): string[] {
+  // Groups/svg delegate directly without stroke handling
+  if (element.tagName === "g" || element.tagName === "svg") {
+    return handleGroupElement(element, options);
+  }
+
+  const style = extractPresentationStyle(element);
+
+  // For fill+stroke elements, expand geometry by half stroke width
+  const prevExpansion = options.strokeExpansion;
+  if (style.hasFill && style.hasStroke) {
+    options.strokeExpansion = style.strokeWidth / 2;
+  } else {
+    options.strokeExpansion = 0;
+  }
+
   let rawLines: string[];
 
   switch (element.tagName) {
-    case "g":
-      return handleGroupElement(element, options);
-
-    case "svg":
-      return handleGroupElement(element, options);
-
     case "path":
       rawLines = handlePathElement(element, options);
       break;
@@ -124,9 +148,24 @@ export function handleElement(
           "Please open a Github issue for this or send a PR with the implementation!",
         ].join("\n"),
       );
+      options.strokeExpansion = prevExpansion;
       return [];
   }
 
-  const style = extractPresentationStyle(element);
+  options.strokeExpansion = prevExpansion;
+
+  // Track fill colors for eoFill detection
+  if (style.hasFill) {
+    try {
+      const elStyle = extractStyle(element);
+      const fill = elStyle.fill ? String(elStyle.fill).toLowerCase().trim() : "";
+      if (fill) {
+        options.fillColors.add(fill);
+      }
+    } catch {
+      // no style to extract
+    }
+  }
+
   return wrapWithStroke(rawLines, style, options);
 }

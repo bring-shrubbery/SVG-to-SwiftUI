@@ -12,31 +12,32 @@ export default function handleRectElement(
   element: ElementNode,
   options: TranspilerOptions,
 ): string[] {
-  // TODO: Add style support
-  // const style = {
-  //   ...options.parentStyle,
-  //   ...extractStyle(element),
-  // };
-
   const props = element.properties;
 
   if (props) {
-    const circleProps = props as unknown as SVGRectAttributes;
+    const rectProps = props as unknown as SVGRectAttributes;
 
     // Set default values
-    circleProps.x = circleProps.x || "0";
-    circleProps.y = circleProps.y || "0";
+    rectProps.x = rectProps.x || "0";
+    rectProps.y = rectProps.y || "0";
 
     // Check if required properties are provided.
-    if (!circleProps.width || !circleProps.height) {
+    if (!rectProps.width || !rectProps.height) {
       throw new Error("Rectangle has to have width and height properties!");
     }
 
-    // Parse numbers from the striings.
-    const x = parseFloat(circleProps.x);
-    const y = parseFloat(circleProps.y);
-    const width = parseFloat(circleProps.width);
-    const height = parseFloat(circleProps.height);
+    // Parse numbers from the strings, expanding by stroke if fill+stroke.
+    const exp = options.strokeExpansion || 0;
+    const x = parseFloat(rectProps.x) - exp;
+    const y = parseFloat(rectProps.y) - exp;
+    const width = parseFloat(rectProps.width) + 2 * exp;
+    const height = parseFloat(rectProps.height) + 2 * exp;
+
+    // Parse corner radii. SVG spec: rx defaults to ry and vice versa.
+    const rxRaw = rectProps.rx ? parseFloat(rectProps.rx) : undefined;
+    const ryRaw = rectProps.ry ? parseFloat(rectProps.ry) : undefined;
+    const rx = rxRaw ?? ryRaw ?? 0;
+    const ry = ryRaw ?? rxRaw ?? 0;
 
     // Normalise all values to be based on fraction of width/height.
     const normalisedRect = normaliseRectValues(
@@ -50,7 +51,10 @@ export default function handleRectElement(
     // Append the width and height multipliers after normalisation.
     const strX = clampNormalisedSizeProduct(SR.x, "width");
     const strY = clampNormalisedSizeProduct(SR.y, "height");
-    const strWidth = clampNormalisedSizeProduct(SR.width ?? "unknown", "width");
+    const strWidth = clampNormalisedSizeProduct(
+      SR.width ?? "unknown",
+      "width",
+    );
     const strHeight = clampNormalisedSizeProduct(
       SR.height ?? "unknown",
       "height",
@@ -58,8 +62,23 @@ export default function handleRectElement(
 
     // Generate SwiftUI string.
     const CGRect = `CGRect(x: ${strX}, y: ${strY}, width: ${strWidth}, height: ${strHeight})`;
+
+    if (rx > 0 || ry > 0) {
+      // Normalise corner radii relative to viewBox
+      const nRx = rx / options.viewBox.width;
+      const nRy = ry / options.viewBox.height;
+      const toFixed = (v: number) =>
+        v.toFixed(options.precision).replace(/0+$/, "");
+      const strRx = clampNormalisedSizeProduct(toFixed(nRx), "width");
+      const strRy = clampNormalisedSizeProduct(toFixed(nRy), "height");
+
+      return [
+        `path.addRoundedRect(in: ${CGRect}, cornerSize: CGSize(width: ${strRx}, height: ${strRy}))`,
+      ];
+    }
+
     return [`path.addRect(${CGRect})`];
   } else {
-    throw new Error("Circle element has to some properties");
+    throw new Error("Rectangle element has to have properties!");
   }
 }
