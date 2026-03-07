@@ -11,23 +11,23 @@
     "format": "prettier --write ./src --loglevel error"
   },
   "devDependencies": {
-    "@figma/plugin-typings": "^1.117.0",
+    "@figma/plugin-typings": "^1.123.0",
     "@svg-to-swiftui/eslint-config": "workspace:*",
     "@svg-to-swiftui/prettier-config": "workspace:*",
     "@svg-to-swiftui/tsconfig": "workspace:*",
-    "@swc/core": "^1.13.5",
-    "@swc/jest": "^0.2.37",
+    "@swc/core": "^1.15.18",
+    "@swc/jest": "^0.2.39",
     "@types/hast": "^3.0.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
     "@types/svg-parser": "^2.0.6",
-    "@typescript-eslint/parser": "^8.41.0",
+    "@typescript-eslint/parser": "^8.56.1",
     "eslint": "^9.34.0",
-    "jest": "^30.1.2",
-    "prettier": "^3.6.2",
-    "ts-jest": "^29.2.5",
-    "tsup": "^8.3.6",
-    "typescript": "^5.9.2"
+    "jest": "^30.2.0",
+    "prettier": "^3.8.1",
+    "ts-jest": "^29.4.6",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   },
   "prettier": "@svg-to-swiftui/prettier-config",
   "dependencies": {
