@@ -19,7 +19,7 @@ export const ODC = () => {
   return (
     <aside
       role="dialog"
-      aria-label="Promoted: OneDollarChatbot"
+      aria-label="Promoted: FutureBase"
       className={[
         "fixed bottom-4 right-4 z-50 max-w-[calc(100vw-2rem)]",
         "overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 shadow-xl backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/90",
@@ -50,53 +50,49 @@ export const ODC = () => {
         </svg>
       </button>
 
-      <div className="grid grid-cols-[128px_280px]">
+      <div className="flex items-center gap-4 py-5 pl-5 pr-10">
         {/* Logo */}
-        <div className="flex h-full w-full items-center justify-center bg-zinc-100 p-4 dark:bg-zinc-800">
+        <div className="flex-shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/odc.jpg"
-            alt="OneDollarChatbot logo"
-            className="h-16 w-16 rounded-2xl object-contain ring-1 ring-zinc-200 dark:ring-zinc-800"
+            src="/futurebase.jpg"
+            alt="FutureBase logo"
+            className="h-12 w-12 rounded-xl object-contain ring-1 ring-zinc-200 dark:hidden dark:ring-zinc-800"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/futurebase-dark.jpg"
+            alt="FutureBase logo"
+            className="hidden h-12 w-12 rounded-xl object-contain ring-1 ring-zinc-200 dark:block dark:ring-zinc-800"
           />
         </div>
 
         {/* Content */}
-        <div className="w-full bg-zinc-50 px-4 py-4 pb-3 dark:bg-zinc-900">
-          <div className="mb-2 flex items-center gap-2">
+        <div className="min-w-0 pr-6">
+          <div className="mb-1 flex items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200/70 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-              onedollarchatbot.com
+              futurebase.io
             </span>
           </div>
           <Balancer
             as="h3"
             className="text-sm font-semibold leading-tight text-zinc-900 dark:text-zinc-100"
           >
-            Add AI-first customer support to your site — from $1
+            AI Agents for Customer Support
           </Balancer>
-          <Balancer className="mt-1 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
-            Lightning-fast, on-brand answers embedded on your site.
-            <br />
-            Launch in minutes.
-          </Balancer>
+        </div>
 
-          <div className="mt-3 flex w-full items-center gap-4">
-            <a
-              href="https://onedollarchatbot.com/?utm_source=svg-to-swiftui&utm_medium=popup&utm_campaign=product_xpromo"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-black px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/40 dark:bg-zinc-100 dark:text-zinc-900 dark:focus:ring-white/40"
-            >
-              Open
-              <ExternalLinkIcon className="-mt-px h-3.5 w-3.5" />
-            </a>
-
-            <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
-              Made by the creator
-              <br />
-              of <span className="font-semibold">SVG to SwiftUI</span>
-            </p>
-          </div>
+        {/* CTA */}
+        <div className="flex flex-shrink-0 flex-col items-end gap-1">
+          <a
+            href="https://futurebase.io/?utm_source=svg-to-swiftui&utm_medium=popup&utm_campaign=product_xpromo"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-black px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-black/40 dark:bg-zinc-100 dark:text-zinc-900 dark:focus:ring-white/40"
+          >
+            Learn more
+            <ExternalLinkIcon className="-mt-px h-3.5 w-3.5" />
+          </a>
         </div>
       </div>
 
