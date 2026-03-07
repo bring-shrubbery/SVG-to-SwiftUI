@@ -1,0 +1,8 @@
+<svg viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bell body -->
+  <path d="M 40 8 C 22 8 12 24 12 42 L 12 60 L 6 68 L 6 74 L 74 74 L 74 68 L 68 60 L 68 42 C 68 24 58 8 40 8 Z" fill="#333333"/>
+  <!-- Clapper -->
+  <path d="M 30 74 A 10 10 0 0 0 50 74" fill="#333333"/>
+  <!-- Top nub -->
+  <circle cx="40" cy="8" r="4" fill="#333333"/>
+</svg>

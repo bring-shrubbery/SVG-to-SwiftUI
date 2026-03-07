@@ -1,0 +1,6 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gear teeth + body as a single path using arcs and lines -->
+  <path d="M 42 8 L 42 4 L 58 4 L 58 8 A 32 32 0 0 1 72 15 L 75 12 L 88 25 L 85 28 A 32 32 0 0 1 92 42 L 96 42 L 96 58 L 92 58 A 32 32 0 0 1 85 72 L 88 75 L 75 88 L 72 85 A 32 32 0 0 1 58 92 L 58 96 L 42 96 L 42 92 A 32 32 0 0 1 28 85 L 25 88 L 12 75 L 15 72 A 32 32 0 0 1 8 58 L 4 58 L 4 42 L 8 42 A 32 32 0 0 1 15 28 L 12 25 L 25 12 L 28 15 A 32 32 0 0 1 42 8 Z" fill="#333333"/>
+  <!-- Center hole -->
+  <circle cx="50" cy="50" r="14" fill="white"/>
+</svg>

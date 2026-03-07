@@ -1,0 +1,12 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Roof -->
+  <path d="M 50 8 L 10 45 L 18 45 L 18 88 L 82 88 L 82 45 L 90 45 Z" fill="#333333"/>
+  <!-- Door -->
+  <rect x="40" y="55" width="20" height="33" rx="3" fill="white"/>
+  <!-- Window left -->
+  <rect x="24" y="50" width="12" height="12" rx="2" fill="white"/>
+  <!-- Window right -->
+  <rect x="64" y="50" width="12" height="12" rx="2" fill="white"/>
+  <!-- Chimney -->
+  <rect x="68" y="18" width="10" height="22" fill="#333333"/>
+</svg>

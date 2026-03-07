@@ -1,0 +1,16 @@
+<svg viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rocket body -->
+  <path d="M 40 5 C 28 25 22 50 22 75 L 58 75 C 58 50 52 25 40 5 Z" fill="#333333"/>
+  <!-- Nose cone highlight -->
+  <path d="M 40 5 C 35 20 32 35 30 50 L 40 50 Z" fill="white"/>
+  <!-- Left fin -->
+  <path d="M 22 60 L 8 82 L 22 75 Z" fill="#333333"/>
+  <!-- Right fin -->
+  <path d="M 58 60 L 72 82 L 58 75 Z" fill="#333333"/>
+  <!-- Exhaust nozzle -->
+  <path d="M 30 75 L 28 85 A 12 6 0 0 0 52 85 L 50 75 Z" fill="#333333"/>
+  <!-- Window -->
+  <circle cx="40" cy="42" r="8" fill="white"/>
+  <!-- Flame -->
+  <path d="M 32 85 Q 36 105 40 115 Q 44 105 48 85" fill="none" stroke="#333333" stroke-width="2"/>
+</svg>

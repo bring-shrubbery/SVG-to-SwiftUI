@@ -1,0 +1,16 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left blade -->
+  <path d="M 50 45 L 18 12 C 10 4 2 12 10 20 L 42 52" fill="#333333"/>
+  <!-- Right blade -->
+  <path d="M 50 45 L 82 12 C 90 4 98 12 90 20 L 58 52" fill="#333333"/>
+  <!-- Left handle ring -->
+  <circle cx="30" cy="75" r="14" fill="none" stroke="#333333" stroke-width="6"/>
+  <!-- Right handle ring -->
+  <circle cx="70" cy="75" r="14" fill="none" stroke="#333333" stroke-width="6"/>
+  <!-- Left handle connection -->
+  <path d="M 42 52 L 36 63" stroke="#333333" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Right handle connection -->
+  <path d="M 58 52 L 64 63" stroke="#333333" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Pivot point -->
+  <circle cx="50" cy="48" r="4" fill="#333333"/>
+</svg>

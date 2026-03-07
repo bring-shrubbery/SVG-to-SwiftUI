@@ -1,0 +1,10 @@
+<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Eye outline -->
+  <path d="M 5 40 Q 30 5 60 5 Q 90 5 115 40 Q 90 75 60 75 Q 30 75 5 40 Z" fill="#333333"/>
+  <!-- White of eye -->
+  <circle cx="60" cy="40" r="22" fill="white"/>
+  <!-- Iris -->
+  <circle cx="60" cy="40" r="13" fill="#333333"/>
+  <!-- Pupil highlight -->
+  <circle cx="55" cy="35" r="4" fill="white"/>
+</svg>

@@ -1,0 +1,8 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Canopy -->
+  <path d="M 50 10 A 40 40 0 0 1 90 50 C 80 42 70 50 60 42 C 55 50 45 50 40 42 C 30 50 20 42 10 50 A 40 40 0 0 1 50 10 Z" fill="#333333"/>
+  <!-- Handle shaft -->
+  <line x1="50" y1="50" x2="50" y2="85" stroke="#333333" stroke-width="4"/>
+  <!-- Handle curve -->
+  <path d="M 50 85 A 8 8 0 0 1 66 85" fill="none" stroke="#333333" stroke-width="4" stroke-linecap="round"/>
+</svg>

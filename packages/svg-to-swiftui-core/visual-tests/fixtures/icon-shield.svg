@@ -1,0 +1,6 @@
+<svg viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield body -->
+  <path d="M 40 5 L 75 20 L 75 50 C 75 72 60 88 40 95 C 20 88 5 72 5 50 L 5 20 Z" fill="#333333"/>
+  <!-- Checkmark -->
+  <polyline points="24,52 35,65 56,38" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

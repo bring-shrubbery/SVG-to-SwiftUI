@@ -1,0 +1,10 @@
+<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Trunk -->
+  <rect x="42" y="82" width="16" height="32" fill="#333333"/>
+  <!-- Bottom foliage layer -->
+  <polygon points="50,10 15,55 30,55 10,82 90,82 70,55 85,55" fill="#333333"/>
+  <!-- Snow patches on tree (decorative circles) -->
+  <circle cx="38" cy="65" r="4" fill="white"/>
+  <circle cx="60" cy="72" r="3" fill="white"/>
+  <circle cx="50" cy="45" r="3" fill="white"/>
+</svg>

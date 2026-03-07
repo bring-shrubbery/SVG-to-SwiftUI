@@ -1,0 +1,6 @@
+<svg viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pin body -->
+  <path d="M 30 95 C 20 72 2 55 2 32 A 28 28 0 0 1 58 32 C 58 55 40 72 30 95 Z" fill="#333333"/>
+  <!-- Inner circle -->
+  <circle cx="30" cy="32" r="13" fill="white"/>
+</svg>

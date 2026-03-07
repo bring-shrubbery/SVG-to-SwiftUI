@@ -1,0 +1,9 @@
+<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Envelope body -->
+  <rect x="5" y="10" width="110" height="60" rx="5" fill="#333333"/>
+  <!-- Flap / V shape -->
+  <path d="M 5 10 L 60 48 L 115 10" fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Bottom fold lines -->
+  <line x1="5" y1="70" x2="42" y2="42" stroke="white" stroke-width="3"/>
+  <line x1="115" y1="70" x2="78" y2="42" stroke="white" stroke-width="3"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cup body -->
+  <path d="M 25 8 L 75 8 L 72 55 C 72 68 62 75 50 75 C 38 75 28 68 28 55 Z" fill="#333333"/>
+  <!-- Left handle -->
+  <path d="M 25 18 C 10 18 5 30 5 40 C 5 50 12 58 22 55" fill="none" stroke="#333333" stroke-width="5" stroke-linecap="round"/>
+  <!-- Right handle -->
+  <path d="M 75 18 C 90 18 95 30 95 40 C 95 50 88 58 78 55" fill="none" stroke="#333333" stroke-width="5" stroke-linecap="round"/>
+  <!-- Stem -->
+  <rect x="44" y="75" width="12" height="14" fill="#333333"/>
+  <!-- Base -->
+  <rect x="28" y="89" width="44" height="8" rx="4" fill="#333333"/>
+  <!-- Star on cup -->
+  <polygon points="50,22 54,34 66,34 56,42 60,54 50,46 40,54 44,42 34,34 46,34" fill="white"/>
+</svg>

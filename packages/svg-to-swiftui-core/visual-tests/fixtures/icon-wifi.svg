@@ -1,0 +1,10 @@
+<svg viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer arc -->
+  <path d="M 10 30 A 50 50 0 0 1 90 30" fill="none" stroke="#333333" stroke-width="7" stroke-linecap="round"/>
+  <!-- Middle arc -->
+  <path d="M 24 42 A 34 34 0 0 1 76 42" fill="none" stroke="#333333" stroke-width="7" stroke-linecap="round"/>
+  <!-- Inner arc -->
+  <path d="M 37 54 A 18 18 0 0 1 63 54" fill="none" stroke="#333333" stroke-width="7" stroke-linecap="round"/>
+  <!-- Dot -->
+  <circle cx="50" cy="68" r="5" fill="#333333"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Planet body -->
+  <circle cx="60" cy="50" r="28" fill="#333333"/>
+  <!-- Ring (elliptical arc path) -->
+  <path d="M 10 55 A 55 18 -15 0 1 110 42" fill="none" stroke="#333333" stroke-width="4"/>
+  <path d="M 110 42 A 55 18 -15 0 1 10 55" fill="none" stroke="#333333" stroke-width="4"/>
+  <!-- Surface detail -->
+  <ellipse cx="52" cy="42" rx="10" ry="6" fill="white"/>
+  <circle cx="68" cy="58" r="5" fill="white"/>
+</svg>
