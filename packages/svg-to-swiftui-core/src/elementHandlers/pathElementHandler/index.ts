@@ -5,6 +5,7 @@ import { SVGPathData } from "svg-pathdata";
 import type { SVGPathAttributes } from "../../svgTypes";
 import type { TranspilerOptions } from "../../types";
 import type { SwiftGenerator } from "../types";
+import { arcToCubicCurves } from "./arcToCubicBezier";
 import { generateClosePathSwift } from "./closePathGenerator";
 import { generateCubicCurveSwift } from "./cubicCurveGenerator";
 import { generateLineToSwift } from "./lineToGenerator";
@@ -205,8 +206,52 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
       case SVGPathData.ARC: {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
-        // TODO: Implement this commend
-        console.error("Arc is not supported yet");
+
+        // Find the current point (start of the arc)
+        let startX = 0;
+        let startY = 0;
+        for (let li = i - 1; li >= 0; li--) {
+          const prev = data[li];
+          if (
+            prev?.type === SVGPathData.MOVE_TO ||
+            prev?.type === SVGPathData.LINE_TO ||
+            prev?.type === SVGPathData.CURVE_TO ||
+            prev?.type === SVGPathData.SMOOTH_CURVE_TO ||
+            prev?.type === SVGPathData.QUAD_TO ||
+            prev?.type === SVGPathData.SMOOTH_QUAD_TO ||
+            prev?.type === SVGPathData.ARC
+          ) {
+            startX = prev.x;
+            startY = prev.y;
+            break;
+          } else if (prev?.type === SVGPathData.HORIZ_LINE_TO) {
+            startX = prev.x;
+            continue;
+          } else if (prev?.type === SVGPathData.VERT_LINE_TO) {
+            startY = prev.y;
+            continue;
+          } else {
+            break;
+          }
+        }
+
+        const curves = arcToCubicCurves({
+          x1: startX,
+          y1: startY,
+          rx: d.rX,
+          ry: d.rY,
+          xAxisRotation: d.xRot,
+          largeArc: d.lArcFlag !== 0,
+          sweep: d.sweepFlag !== 0,
+          x2: d.x,
+          y2: d.y,
+        });
+
+        for (const curve of curves) {
+          swiftAccumulator.push(
+            ...generateCubicCurveSwift(curve, options),
+          );
+        }
         break;
       }
     }

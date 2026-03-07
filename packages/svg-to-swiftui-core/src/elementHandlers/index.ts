@@ -6,7 +6,10 @@ import { clampNormalisedSizeProduct } from "../utils";
 import handleCircleElement from "./circleElementHandler";
 import handleEllipseElement from "./ellipseElementHandler";
 import handleGroupElement from "./groupElementHandler";
+import handleLineElement from "./lineElementHandler";
 import handlePathElement from "./pathElementHandler";
+import handlePolygonElement from "./polygonElementHandler";
+import handlePolylineElement from "./polylineElementHandler";
 import handleRectElement from "./rectElementHandler";
 
 interface PresentationStyle {
@@ -114,6 +117,15 @@ export function handleElement(
 
   const style = extractPresentationStyle(element);
 
+  // <line> elements have no fillable area — always stroke-only
+  if (element.tagName === "line") {
+    style.hasFill = false;
+    if (!style.hasStroke) {
+      // line with no stroke is invisible
+      return [];
+    }
+  }
+
   // For fill+stroke elements, expand geometry by half stroke width
   const prevExpansion = options.strokeExpansion;
   if (style.hasFill && style.hasStroke) {
@@ -139,6 +151,18 @@ export function handleElement(
 
     case "ellipse":
       rawLines = handleEllipseElement(element, options);
+      break;
+
+    case "line":
+      rawLines = handleLineElement(element, options);
+      break;
+
+    case "polyline":
+      rawLines = handlePolylineElement(element, options);
+      break;
+
+    case "polygon":
+      rawLines = handlePolygonElement(element, options);
       break;
 
     default:

@@ -27,13 +27,17 @@ export default function handleGroupElement(
     // TODO: Handle TextNode children properly.
     if (child.type === "text") continue;
 
+    // Create child options with inherited style, sharing mutable state
+    const childOptions = {
+      ...options,
+      ...style,
+    };
+
     // Append result to the accumulator.
-    acc.push(
-      ...handleElement(child, {
-        ...options,
-        ...style,
-      }),
-    );
+    acc.push(...handleElement(child, childOptions));
+
+    // Sync mutable counters back to parent options
+    options.lastPathId = childOptions.lastPathId;
   }
 
   return acc;
