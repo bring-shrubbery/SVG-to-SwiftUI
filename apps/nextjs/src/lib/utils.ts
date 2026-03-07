@@ -14,7 +14,7 @@ export const getHostname = () => {
 
   return process.env.NODE_ENV === "production"
     ? "https://svg-to-swiftui.quassum.com"
-    : "http://localhost:3000";
+    : "http://localhost:5588";
 };
 
 export const getIconList = async () => {
