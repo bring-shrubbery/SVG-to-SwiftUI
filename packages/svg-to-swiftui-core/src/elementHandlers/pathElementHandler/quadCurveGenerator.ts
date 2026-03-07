@@ -32,7 +32,7 @@ export const generateQuadCurveSwift: SwiftGenerator<{
 
   const swiftString = [
     `path.addQuadCurve(to: CGPoint(x: ${x_str}, y: ${y_str}),`,
-    `control1: CGPoint(x: ${x1_str}, y: ${y1_str}))`,
+    `control: CGPoint(x: ${x1_str}, y: ${y1_str}))`,
   ].join(" ");
 
   return [swiftString];

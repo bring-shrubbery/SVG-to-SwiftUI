@@ -48,6 +48,9 @@ export default function handlePathElement(
 const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
   const swiftAccumulator: string[] = [];
 
+  // Track the last quad control point for T (smooth quad) command chaining
+  let lastQuadControl: { x: number; y: number } | null = null;
+
   for (let i = 0; i < data.length; i++) {
     const el = data[i];
 
@@ -139,6 +142,7 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
       case SVGPathData.QUAD_TO: {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
+        lastQuadControl = { x: d.x1, y: d.y1 };
         swiftAccumulator.push(...generateQuadCurveSwift(d, options));
         break;
       }
@@ -148,15 +152,20 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         const { type, relative, ...d } = el;
         const prevElement = data[i - 1];
 
-        // Setup first control point
+        // Reflect the last quad control point around the previous endpoint
         let x1 = d.x;
         let y1 = d.y;
 
-        if (prevElement?.type === SVGPathData.QUAD_TO) {
-          x1 = prevElement.x + (prevElement.x - prevElement.x1);
-          y1 = prevElement.y + (prevElement.y - prevElement.y1);
+        if (
+          lastQuadControl &&
+          (prevElement?.type === SVGPathData.QUAD_TO ||
+            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO)
+        ) {
+          x1 = prevElement.x + (prevElement.x - lastQuadControl.x);
+          y1 = prevElement.y + (prevElement.y - lastQuadControl.y);
         }
 
+        lastQuadControl = { x: x1, y: y1 };
         swiftAccumulator.push(
           ...generateQuadCurveSwift({ ...d, x1, y1 }, options),
         );
