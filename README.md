@@ -30,8 +30,8 @@ The tool is available online, just follow [this](https://svg-to-swiftui.quassum.
 ```
 git clone https://github.com/bring-shrubbery/SVG-to-SwiftUI
 cd SVG-to-SwiftUI
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 ## Demo preview

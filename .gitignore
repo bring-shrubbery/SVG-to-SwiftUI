@@ -52,6 +52,3 @@ yarn-error.log*
 
 # turbo
 .turbo
-
-# pnpm
-.pnpm-store

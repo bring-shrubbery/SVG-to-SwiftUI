@@ -13,35 +13,26 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   build:
-    name: Build and Test ${{ matrix.node-version}} on ${{matrix.os}}
+    name: Build and Test on ${{matrix.os}}
     runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
         os: [ubuntu-latest]
-        node-version: [22.x]
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v2.0.1
-        with:
-          version: 10
-
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v2
-        with:
-          node-version: ${{ matrix.node-version}}
-          cache: "pnpm"
+      - uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install
 
       - name: Build
-        run: pnpm build
+        run: bun run build
 
       - name: Test
-        run: pnpm test
+        run: bun run test

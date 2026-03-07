@@ -1,6 +1,6 @@
 # SVG to SwiftUI
 
-Converts SVG code into SwiftUI `Shape` structures. Monorepo managed with pnpm + Turborepo.
+Converts SVG code into SwiftUI `Shape` structures. Monorepo managed with bun + Turborepo.
 
 ## Project Structure
 
@@ -12,16 +12,15 @@ Converts SVG code into SwiftUI `Shape` structures. Monorepo managed with pnpm + 
 ## Commands
 
 ```sh
-pnpm install          # Install dependencies
-pnpm dev              # Run all packages in dev mode
-pnpm build            # Build all packages
-pnpm test             # Run tests (jest, in svg-to-swiftui-core)
-pnpm lint             # Lint all packages
-pnpm format           # Check formatting
-pnpm typecheck        # Type-check all packages
+bun install          # Install dependencies
+bun dev              # Run all packages in dev mode
+bun run build        # Build all packages
+bun run test         # Run tests (jest, in svg-to-swiftui-core)
+bun run lint         # Lint all packages
+bun run format       # Check formatting
+bun run typecheck    # Type-check all packages
 ```
 
 ## Requirements
 
-- Node >= 22
-- pnpm 10.x
+- Bun >= 1.x
