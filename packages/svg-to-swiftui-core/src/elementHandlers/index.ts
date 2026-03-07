@@ -23,9 +23,12 @@ interface PresentationStyle {
 
 function extractPresentationStyle(
   element: ElementNode,
+  parentStyle: Record<string, string | number>,
 ): PresentationStyle {
   try {
-    const style = extractStyle(element);
+    const ownStyle = extractStyle(element);
+    // Merge: own style overrides inherited parent style
+    const style = { ...parentStyle, ...ownStyle };
     const fill = style.fill as string | undefined;
     const stroke = style.stroke as string | undefined;
 
@@ -42,13 +45,21 @@ function extractPresentationStyle(
         : 4, // SVG default is 4
     };
   } catch {
+    // No own style — fall back to parent style
+    const fill = parentStyle.fill as string | undefined;
+    const stroke = parentStyle.stroke as string | undefined;
+
     return {
-      hasFill: true,
-      hasStroke: false,
-      strokeWidth: 1,
-      strokeLinecap: "butt",
-      strokeLinejoin: "miter",
-      strokeMiterlimit: 4,
+      hasFill: fill !== "none" && fill !== undefined,
+      hasStroke: !!stroke && stroke !== "none",
+      strokeWidth: parentStyle["stroke-width"]
+        ? parseFloat(String(parentStyle["stroke-width"]))
+        : 1,
+      strokeLinecap: (parentStyle["stroke-linecap"] as string) || "butt",
+      strokeLinejoin: (parentStyle["stroke-linejoin"] as string) || "miter",
+      strokeMiterlimit: parentStyle["stroke-miterlimit"]
+        ? parseFloat(String(parentStyle["stroke-miterlimit"]))
+        : 4,
     };
   }
 }
@@ -115,7 +126,7 @@ export function handleElement(
     return handleGroupElement(element, options);
   }
 
-  const style = extractPresentationStyle(element);
+  const style = extractPresentationStyle(element, options.parentStyle);
 
   // <line> elements have no fillable area — always stroke-only
   if (element.tagName === "line") {

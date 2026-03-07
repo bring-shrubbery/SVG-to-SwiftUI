@@ -88,7 +88,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
             prevElement?.type === SVGPathData.CURVE_TO ||
             prevElement?.type === SVGPathData.SMOOTH_CURVE_TO ||
             prevElement?.type === SVGPathData.QUAD_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO
+            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO ||
+            prevElement?.type === SVGPathData.ARC
           ) {
             y = prevElement.y;
             break;
@@ -109,7 +110,7 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
 
         let x = 0;
 
-        // Go backwards until a command with x value is fonud.
+        // Go backwards until a command with x value is found.
         for (let li = i - 1; li >= 0; li--) {
           const prevElement = data[li];
 
@@ -120,7 +121,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
             prevElement?.type === SVGPathData.CURVE_TO ||
             prevElement?.type === SVGPathData.SMOOTH_CURVE_TO ||
             prevElement?.type === SVGPathData.QUAD_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO
+            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO ||
+            prevElement?.type === SVGPathData.ARC
           ) {
             x = prevElement.x;
             break;
@@ -210,7 +212,9 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // Find the current point (start of the arc)
         let startX = 0;
         let startY = 0;
-        for (let li = i - 1; li >= 0; li--) {
+        let foundX = false;
+        let foundY = false;
+        for (let li = i - 1; li >= 0 && (!foundX || !foundY); li--) {
           const prev = data[li];
           if (
             prev?.type === SVGPathData.MOVE_TO ||
@@ -221,15 +225,13 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
             prev?.type === SVGPathData.SMOOTH_QUAD_TO ||
             prev?.type === SVGPathData.ARC
           ) {
-            startX = prev.x;
-            startY = prev.y;
+            if (!foundX) startX = prev.x;
+            if (!foundY) startY = prev.y;
             break;
           } else if (prev?.type === SVGPathData.HORIZ_LINE_TO) {
-            startX = prev.x;
-            continue;
+            if (!foundX) { startX = prev.x; foundX = true; }
           } else if (prev?.type === SVGPathData.VERT_LINE_TO) {
-            startY = prev.y;
-            continue;
+            if (!foundY) { startY = prev.y; foundY = true; }
           } else {
             break;
           }

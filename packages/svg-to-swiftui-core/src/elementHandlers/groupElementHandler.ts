@@ -15,7 +15,15 @@ export default function handleGroupElement(
   options: TranspilerOptions,
 ): string[] {
   const { children } = element;
-  const style = element.type === "element" ? extractStyle(element) : {};
+  let ownStyle: Record<string, string | number> = {};
+  try {
+    ownStyle = element.type === "element" ? extractStyle(element) : {};
+  } catch {
+    // no style to extract
+  }
+
+  // Merge this group's style into the inherited parent style chain
+  const mergedParentStyle = { ...options.parentStyle, ...ownStyle };
 
   // For each child run the generator, accumulate swift string and return it.
   const acc: string[] = [];
@@ -27,10 +35,10 @@ export default function handleGroupElement(
     // TODO: Handle TextNode children properly.
     if (child.type === "text") continue;
 
-    // Create child options with inherited style, sharing mutable state
-    const childOptions = {
+    // Create child options with inherited style
+    const childOptions: TranspilerOptions = {
       ...options,
-      ...style,
+      parentStyle: mergedParentStyle,
     };
 
     // Append result to the accumulator.
