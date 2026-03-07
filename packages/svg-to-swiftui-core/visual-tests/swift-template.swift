@@ -3,6 +3,20 @@ import AppKit
 
 // --- SwiftUI Path/Shape shim (backed by CoreGraphics) ---
 
+struct StrokeStyle {
+    var lineWidth: CGFloat
+    var lineCap: CGLineCap
+    var lineJoin: CGLineJoin
+    var miterLimit: CGFloat
+
+    init(lineWidth: CGFloat = 1, lineCap: CGLineCap = .butt, lineJoin: CGLineJoin = .miter, miterLimit: CGFloat = 10) {
+        self.lineWidth = lineWidth
+        self.lineCap = lineCap
+        self.lineJoin = lineJoin
+        self.miterLimit = miterLimit
+    }
+}
+
 struct Path {
     var cgPath: CGPath { _path.copy()! }
     private var _path = CGMutablePath()
@@ -27,6 +41,20 @@ struct Path {
     }
     mutating func closeSubpath() {
         _path.closeSubpath()
+    }
+    mutating func addPath(_ other: Path) {
+        _path.addPath(other.cgPath)
+    }
+    func strokedPath(_ style: StrokeStyle) -> Path {
+        var result = Path()
+        let stroked = cgPath.copy(
+            strokingWithWidth: style.lineWidth,
+            lineCap: style.lineCap,
+            lineJoin: style.lineJoin,
+            miterLimit: style.miterLimit
+        )
+        result._path.addPath(stroked)
+        return result
     }
 }
 
