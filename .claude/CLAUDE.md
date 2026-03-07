@@ -19,6 +19,7 @@ bun run test         # Run tests (jest, in svg-to-swiftui-core)
 bun run lint         # Lint all packages
 bun run format       # Check formatting
 bun run typecheck    # Type-check all packages
+bun run visual-test  # Visual regression tests (macOS only, compares SVG vs Swift rendering)
 ```
 
 ## Requirements
