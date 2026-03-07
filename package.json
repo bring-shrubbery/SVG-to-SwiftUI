@@ -18,7 +18,8 @@
     "lint:fix": "turbo lint --continue -- --fix --cache --cache-location node_modules/.cache/.eslintcache",
     "lint:ws": "bunx sherif@latest",
     "postinstall": "bun run lint:ws",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "visual-test": "bun run --filter svg-to-swiftui-core visual-test"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
