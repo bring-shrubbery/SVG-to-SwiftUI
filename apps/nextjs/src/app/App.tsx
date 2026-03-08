@@ -1,23 +1,19 @@
 "use client";
 
-import type { editor } from "monaco-editor";
-import { useEffect, useRef, useState } from "react";
-import { Toolbar } from "@/components/toolbar";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  SettingsIndentation,
-  SettingsPrecision,
-  SettingsStructName,
-} from "@/lib/store";
-import { cn } from "@/lib/utils";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import { Allotment } from "allotment";
 import { useAtom } from "jotai";
+import type { editor } from "monaco-editor";
 import LIGHT_THEME from "monaco-themes/themes/IDLE.json";
 import DARK_THEME from "monaco-themes/themes/idleFingers.json";
 import { usePlausible } from "next-plausible";
 import { useTheme } from "next-themes";
+import { useEffect, useRef, useState } from "react";
 import { convert } from "svg-to-swiftui-core";
+import { Toolbar } from "@/components/toolbar";
+import { useToast } from "@/components/ui/use-toast";
+import { SettingsIndentation, SettingsPrecision, SettingsStructName } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 export const App = () => {
   const plausible = usePlausible();

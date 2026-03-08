@@ -1,13 +1,13 @@
 import "./globals.css";
 import "allotment/dist/style.css";
 
+import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
-import { Analytics } from "@vercel/analytics/react";
 
 import { Providers } from "./providers";
 
@@ -84,12 +84,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(
-          "h-screen w-full bg-background font-sans text-foreground antialiased",
-          fontSans.variable,
-        )}
-      >
+      <body className={cn("h-screen w-full bg-background font-sans text-foreground antialiased", fontSans.variable)}>
         <Providers>{children}</Providers>
         <Toaster />
         <Analytics />
@@ -97,11 +92,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}
       {process.env.NODE_ENV === "production" && (
-        <Script
-          async
-          src="/stats/script.js"
-          data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853"
-        />
+        <Script async src="/stats/script.js" data-website-id="2ceeb50c-1e4c-4206-b6a0-26558510a853" />
       )}
     </html>
   );

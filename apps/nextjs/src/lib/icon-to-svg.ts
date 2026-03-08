@@ -48,9 +48,7 @@ function nodeToSvg(node: IconNode, indent: string): string {
   if (!node.child || node.child.length === 0) {
     return `${indent}<${node.tag}${attrStr} />`;
   }
-  const children = node.child
-    .map((c) => nodeToSvg(c, indent + "  "))
-    .join("\n");
+  const children = node.child.map((c) => nodeToSvg(c, `${indent}  `)).join("\n");
   return `${indent}<${node.tag}${attrStr}>\n${children}\n${indent}</${node.tag}>`;
 }
 
@@ -60,9 +58,7 @@ export function iconDataToSvg(data: IconData): string {
   if (!svgAttr.xmlns) svgAttr.xmlns = "http://www.w3.org/2000/svg";
 
   const attrStr = attrToString(svgAttr);
-  const children = data.child
-    .map((c) => nodeToSvg(c, "  "))
-    .join("\n");
+  const children = data.child.map((c) => nodeToSvg(c, "  ")).join("\n");
 
   return `<svg ${attrStr}>\n${children}\n</svg>`;
 }

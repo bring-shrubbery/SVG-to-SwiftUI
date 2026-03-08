@@ -1,9 +1,11 @@
-import { readdirSync, readFileSync } from "fs";
-import { join } from "path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { convert } from "../src/index";
 
 const dir = join(import.meta.dir, "fixtures");
-const files = readdirSync(dir).filter(f => f.endsWith(".svg")).sort();
+const files = readdirSync(dir)
+  .filter((f) => f.endsWith(".svg"))
+  .sort();
 let pass = 0;
 let fail = 0;
 const errors: { file: string; error: string }[] = [];

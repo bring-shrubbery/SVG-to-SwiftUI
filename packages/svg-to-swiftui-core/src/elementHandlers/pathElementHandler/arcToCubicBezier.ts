@@ -78,7 +78,7 @@ function getArcCenter(
   const v2x = (-x1p - cxp) / rx;
   const v2y = (-y1p - cyp) / ry;
 
-  let theta1 = vectorAngle(1, 0, v1x, v1y);
+  const theta1 = vectorAngle(1, 0, v1x, v1y);
   let dtheta = vectorAngle(v1x, v1y, v2x, v2y);
 
   if (!fs && dtheta > 0) dtheta -= TAU;
@@ -87,10 +87,7 @@ function getArcCenter(
   return [cx, cy, theta1, dtheta];
 }
 
-function approximateUnitArc(
-  theta1: number,
-  dtheta: number,
-): [number, number, number, number, number, number] {
+function approximateUnitArc(theta1: number, dtheta: number): [number, number, number, number, number, number] {
   const alpha = (4 / 3) * Math.tan(dtheta / 4);
 
   const x1 = Math.cos(theta1);
@@ -131,9 +128,7 @@ export function arcToCubicCurves(params: ArcParams): CubicCurve[] {
     ry *= sqrtLambda;
   }
 
-  const [cx, cy, theta1, dtheta] = getArcCenter(
-    x1, y1, x2, y2, largeArc, sweep, rx, ry, sinPhi, cosPhi,
-  );
+  const [cx, cy, theta1, dtheta] = getArcCenter(x1, y1, x2, y2, largeArc, sweep, rx, ry, sinPhi, cosPhi);
 
   // Split into segments of <= 90 degrees
   const segments = Math.max(Math.ceil(Math.abs(dtheta) / (TAU / 4)), 1);
@@ -143,7 +138,7 @@ export function arcToCubicCurves(params: ArcParams): CubicCurve[] {
 
   for (let i = 0; i < segments; i++) {
     const angle = theta1 + i * segmentAngle;
-    const [ux1, uy1, cp1x, cp1y, cp2x, cp2y] = approximateUnitArc(angle, segmentAngle);
+    const [_ux1, _uy1, cp1x, cp1y, cp2x, cp2y] = approximateUnitArc(angle, segmentAngle);
 
     // Transform back from unit circle
     const endX = Math.cos(angle + segmentAngle);

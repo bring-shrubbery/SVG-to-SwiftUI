@@ -2,16 +2,9 @@ import type { ElementNode } from "svg-parser";
 
 import type { SVGCircleAttributes } from "../svgTypes";
 import type { TranspilerOptions } from "../types";
-import {
-  clampNormalisedSizeProduct,
-  normaliseRectValues,
-  stringifyRectValues,
-} from "../utils";
+import { clampNormalisedSizeProduct, normaliseRectValues, stringifyRectValues } from "../utils";
 
-export default function handleCircleElement(
-  element: ElementNode,
-  options: TranspilerOptions,
-): string[] {
+export default function handleCircleElement(element: ElementNode, options: TranspilerOptions): string[] {
   // TODO: Add styles support
   // const style = {
   //   ...options.parentStyle,
@@ -25,9 +18,7 @@ export default function handleCircleElement(
 
     // Check if required properties are provided.
     if (!circleProps.cx || !circleProps.cy || !circleProps.r) {
-      throw new Error(
-        "Circle element has to contain cx, cy, and r properties!",
-      );
+      throw new Error("Circle element has to contain cx, cy, and r properties!");
     }
 
     // Parse numbers from the strings, expanding by stroke if fill+stroke.
@@ -42,10 +33,7 @@ export default function handleCircleElement(
     const height = r * 2;
 
     // Normalise all values to be based on fraction of width/height.
-    const normalisedRect = normaliseRectValues(
-      { x, y, width, height },
-      options.viewBox,
-    );
+    const normalisedRect = normaliseRectValues({ x, y, width, height }, options.viewBox);
 
     // Stringify values to the fixed precision point.
     const SR = stringifyRectValues(normalisedRect, options.precision);
@@ -54,10 +42,7 @@ export default function handleCircleElement(
     const strX = clampNormalisedSizeProduct(SR.x, "width");
     const strY = clampNormalisedSizeProduct(SR.y, "height");
     const strWidth = clampNormalisedSizeProduct(SR.width ?? "unknown", "width");
-    const strHeight = clampNormalisedSizeProduct(
-      SR.height ?? "unknown",
-      "height",
-    );
+    const strHeight = clampNormalisedSizeProduct(SR.height ?? "unknown", "height");
 
     // Generate SwiftUI string.
     const CGRect = `CGRect(x: ${strX}, y: ${strY}, width: ${strWidth}, height: ${strHeight})`;

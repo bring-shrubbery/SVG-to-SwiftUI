@@ -1,22 +1,14 @@
 "use client";
 
+import { useAtom } from "jotai";
+import { SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import {
-  SettingsIndentation,
-  SettingsPrecision,
-  SettingsStructName,
-} from "@/lib/store";
-import { useAtom } from "jotai";
-import { SettingsIcon } from "lucide-react";
+import { SettingsIndentation, SettingsPrecision, SettingsStructName } from "@/lib/store";
 
 export const ToolbarSettings = () => {
   const [structName, setStructName] = useAtom(SettingsStructName);
@@ -26,10 +18,7 @@ export const ToolbarSettings = () => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          className="flex h-10 w-10 items-center justify-center rounded-full p-0"
-          variant="ghost"
-        >
+        <Button className="flex h-10 w-10 items-center justify-center rounded-full p-0" variant="ghost">
           <SettingsIcon className="h-5 w-5" />
         </Button>
       </PopoverTrigger>
@@ -37,9 +26,7 @@ export const ToolbarSettings = () => {
       <PopoverContent className="mx-4 w-fit">
         <CardHeader className="w-fit p-0">
           <CardTitle>Settings</CardTitle>
-          <CardDescription>
-            {'Modify settings, then click "Convert" again.'}
-          </CardDescription>
+          <CardDescription>{'Modify settings, then click "Convert" again.'}</CardDescription>
           <div className="grid w-auto grid-cols-[auto,200px] items-center gap-x-4 gap-y-6 pt-4">
             <Label htmlFor="struct-name" className="whitespace-nowrap">
               {"Struct Name"}
@@ -51,10 +38,7 @@ export const ToolbarSettings = () => {
               onChange={(e) => setStructName(e.target.value)}
             />
 
-            <Label
-              htmlFor="float-precision"
-              className="min-w-[130px] whitespace-nowrap"
-            >
+            <Label htmlFor="float-precision" className="min-w-[130px] whitespace-nowrap">
               {`Float Precision (${precision})`}
             </Label>
             <Slider

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { ExternalLinkIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import Balancer from "react-wrap-balancer";
 
 export const ODC = () => {
@@ -35,17 +35,12 @@ export const ODC = () => {
     >
       {/* Close */}
       <button
+        type="button"
         onClick={() => setIsOpen(false)}
         aria-label="Dismiss"
         className="absolute right-2.5 top-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-300 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 dark:focus:ring-zinc-700"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="h-4 w-4"
-          aria-hidden
-        >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden>
           <path d="M6.225 4.811a1 1 0 0 0-1.414 1.414L10.586 12l-5.775 5.775a1 1 0 1 0 1.414 1.414L12 13.414l5.775 5.775a1 1 0 0 0 1.414-1.414L13.414 12l5.775-5.775a1 1 0 0 0-1.414-1.414L12 10.586 6.225 4.811Z" />
         </svg>
       </button>
@@ -74,10 +69,7 @@ export const ODC = () => {
               futurebase.io
             </span>
           </div>
-          <Balancer
-            as="h3"
-            className="text-sm font-semibold leading-tight text-zinc-900 dark:text-zinc-100"
-          >
+          <Balancer as="h3" className="text-sm font-semibold leading-tight text-zinc-900 dark:text-zinc-100">
             AI Agents for Customer Support
           </Balancer>
         </div>

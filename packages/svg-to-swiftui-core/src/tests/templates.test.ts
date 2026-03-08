@@ -11,11 +11,7 @@ describe("Templates", () => {
     });
 
     expect(result.join("\n")).toBe(
-      [
-        "func testFunction(testParameter: String) -> String {",
-        '  return "test"',
-        "}",
-      ].join("\n"),
+      ["func testFunction(testParameter: String) -> String {", '  return "test"', "}"].join("\n"),
     );
   });
 
@@ -27,8 +23,6 @@ describe("Templates", () => {
       body: ['return "test"'],
     });
 
-    expect(result.join("\n")).toBe(
-      ["struct testStruct: String {", '  return "test"', "}"].join("\n"),
-    );
+    expect(result.join("\n")).toBe(["struct testStruct: String {", '  return "test"', "}"].join("\n"));
   });
 });

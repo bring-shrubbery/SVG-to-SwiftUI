@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useInView } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 export default function CountingNumbers({
   value,
@@ -59,7 +59,7 @@ export default function CountingNumbers({
       }, interval);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInView]);
+  }, [isInView, increment, interval, number, reverse, value]);
 
   return (
     <p className={className} ref={ref}>

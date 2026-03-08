@@ -1,7 +1,11 @@
 {
   "name": "svg-to-swiftui-monorepo",
   "private": true,
-  "workspaces": ["apps/*", "packages/*", "tooling/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tooling/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",

@@ -1,6 +1,6 @@
 import type { ElementNode } from "svg-parser";
-import type { SVGCommand } from "svg-pathdata/lib/types";
 import { SVGPathData } from "svg-pathdata";
+import type { SVGCommand } from "svg-pathdata/lib/types";
 
 import type { SVGPathAttributes } from "../../svgTypes";
 import type { TranspilerOptions } from "../../types";
@@ -48,7 +48,8 @@ function computeSubpathSignedArea(commands: SVGCommand[]): number {
         points.push({ x: curX, y: curY });
         break;
       case SVGPathData.CURVE_TO: {
-        const x0 = curX, y0 = curY;
+        const x0 = curX,
+          y0 = curY;
         for (const t of [0.25, 0.5, 0.75]) {
           const mt = 1 - t;
           const px = mt * mt * mt * x0 + 3 * mt * mt * t * cmd.x1 + 3 * mt * t * t * cmd.x2 + t * t * t * cmd.x;
@@ -61,7 +62,8 @@ function computeSubpathSignedArea(commands: SVGCommand[]): number {
         break;
       }
       case SVGPathData.QUAD_TO: {
-        const x0 = curX, y0 = curY;
+        const x0 = curX,
+          y0 = curY;
         for (const t of [0.25, 0.5, 0.75]) {
           const mt = 1 - t;
           const px = mt * mt * x0 + 2 * mt * t * cmd.x1 + t * t * cmd.x;
@@ -126,7 +128,16 @@ function reverseSubpath(commands: SVGCommand[]): SVGCommand[] {
         result.push({ type: SVGPathData.QUAD_TO, relative: false, x1: cmd.x1, y1: cmd.y1, x: toPt.x, y: toPt.y });
         break;
       case SVGPathData.CURVE_TO:
-        result.push({ type: SVGPathData.CURVE_TO, relative: false, x1: cmd.x2, y1: cmd.y2, x2: cmd.x1, y2: cmd.y1, x: toPt.x, y: toPt.y });
+        result.push({
+          type: SVGPathData.CURVE_TO,
+          relative: false,
+          x1: cmd.x2,
+          y1: cmd.y2,
+          x2: cmd.x1,
+          y2: cmd.y1,
+          x: toPt.x,
+          y: toPt.y,
+        });
         break;
       default:
         result.push({ type: SVGPathData.LINE_TO, relative: false, x: toPt.x, y: toPt.y });
@@ -185,19 +196,14 @@ function ensureDominantCW(commands: SVGCommand[]): { commands: SVGCommand[]; rev
  * @param element SVG Path Element
  * @param options Transpiler options
  */
-export default function handlePathElement(
-  element: ElementNode,
-  options: TranspilerOptions,
-): string[] {
+export default function handlePathElement(element: ElementNode, options: TranspilerOptions): string[] {
   const properties = element.properties as unknown;
 
   if (properties) {
     const props = properties as SVGPathAttributes;
 
     if (!props.d) {
-      throw new Error(
-        "Parameter `d` has to be provided on the <path> element!",
-      );
+      throw new Error("Parameter `d` has to be provided on the <path> element!");
     }
 
     options.lastPathId++;
@@ -285,7 +291,6 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
             y = prevElement.y;
             break;
           } else if (prevElement?.type === SVGPathData.HORIZ_LINE_TO) {
-            continue;
           } else {
             break;
           }
@@ -318,7 +323,6 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
             x = prevElement.x;
             break;
           } else if (prevElement?.type === SVGPathData.VERT_LINE_TO) {
-            continue;
           } else {
             break;
           }
@@ -353,8 +357,7 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
 
         if (
           lastQuadControl &&
-          (prevElement?.type === SVGPathData.QUAD_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO)
+          (prevElement?.type === SVGPathData.QUAD_TO || prevElement?.type === SVGPathData.SMOOTH_QUAD_TO)
         ) {
           x1 = prevElement.x + (prevElement.x - lastQuadControl.x);
           y1 = prevElement.y + (prevElement.y - lastQuadControl.y);
@@ -367,9 +370,7 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         }
 
         lastQuadControl = { x: x1, y: y1 };
-        swiftAccumulator.push(
-          ...generateQuadCurveSwift({ ...d, x1, y1 }, options),
-        );
+        swiftAccumulator.push(...generateQuadCurveSwift({ ...d, x1, y1 }, options));
         break;
       }
       // Command C
@@ -390,10 +391,7 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         let x1: number;
         let y1: number;
 
-        if (
-          prevElement?.type === SVGPathData.CURVE_TO ||
-          prevElement?.type === SVGPathData.SMOOTH_CURVE_TO
-        ) {
+        if (prevElement?.type === SVGPathData.CURVE_TO || prevElement?.type === SVGPathData.SMOOTH_CURVE_TO) {
           x1 = prevElement.x + (prevElement.x - prevElement.x2);
           y1 = prevElement.y + (prevElement.y - prevElement.y2);
         } else if (prevElement && "x" in prevElement && "y" in prevElement) {
@@ -434,9 +432,15 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
             if (!foundY) startY = prev.y;
             break;
           } else if (prev?.type === SVGPathData.HORIZ_LINE_TO) {
-            if (!foundX) { startX = prev.x; foundX = true; }
+            if (!foundX) {
+              startX = prev.x;
+              foundX = true;
+            }
           } else if (prev?.type === SVGPathData.VERT_LINE_TO) {
-            if (!foundY) { startY = prev.y; foundY = true; }
+            if (!foundY) {
+              startY = prev.y;
+              foundY = true;
+            }
           } else {
             break;
           }
@@ -455,9 +459,7 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         });
 
         for (const curve of curves) {
-          swiftAccumulator.push(
-            ...generateCubicCurveSwift(curve, options),
-          );
+          swiftAccumulator.push(...generateCubicCurveSwift(curve, options));
         }
         break;
       }

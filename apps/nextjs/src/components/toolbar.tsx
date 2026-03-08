@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { ArrowLeftRightIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 import { ExamplesDialog } from "./examples-dialog";
 import { ToolbarSettings } from "./toolbar-settings";

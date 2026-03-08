@@ -7,9 +7,7 @@ import { App } from "./App";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const githubStars = await getGithubStarsForRepo(
-    "bring-shrubbery/SVG-to-SwiftUI",
-  );
+  const githubStars = await getGithubStarsForRepo("bring-shrubbery/SVG-to-SwiftUI");
 
   return (
     <>

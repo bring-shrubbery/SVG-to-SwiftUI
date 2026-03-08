@@ -3,9 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import { getGithubStarsForRepo } from "@/lib/utils";
 
 export default async function Layout({ children }: PropsWithChildren) {
-  const githubStars = await getGithubStarsForRepo(
-    "bring-shrubbery/SVG-to-SwiftUI",
-  );
+  const githubStars = await getGithubStarsForRepo("bring-shrubbery/SVG-to-SwiftUI");
 
   return (
     <>

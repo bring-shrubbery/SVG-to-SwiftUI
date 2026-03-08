@@ -1,21 +1,15 @@
+import { HeartIcon, StarIcon } from "lucide-react";
 import Link from "next/link";
+import { IoLogoGithub } from "react-icons/io5";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { HeartIcon, StarIcon } from "lucide-react";
-import { IoLogoGithub } from "react-icons/io5";
 
 import CountingNumbers from "./counting-numbers";
 import { DarkModeToggle } from "./darkmode-toggle";
 import { QuassumType } from "./icons/quassum-type";
 import { SVGtoSwiftUILogo } from "./icons/S2SLogo";
 
-export function Navbar({
-  githubStars,
-  sticky,
-}: {
-  githubStars?: number;
-  sticky?: boolean;
-}) {
+export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?: boolean }) {
   return (
     <header
       className={cn(
@@ -80,11 +74,7 @@ export function Navbar({
   );
 }
 
-export const StarOnGithubButton = ({
-  githubStars,
-}: {
-  githubStars: number;
-}) => {
+export const StarOnGithubButton = ({ githubStars }: { githubStars: number }) => {
   return (
     <div className="mr-2">
       <Link
@@ -100,10 +90,7 @@ export const StarOnGithubButton = ({
         Star on GitHub
         <div className="hidden w-[54px] items-center gap-1 text-sm text-zinc-50 lg:flex">
           <StarIcon className="h-4 w-4 transition-all duration-300 group-hover:text-yellow-300" />
-          <CountingNumbers
-            value={githubStars}
-            className="font-display font-medium text-white"
-          />
+          <CountingNumbers value={githubStars} className="font-display font-medium text-white" />
         </div>
       </Link>
     </div>

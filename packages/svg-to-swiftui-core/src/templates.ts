@@ -14,13 +14,7 @@ export const createUsageCommentTemplate = ({
 type ParameterName = string;
 type ParameterType = string;
 
-const indentStrings = ({
-  indent,
-  body,
-}: {
-  indent: number;
-  body: string[];
-}) => {
+const indentStrings = ({ indent, body }: { indent: number; body: string[] }) => {
   return body.map((row) => `${new Array(indent).fill(" ").join("")}${row}`);
 };
 
@@ -43,11 +37,7 @@ export const createFunctionTemplate = ({
 }) => {
   const parametersString = parametersToStrings(parameters);
 
-  return [
-    `func ${name}(${parametersString}) -> ${returnType} {`,
-    ...indentStrings({ body, indent }),
-    `}`,
-  ];
+  return [`func ${name}(${parametersString}) -> ${returnType} {`, ...indentStrings({ body, indent }), `}`];
 };
 
 export const createStructTemplate = ({
@@ -61,9 +51,5 @@ export const createStructTemplate = ({
   body: string[];
   indent?: number;
 }) => {
-  return [
-    `struct ${name}: ${returnType} {`,
-    ...indentStrings({ body, indent }),
-    `}`,
-  ];
+  return [`struct ${name}: ${returnType} {`, ...indentStrings({ body, indent }), `}`];
 };

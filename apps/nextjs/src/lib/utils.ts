@@ -12,9 +12,7 @@ export const getHostname = () => {
     return `https://${process.env.VERCEL_URL}`;
   }
 
-  return process.env.NODE_ENV === "production"
-    ? "https://svg-to-swiftui.quassum.com"
-    : "http://localhost:5588";
+  return process.env.NODE_ENV === "production" ? "https://svg-to-swiftui.quassum.com" : "http://localhost:5588";
 };
 
 export const getIconList = async () => {
@@ -24,9 +22,7 @@ export const getIconList = async () => {
   return text.split("\n");
 };
 
-export const getIconContent = async (
-  list: string[],
-): Promise<{ example: string; content: string }[]> => {
+export const getIconContent = async (list: string[]): Promise<{ example: string; content: string }[]> => {
   return Promise.all(
     list.map((iconName) =>
       fetch(urlJoin(getHostname(), "/lucide", iconName))
@@ -44,6 +40,6 @@ export const getGithubStarsForRepo = async (repo: string) => {
     },
   });
   const data = (await res.json()) as unknown as { stargazers_count: string };
-  const stars = parseInt(data.stargazers_count);
-  return isNaN(stars) ? undefined : stars;
+  const stars = parseInt(data.stargazers_count, 10);
+  return Number.isNaN(stars) ? undefined : stars;
 };

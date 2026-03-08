@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Visual regression tests — compares SVG renders (resvg) against Swift renders
  * (CoreGraphics) to verify the SVG→SwiftUI conversion produces correct shapes.
@@ -16,17 +17,9 @@
  *   bun run visual-tests/run-visual-tests.ts star      # filter by name
  *   bun run visual-tests/run-visual-tests.ts --fresh   # ignore caches
  */
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-  writeFileSync,
-} from "fs";
-import { basename, dirname, resolve } from "path";
-import { fileURLToPath } from "url";
-
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 
 import { convert } from "../src/index";
@@ -71,9 +64,7 @@ async function main() {
 
   if (svgFiles.length === 0) {
     console.error(
-      filter
-        ? `No SVG fixtures matching "${filter}" in ${FIXTURES_DIR}`
-        : `No SVG fixtures found in ${FIXTURES_DIR}`,
+      filter ? `No SVG fixtures matching "${filter}" in ${FIXTURES_DIR}` : `No SVG fixtures found in ${FIXTURES_DIR}`,
     );
     process.exit(1);
   }
@@ -81,7 +72,9 @@ async function main() {
   // Load SVG dimension cache
   let svgCache: Record<string, SvgCacheEntry> = {};
   if (!fresh) {
-    try { svgCache = JSON.parse(readFileSync(SVG_CACHE_PATH, "utf-8")); } catch {}
+    try {
+      svgCache = JSON.parse(readFileSync(SVG_CACHE_PATH, "utf-8"));
+    } catch {}
   }
 
   console.log(`Processing ${svgFiles.length} fixtures...\n`);

@@ -3,13 +3,10 @@
  * Generates one JSON file per icon set + a manifest file.
  * Run with: bun run scripts/generate-icon-data.ts
  */
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const REACT_ICONS_DIR = join(
-  import.meta.dir,
-  "../node_modules/react-icons",
-);
+const REACT_ICONS_DIR = join(import.meta.dir, "../node_modules/react-icons");
 const OUT_DIR = join(import.meta.dir, "../public/data/icons");
 
 interface IconNode {
@@ -35,16 +32,16 @@ interface ManifestEntry {
 function extractGenIconJson(source: string, startIdx: number): string | null {
   let depth = 0;
   let inString = false;
-  let escape = false;
+  let isEscape = false;
 
   for (let i = startIdx; i < source.length; i++) {
     const ch = source[i]!;
-    if (escape) {
-      escape = false;
+    if (isEscape) {
+      isEscape = false;
       continue;
     }
     if (ch === "\\") {
-      escape = true;
+      isEscape = true;
       continue;
     }
     if (ch === '"') {

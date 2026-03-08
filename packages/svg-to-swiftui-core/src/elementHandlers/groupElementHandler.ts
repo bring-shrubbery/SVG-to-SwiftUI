@@ -1,7 +1,6 @@
 import type { ElementNode, RootNode } from "svg-parser";
-
-import type { TranspilerOptions } from "../types";
 import { extractStyle } from "../styleUtils";
+import type { TranspilerOptions } from "../types";
 import { handleElement } from "./index";
 
 /**
@@ -10,10 +9,7 @@ import { handleElement } from "./index";
  * @param element Group element node
  * @param options Transpiler options
  */
-export default function handleGroupElement(
-  element: ElementNode | RootNode,
-  options: TranspilerOptions,
-): string[] {
+export default function handleGroupElement(element: ElementNode | RootNode, options: TranspilerOptions): string[] {
   const { children } = element;
   let ownStyle: Record<string, string | number> = {};
   try {

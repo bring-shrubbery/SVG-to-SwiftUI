@@ -1,11 +1,8 @@
-import { readFileSync } from "fs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const currentDir =
-  typeof __dirname !== "undefined"
-    ? __dirname
-    : dirname(fileURLToPath(import.meta.url));
+const currentDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
 const contentDirectory = resolve(currentDir, "../../content");
 
 /**
@@ -13,5 +10,4 @@ const contentDirectory = resolve(currentDir, "../../content");
  * the project.
  * @param filename Name of the file to load
  */
-export const loadContentFile = (filename: string) =>
-  readFileSync(resolve(contentDirectory, filename), "utf8");
+export const loadContentFile = (filename: string) => readFileSync(resolve(contentDirectory, filename), "utf8");

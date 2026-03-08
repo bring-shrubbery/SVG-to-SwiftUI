@@ -7,21 +7,14 @@
  *     If the converter hasn't changed, compilation is skipped entirely.
  *   - Swift PNGs are skipped if the binary is cached and all PNGs exist.
  */
-import { createHash } from "crypto";
-import { exec as execCallback } from "child_process";
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  unlinkSync,
-  writeFileSync,
-} from "fs";
-import { tmpdir } from "os";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
-import { promisify } from "util";
 
+import { exec as execCallback } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
@@ -56,7 +49,7 @@ export interface BatchTestResult {
 export function extractDominantFillColor(svgString: string): FillColor {
   const fillRegex = /fill\s*[:=]\s*"?([^";>\s]+)/gi;
   const colors: string[] = [];
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = fillRegex.exec(svgString)) !== null) {
     const c = match[1]!.toLowerCase();
     if (c !== "none" && c !== "white" && c !== "#fff" && c !== "#ffffff" && c !== "currentcolor") {
@@ -297,7 +290,9 @@ export async function runBatchVisualTest(
     }
   } finally {
     for (const f of tempFiles) {
-      try { unlinkSync(f); } catch {}
+      try {
+        unlinkSync(f);
+      } catch {}
     }
   }
 

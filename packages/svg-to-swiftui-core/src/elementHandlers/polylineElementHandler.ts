@@ -3,10 +3,7 @@ import type { ElementNode } from "svg-parser";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct } from "../utils";
 
-export default function handlePolylineElement(
-  element: ElementNode,
-  options: TranspilerOptions,
-): string[] {
+export default function handlePolylineElement(element: ElementNode, options: TranspilerOptions): string[] {
   const props = element.properties;
 
   if (!props) {
@@ -21,11 +18,7 @@ export default function handlePolylineElement(
   return parsePointsToSwift(points, options, false);
 }
 
-export function parsePointsToSwift(
-  points: string,
-  options: TranspilerOptions,
-  closePath: boolean,
-): string[] {
+export function parsePointsToSwift(points: string, options: TranspilerOptions, closePath: boolean): string[] {
   // Parse "x1,y1 x2,y2 ..." or "x1 y1 x2 y2 ..."
   const nums = points
     .replace(/,/g, " ")
@@ -37,8 +30,7 @@ export function parsePointsToSwift(
     throw new Error("Points attribute must contain pairs of coordinates!");
   }
 
-  const toFixed = (v: number) =>
-    v.toFixed(options.precision).replace(/0+$/, "");
+  const toFixed = (v: number) => v.toFixed(options.precision).replace(/0+$/, "");
 
   const lines: string[] = [];
 

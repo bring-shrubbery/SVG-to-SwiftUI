@@ -1,10 +1,7 @@
-import type { SwiftGenerator } from "../types";
 import { clampNormalisedSizeProduct, stringifyRectValues } from "../../utils";
+import type { SwiftGenerator } from "../types";
 
-export const generateMoveToSwift: SwiftGenerator<{ x: number; y: number }> = (
-  data,
-  options,
-) => {
+export const generateMoveToSwift: SwiftGenerator<{ x: number; y: number }> = (data, options) => {
   const xy = stringifyRectValues(
     {
       x: data.x / options.viewBox.width,

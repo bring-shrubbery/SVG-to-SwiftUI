@@ -9,9 +9,9 @@
  *   bun run visual-tests/test-all-react-icons.ts --visual        # full visual test
  *   bun run visual-tests/test-all-react-icons.ts --visual 50     # visual test, 50 per set
  */
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join, resolve } from "path";
-import { fileURLToPath } from "url";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { convert } from "../src/index";
 import {
@@ -48,11 +48,18 @@ interface IconData {
 type IconEntry = [string, IconData];
 
 const CAMEL_TO_KEBAB: Record<string, string> = {
-  strokeWidth: "stroke-width", strokeLinecap: "stroke-linecap",
-  strokeLinejoin: "stroke-linejoin", strokeMiterlimit: "stroke-miterlimit",
-  strokeDasharray: "stroke-dasharray", strokeDashoffset: "stroke-dashoffset",
-  strokeOpacity: "stroke-opacity", fillRule: "fill-rule", clipRule: "clip-rule",
-  fillOpacity: "fill-opacity", clipPath: "clip-path", enableBackground: "enable-background",
+  strokeWidth: "stroke-width",
+  strokeLinecap: "stroke-linecap",
+  strokeLinejoin: "stroke-linejoin",
+  strokeMiterlimit: "stroke-miterlimit",
+  strokeDasharray: "stroke-dasharray",
+  strokeDashoffset: "stroke-dashoffset",
+  strokeOpacity: "stroke-opacity",
+  fillRule: "fill-rule",
+  clipRule: "clip-rule",
+  fillOpacity: "fill-opacity",
+  clipPath: "clip-path",
+  enableBackground: "enable-background",
 };
 
 function attrToString(attr: Record<string, string>): string {
@@ -64,7 +71,7 @@ function attrToString(attr: Record<string, string>): string {
 function nodeToSvg(node: IconNode, indent: string): string {
   const attrStr = node.attr && Object.keys(node.attr).length > 0 ? ` ${attrToString(node.attr)}` : "";
   if (node.child == null || node.child.length === 0) return `${indent}<${node.tag}${attrStr} />`;
-  const children = node.child.map((c: IconNode) => nodeToSvg(c, indent + "  ")).join("\n");
+  const children = node.child.map((c: IconNode) => nodeToSvg(c, `${indent}  `)).join("\n");
   return `${indent}<${node.tag}${attrStr}>\n${children}\n${indent}</${node.tag}>`;
 }
 
@@ -95,15 +102,22 @@ function usesMultipleColors(data: IconData): boolean {
 async function main() {
   const doVisual = process.argv.includes("--visual");
   const countArg = process.argv.find((a) => /^\d+$/.test(a));
-  const samplePerSet = countArg ? parseInt(countArg) : 0;
+  const samplePerSet = countArg ? parseInt(countArg, 10) : 0;
 
   if (doVisual) {
-    if (process.platform !== "darwin") { console.log("Visual tests require macOS."); process.exit(0); }
+    if (process.platform !== "darwin") {
+      console.log("Visual tests require macOS.");
+      process.exit(0);
+    }
     const { Resvg } = await import("@resvg/resvg-js");
 
     mkdirSync(RENDERS_DIR, { recursive: true });
 
-    const manifest = JSON.parse(readFileSync(join(ICONS_DATA_DIR, "manifest.json"), "utf-8")) as { id: string; name: string; count: number }[];
+    const manifest = JSON.parse(readFileSync(join(ICONS_DATA_DIR, "manifest.json"), "utf-8")) as {
+      id: string;
+      name: string;
+      count: number;
+    }[];
 
     let totalIcons = 0;
     let totalConvertErrors = 0;
@@ -117,7 +131,9 @@ async function main() {
       let icons: IconEntry[];
       try {
         icons = JSON.parse(readFileSync(join(ICONS_DATA_DIR, `${id}.json`), "utf-8"));
-      } catch { continue; }
+      } catch {
+        continue;
+      }
 
       if (samplePerSet > 0 && icons.length > samplePerSet) {
         const step = Math.floor(icons.length / samplePerSet);
@@ -129,7 +145,11 @@ async function main() {
 
       for (const [iconName, iconData] of icons) {
         totalIcons++;
-        if (usesMultipleColors(iconData)) { skipped++; totalSkipped++; continue; }
+        if (usesMultipleColors(iconData)) {
+          skipped++;
+          totalSkipped++;
+          continue;
+        }
 
         const svg = iconDataToSvg(iconData);
 
@@ -137,7 +157,10 @@ async function main() {
           const swiftCode = convert(svg, { structName: `S${visualItems.length}`, precision: 5 });
 
           const testName = `${id}-${iconName}`.replace(/[^a-z0-9-]/g, "-");
-          const resvg = new Resvg(svg, { background: "#ffffff", fitTo: { mode: "width" as const, value: RENDER_WIDTH } });
+          const resvg = new Resvg(svg, {
+            background: "#ffffff",
+            fitTo: { mode: "width" as const, value: RENDER_WIDTH },
+          });
           const rendered = resvg.render();
           const svgPngPath = join(RENDERS_DIR, `${testName}-svg.png`);
           writeFileSync(svgPngPath, Buffer.from(rendered.asPng()));
@@ -208,14 +231,20 @@ async function main() {
     }
 
     console.log("\n---");
-    console.log(`Total: ${totalIcons} icons, ${totalConvertErrors} convert errors, ${totalSkipped} multi-color skipped`);
+    console.log(
+      `Total: ${totalIcons} icons, ${totalConvertErrors} convert errors, ${totalSkipped} multi-color skipped`,
+    );
     console.log(`Visual: ${totalVisualPass} pass, ${totalVisualFail} fail, ${totalVisualError} errors`);
     console.log(`Threshold: ${PASS_THRESHOLD}%`);
 
     if (totalConvertErrors > 0 || totalVisualFail > 0) process.exit(1);
   } else {
     // Conversion-only mode (no visual rendering)
-    const manifest = JSON.parse(readFileSync(join(ICONS_DATA_DIR, "manifest.json"), "utf-8")) as { id: string; name: string; count: number }[];
+    const manifest = JSON.parse(readFileSync(join(ICONS_DATA_DIR, "manifest.json"), "utf-8")) as {
+      id: string;
+      name: string;
+      count: number;
+    }[];
 
     let totalIcons = 0;
     let totalConvertErrors = 0;
@@ -225,7 +254,9 @@ async function main() {
       let icons: IconEntry[];
       try {
         icons = JSON.parse(readFileSync(join(ICONS_DATA_DIR, `${id}.json`), "utf-8"));
-      } catch { continue; }
+      } catch {
+        continue;
+      }
 
       if (samplePerSet > 0 && icons.length > samplePerSet) {
         const step = Math.floor(icons.length / samplePerSet);
@@ -235,9 +266,13 @@ async function main() {
       let convertErrors = 0;
       let skipped = 0;
 
-      for (const [iconName, iconData] of icons) {
+      for (const [_iconName, iconData] of icons) {
         totalIcons++;
-        if (usesMultipleColors(iconData)) { skipped++; totalSkipped++; continue; }
+        if (usesMultipleColors(iconData)) {
+          skipped++;
+          totalSkipped++;
+          continue;
+        }
 
         const svg = iconDataToSvg(iconData);
         try {
@@ -256,7 +291,9 @@ async function main() {
     }
 
     console.log("\n---");
-    console.log(`Total: ${totalIcons} icons, ${totalConvertErrors} convert errors, ${totalSkipped} multi-color skipped`);
+    console.log(
+      `Total: ${totalIcons} icons, ${totalConvertErrors} convert errors, ${totalSkipped} multi-color skipped`,
+    );
 
     if (totalConvertErrors > 0) process.exit(1);
   }

@@ -59,9 +59,7 @@ export function extractSVGProperties(svg: ElementNode): SVGElementProperties {
   const sizeProvided = width && height;
   const viewBoxProvided = !!viewBox;
   if (!sizeProvided && !viewBoxProvided) {
-    throw new Error(
-      "Width and height or viewBox must be provided on <svg> element!",
-    );
+    throw new Error("Width and height or viewBox must be provided on <svg> element!");
   }
 
   // Validiate and parse view box.
@@ -69,7 +67,7 @@ export function extractSVGProperties(svg: ElementNode): SVGElementProperties {
     .split(" ")
     .map((n) => parseFloat(n));
   const [vbx, vby, vbWidth, vbHeight] = viewBoxElements;
-  const viewBoxValid = viewBoxElements.every((value) => !isNaN(value));
+  const viewBoxValid = viewBoxElements.every((value) => !Number.isNaN(value));
 
   // Parse width and height with units.
   const widthUnit = convertToPixels(width ?? vbWidth ?? "100");
@@ -107,16 +105,13 @@ export function getSVGElement(rootNode: RootNode): ElementNode | undefined {
         // Only need children from the root node, so add them
         // to frontier and continue.
         frontier.push(...currentNode.children);
-        continue;
       } else if (currentNode.type === "element") {
         // If the element node is the svg element, return it.
         if (currentNode.tagName === "svg") return currentNode;
 
         // Otherwise push children to the frontier and continue.
         frontier.push(...currentNode.children);
-        continue;
       } else {
-        continue;
       }
     }
   }
@@ -134,10 +129,7 @@ export function getSVGElement(rootNode: RootNode): ElementNode | undefined {
  * @param suffix Variable suffix that is appended to the end (width,
  * height, etc.)
  */
-export function clampNormalisedSizeProduct(
-  value: string,
-  suffix: string,
-): string {
+export function clampNormalisedSizeProduct(value: string, suffix: string): string {
   if (parseFloat(value) === 1) {
     return suffix;
   } else if (parseFloat(value) === 0) {
@@ -162,10 +154,7 @@ interface RectOrPosition {
  * @param rect ViewBox-like object with width and height being optional.
  * @param viewBox View box of the SVG Element.
  */
-export function normaliseRectValues(
-  rect: RectOrPosition,
-  viewBox: ViewBoxData,
-): RectOrPosition {
+export function normaliseRectValues(rect: RectOrPosition, viewBox: ViewBoxData): RectOrPosition {
   if (rect.width && rect.height) {
     return {
       x: rect.x / viewBox.width,
@@ -188,10 +177,7 @@ interface RectOrPositionString {
   height?: string;
 }
 
-export function stringifyRectValues(
-  rect: RectOrPosition,
-  precision: number,
-): RectOrPositionString {
+export function stringifyRectValues(rect: RectOrPosition, precision: number): RectOrPositionString {
   // Function to convert all numbers the same way.
   const toFixed = (value: number) => {
     return value.toFixed(precision).replace(/0+$/, "");

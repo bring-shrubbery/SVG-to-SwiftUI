@@ -1,7 +1,6 @@
 import type { ElementNode } from "svg-parser";
-
-import type { TranspilerOptions } from "../types";
 import { extractStyle } from "../styleUtils";
+import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct } from "../utils";
 import handleCircleElement from "./circleElementHandler";
 import handleEllipseElement from "./ellipseElementHandler";
@@ -38,15 +37,11 @@ function extractPresentationStyle(
       hasFill: fill !== "none",
       hasStroke: !!stroke && stroke !== "none",
       strokeColor: (stroke ?? "").toLowerCase().trim(),
-      strokeWidth: style["stroke-width"]
-        ? parseFloat(String(style["stroke-width"]))
-        : 1,
+      strokeWidth: style["stroke-width"] ? parseFloat(String(style["stroke-width"])) : 1,
       strokeLinecap: (style["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (style["stroke-linejoin"] as string) || "miter",
-      strokeMiterlimit: style["stroke-miterlimit"]
-        ? parseFloat(String(style["stroke-miterlimit"]))
-        : 4, // SVG default is 4
-      fillRule: (style["fill-rule"] as string) || (style["fillRule"] as string) || "nonzero",
+      strokeMiterlimit: style["stroke-miterlimit"] ? parseFloat(String(style["stroke-miterlimit"])) : 4, // SVG default is 4
+      fillRule: (style["fill-rule"] as string) || (style.fillRule as string) || "nonzero",
     };
   } catch {
     // No own style — fall back to parent style
@@ -57,15 +52,11 @@ function extractPresentationStyle(
       hasFill: fill !== "none" && fill !== undefined,
       hasStroke: !!stroke && stroke !== "none",
       strokeColor: (stroke ?? "").toLowerCase().trim(),
-      strokeWidth: parentStyle["stroke-width"]
-        ? parseFloat(String(parentStyle["stroke-width"]))
-        : 1,
+      strokeWidth: parentStyle["stroke-width"] ? parseFloat(String(parentStyle["stroke-width"])) : 1,
       strokeLinecap: (parentStyle["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (parentStyle["stroke-linejoin"] as string) || "miter",
-      strokeMiterlimit: parentStyle["stroke-miterlimit"]
-        ? parseFloat(String(parentStyle["stroke-miterlimit"]))
-        : 4,
-      fillRule: (parentStyle["fill-rule"] as string) || (parentStyle["fillRule"] as string) || "nonzero",
+      strokeMiterlimit: parentStyle["stroke-miterlimit"] ? parseFloat(String(parentStyle["stroke-miterlimit"])) : 4,
+      fillRule: (parentStyle["fill-rule"] as string) || (parentStyle.fillRule as string) || "nonzero",
     };
   }
 }
@@ -82,11 +73,7 @@ const LINE_JOIN_MAP: Record<string, string> = {
   bevel: ".bevel",
 };
 
-function buildStrokeLines(
-  lines: string[],
-  style: PresentationStyle,
-  options: TranspilerOptions,
-): string[] {
+function buildStrokeLines(lines: string[], style: PresentationStyle, options: TranspilerOptions): string[] {
   const normalizedWidth = style.strokeWidth / options.viewBox.width;
   const strokeWidthStr = clampNormalisedSizeProduct(
     normalizedWidth.toFixed(options.precision).replace(/0+$/, ""),
@@ -129,11 +116,7 @@ function buildStrokeLines(
   ];
 }
 
-function wrapWithStroke(
-  lines: string[],
-  style: PresentationStyle,
-  options: TranspilerOptions,
-): string[] {
+function wrapWithStroke(lines: string[], style: PresentationStyle, options: TranspilerOptions): string[] {
   // Invisible element — no fill, no stroke
   if (!style.hasFill && !style.hasStroke) return [];
 
@@ -147,10 +130,7 @@ function wrapWithStroke(
   return buildStrokeLines(lines, style, options);
 }
 
-export function handleElement(
-  element: ElementNode,
-  options: TranspilerOptions,
-): string[] {
+export function handleElement(element: ElementNode, options: TranspilerOptions): string[] {
   // Groups/svg delegate directly without stroke handling
   if (element.tagName === "g" || element.tagName === "svg") {
     return handleGroupElement(element, options);

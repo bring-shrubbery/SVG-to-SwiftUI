@@ -1,19 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
-import { iconDataToSvg } from "@/lib/icon-to-svg";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { BookOpen, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { iconDataToSvg } from "@/lib/icon-to-svg";
+import { cn } from "@/lib/utils";
 
 interface IconNode {
   tag: string;
@@ -41,21 +35,19 @@ function renderIconChildren(children: IconNode[]): React.ReactNode {
   return children.map((node, i) => {
     const { tag, attr, child } = node;
     const Tag = tag as React.ElementType;
-    const props: Record<string, unknown> = { key: i, ...attr };
+    const props: Record<string, unknown> = { ...attr };
     if (child && child.length > 0) {
-      return <Tag {...props}>{renderIconChildren(child)}</Tag>;
+      return (
+        <Tag key={i} {...props}>
+          {renderIconChildren(child)}
+        </Tag>
+      );
     }
-    return <Tag {...props} />;
+    return <Tag key={i} {...props} />;
   });
 }
 
-function IconGrid({
-  icons,
-  onSelect,
-}: {
-  icons: IconEntry[];
-  onSelect: (icon: IconEntry) => void;
-}) {
+function IconGrid({ icons, onSelect }: { icons: IconEntry[]; onSelect: (icon: IconEntry) => void }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const rowCount = Math.ceil(icons.length / COLUMNS);
 
@@ -68,10 +60,7 @@ function IconGrid({
 
   return (
     <div ref={parentRef} className="flex-1 overflow-auto">
-      <div
-        className="relative w-full"
-        style={{ height: virtualizer.getTotalSize() }}
-      >
+      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const startIdx = virtualRow.index * COLUMNS;
           const rowIcons = icons.slice(startIdx, startIdx + COLUMNS);
@@ -89,6 +78,7 @@ function IconGrid({
                 const [name, data] = icon;
                 return (
                   <button
+                    type="button"
                     key={name}
                     onClick={() => onSelect(icon)}
                     className="flex flex-col items-center justify-center gap-1 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -102,26 +92,12 @@ function IconGrid({
                       fill={data.attr.fill}
                       stroke={data.attr.stroke}
                       strokeWidth={data.attr.strokeWidth}
-                      strokeLinecap={
-                        data.attr.strokeLinecap as
-                          | "round"
-                          | "butt"
-                          | "square"
-                          | undefined
-                      }
-                      strokeLinejoin={
-                        data.attr.strokeLinejoin as
-                          | "round"
-                          | "miter"
-                          | "bevel"
-                          | undefined
-                      }
+                      strokeLinecap={data.attr.strokeLinecap as "round" | "butt" | "square" | undefined}
+                      strokeLinejoin={data.attr.strokeLinejoin as "round" | "miter" | "bevel" | undefined}
                     >
                       {renderIconChildren(data.child)}
                     </svg>
-                    <span className="w-full truncate text-center text-[10px] leading-tight">
-                      {name}
-                    </span>
+                    <span className="w-full truncate text-center text-[10px] leading-tight">{name}</span>
                   </button>
                 );
               })}
@@ -133,11 +109,7 @@ function IconGrid({
   );
 }
 
-export function ExamplesDialog({
-  onSelect,
-}: {
-  onSelect: (svgCode: string) => void;
-}) {
+export function ExamplesDialog({ onSelect }: { onSelect: (svgCode: string) => void }) {
   const [open, setOpen] = useState(false);
   const [manifest, setManifest] = useState<ManifestEntry[]>([]);
   const [icons, setIcons] = useState<IconEntry[]>([]);
@@ -217,11 +189,10 @@ export function ExamplesDialog({
         <div className="flex min-h-0 flex-1">
           {/* Sidebar */}
           <div className="flex w-48 shrink-0 flex-col overflow-y-auto border-r bg-muted/30 p-2">
-            <span className="px-2 py-1 text-xs font-medium text-muted-foreground">
-              Libraries
-            </span>
+            <span className="px-2 py-1 text-xs font-medium text-muted-foreground">Libraries</span>
             {manifest.map((lib) => (
               <button
+                type="button"
                 key={lib.id}
                 onClick={() => handleLibraryChange(lib.id)}
                 className={cn(
@@ -232,9 +203,7 @@ export function ExamplesDialog({
                 )}
               >
                 <span className="block truncate">{lib.name}</span>
-                <span className="text-[10px] opacity-60">
-                  {lib.count.toLocaleString()} icons
-                </span>
+                <span className="text-[10px] opacity-60">{lib.count.toLocaleString()} icons</span>
               </button>
             ))}
           </div>
@@ -251,9 +220,7 @@ export function ExamplesDialog({
                   className="pl-9"
                 />
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {filtered.length.toLocaleString()} icons
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{filtered.length.toLocaleString()} icons</p>
             </div>
 
             {loading ? (
