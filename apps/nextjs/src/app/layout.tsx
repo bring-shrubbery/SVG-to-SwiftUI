@@ -1,7 +1,6 @@
 import "./globals.css";
 import "allotment/dist/style.css";
 
-import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
@@ -87,7 +86,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={cn("h-screen w-full bg-background font-sans text-foreground antialiased", fontSans.variable)}>
         <Providers>{children}</Providers>
         <Toaster />
-        <Analytics />
       </body>
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}
