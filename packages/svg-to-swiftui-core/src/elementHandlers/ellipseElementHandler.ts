@@ -32,8 +32,8 @@ export default function handleEllipseElement(
     // Parse string
     const cx = parseFloat(ellipseProps.cx);
     const cy = parseFloat(ellipseProps.cy);
-    const rx = parseFloat(ellipseProps.rx);
-    const ry = parseFloat(ellipseProps.ry);
+    const rx = parseFloat(ellipseProps.rx) + (options.strokeExpansion || 0);
+    const ry = parseFloat(ellipseProps.ry) + (options.strokeExpansion || 0);
 
     // Get size variables
     const x = cx - rx;

@@ -155,9 +155,10 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         const { type, relative, ...d } = el;
         const prevElement = data[i - 1];
 
-        // Reflect the last quad control point around the previous endpoint
-        let x1 = d.x;
-        let y1 = d.y;
+        // Reflect the last quad control point around the previous endpoint,
+        // or use the current point if previous command is not Q/T
+        let x1: number;
+        let y1: number;
 
         if (
           lastQuadControl &&
@@ -166,6 +167,12 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         ) {
           x1 = prevElement.x + (prevElement.x - lastQuadControl.x);
           y1 = prevElement.y + (prevElement.y - lastQuadControl.y);
+        } else if (prevElement && "x" in prevElement && "y" in prevElement) {
+          x1 = prevElement.x as number;
+          y1 = prevElement.y as number;
+        } else {
+          x1 = d.x;
+          y1 = d.y;
         }
 
         lastQuadControl = { x: x1, y: y1 };
@@ -187,9 +194,10 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         const { type, relative, ...d } = el;
         const prevElement = data[i - 1];
 
-        // Setup first control point
-        let x1 = d.x;
-        let y1 = d.y;
+        // Setup first control point: reflect cp2 of previous C/S,
+        // or use current point if previous command is not C/S
+        let x1: number;
+        let y1: number;
 
         if (
           prevElement?.type === SVGPathData.CURVE_TO ||
@@ -197,6 +205,12 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         ) {
           x1 = prevElement.x + (prevElement.x - prevElement.x2);
           y1 = prevElement.y + (prevElement.y - prevElement.y2);
+        } else if (prevElement && "x" in prevElement && "y" in prevElement) {
+          x1 = prevElement.x as number;
+          y1 = prevElement.y as number;
+        } else {
+          x1 = d.x;
+          y1 = d.y;
         }
 
         const swiftLines = generateCubicCurveSwift({ ...d, x1, y1 }, options);

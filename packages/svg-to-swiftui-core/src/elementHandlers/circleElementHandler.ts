@@ -30,10 +30,10 @@ export default function handleCircleElement(
       );
     }
 
-    // Parse numbers from the striings.
+    // Parse numbers from the strings, expanding by stroke if fill+stroke.
     const cx = parseFloat(circleProps.cx);
     const cy = parseFloat(circleProps.cy);
-    const r = parseFloat(circleProps.r);
+    const r = parseFloat(circleProps.r) + (options.strokeExpansion || 0);
 
     // Convert center-radius to bounding box.
     const x = cx - r;
