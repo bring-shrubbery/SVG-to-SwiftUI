@@ -99,11 +99,15 @@ function reverseSubpath(commands: SVGCommand[]): SVGCommand[] {
   const firstMove = commands[0]!;
   if (firstMove.type !== SVGPathData.MOVE_TO) return commands;
 
-  const trail: SimplePoint[] = [{ x: firstMove.x, y: firstMove.y }];
+  let curX = firstMove.x;
+  let curY = firstMove.y;
+  const trail: SimplePoint[] = [{ x: curX, y: curY }];
   for (const cmd of drawCmds) {
     if ("x" in cmd && "y" in cmd) {
-      trail.push({ x: cmd.x as number, y: cmd.y as number });
+      curX = cmd.x as number;
+      curY = cmd.y as number;
     }
+    trail.push({ x: curX, y: curY });
   }
 
   const result: SVGCommand[] = [
@@ -202,17 +206,22 @@ export default function handlePathElement(
 
     // For filled paths, normalize winding to CW to match addRect/addEllipse
     if (options.normalizeWindingCW) {
-      // Normalize a copy for winding detection (resolve H/V/S/T/A to M/L/C/Q/Z)
-      const forAnalysis = new SVGPathData(props.d)
-        .toAbs()
-        .normalizeHVZ(false, true, true) // normalize H→L, V→L, keep Z
-        .normalizeST()
-        .aToC();
+      try {
+        // Normalize a copy for winding detection (resolve H/V/S/T/A to M/L/C/Q/Z)
+        const forAnalysis = new SVGPathData(props.d)
+          .toAbs()
+          .normalizeHVZ(false, true, true) // normalize H→L, V→L, keep Z
+          .normalizeST()
+          .aToC();
 
-      const { commands: cwCommands, reversed } = ensureDominantCW(forAnalysis.commands);
+        const { commands: cwCommands, reversed } = ensureDominantCW(forAnalysis.commands);
 
-      if (reversed) {
-        return convertPathToSwift(cwCommands, options);
+        if (reversed) {
+          return convertPathToSwift(cwCommands, options);
+        }
+      } catch {
+        // Fall through to use original commands if normalization fails
+        // (e.g., degenerate arcs that crash svg-pathdata's aToC)
       }
     }
 

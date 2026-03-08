@@ -1,0 +1,157 @@
+[
+  {
+    "id": "ai",
+    "name": "Ant Design Icons",
+    "count": 831
+  },
+  {
+    "id": "bs",
+    "name": "Bootstrap Icons",
+    "count": 2754
+  },
+  {
+    "id": "bi",
+    "name": "BoxIcons",
+    "count": 1634
+  },
+  {
+    "id": "ci",
+    "name": "Circum Icons",
+    "count": 288
+  },
+  {
+    "id": "cg",
+    "name": "css.gg",
+    "count": 704
+  },
+  {
+    "id": "di",
+    "name": "Devicons",
+    "count": 192
+  },
+  {
+    "id": "fi",
+    "name": "Feather",
+    "count": 287
+  },
+  {
+    "id": "fc",
+    "name": "Flat Color Icons",
+    "count": 329
+  },
+  {
+    "id": "fa",
+    "name": "Font Awesome 5",
+    "count": 1611
+  },
+  {
+    "id": "fa6",
+    "name": "Font Awesome 6",
+    "count": 2058
+  },
+  {
+    "id": "gi",
+    "name": "Game Icons",
+    "count": 4040
+  },
+  {
+    "id": "go",
+    "name": "Github Octicons icons",
+    "count": 264
+  },
+  {
+    "id": "gr",
+    "name": "Grommet-Icons",
+    "count": 637
+  },
+  {
+    "id": "hi",
+    "name": "Heroicons",
+    "count": 460
+  },
+  {
+    "id": "hi2",
+    "name": "Heroicons 2",
+    "count": 972
+  },
+  {
+    "id": "im",
+    "name": "IcoMoon Free",
+    "count": 491
+  },
+  {
+    "id": "lia",
+    "name": "Icons8 Line Awesome",
+    "count": 1544
+  },
+  {
+    "id": "io",
+    "name": "Ionicons 4",
+    "count": 696
+  },
+  {
+    "id": "io5",
+    "name": "Ionicons 5",
+    "count": 1332
+  },
+  {
+    "id": "lu",
+    "name": "Lucide",
+    "count": 1541
+  },
+  {
+    "id": "md",
+    "name": "Material Design icons",
+    "count": 4341
+  },
+  {
+    "id": "pi",
+    "name": "Phosphor Icons",
+    "count": 9072
+  },
+  {
+    "id": "rx",
+    "name": "Radix Icons",
+    "count": 332
+  },
+  {
+    "id": "ri",
+    "name": "Remix Icon",
+    "count": 3058
+  },
+  {
+    "id": "si",
+    "name": "Simple Icons",
+    "count": 3364
+  },
+  {
+    "id": "sl",
+    "name": "Simple Line Icons",
+    "count": 189
+  },
+  {
+    "id": "tb",
+    "name": "Tabler Icons",
+    "count": 5963
+  },
+  {
+    "id": "tfi",
+    "name": "Themify Icons",
+    "count": 352
+  },
+  {
+    "id": "ti",
+    "name": "Typicons",
+    "count": 336
+  },
+  {
+    "id": "vsc",
+    "name": "VS Code Icons",
+    "count": 498
+  },
+  {
+    "id": "wi",
+    "name": "Weather Icons",
+    "count": 219
+  }
+]

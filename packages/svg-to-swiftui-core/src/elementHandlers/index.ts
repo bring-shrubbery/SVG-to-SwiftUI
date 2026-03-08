@@ -20,6 +20,7 @@ interface PresentationStyle {
   strokeLinecap: string;
   strokeLinejoin: string;
   strokeMiterlimit: number;
+  fillRule: string;
 }
 
 function extractPresentationStyle(
@@ -45,6 +46,7 @@ function extractPresentationStyle(
       strokeMiterlimit: style["stroke-miterlimit"]
         ? parseFloat(String(style["stroke-miterlimit"]))
         : 4, // SVG default is 4
+      fillRule: (style["fill-rule"] as string) || (style["fillRule"] as string) || "nonzero",
     };
   } catch {
     // No own style — fall back to parent style
@@ -63,6 +65,7 @@ function extractPresentationStyle(
       strokeMiterlimit: parentStyle["stroke-miterlimit"]
         ? parseFloat(String(parentStyle["stroke-miterlimit"]))
         : 4,
+      fillRule: (parentStyle["fill-rule"] as string) || (parentStyle["fillRule"] as string) || "nonzero",
     };
   }
 }
@@ -172,9 +175,9 @@ export function handleElement(
     options.strokeExpansion = 0;
   }
 
-  // Enable winding normalization only for filled paths (not stroke-only)
+  // Enable winding normalization only for filled paths using winding rule (not stroke-only, not evenodd)
   const prevNormalize = options.normalizeWindingCW;
-  options.normalizeWindingCW = style.hasFill;
+  options.normalizeWindingCW = style.hasFill && style.fillRule !== "evenodd";
 
   let rawLines: string[];
 

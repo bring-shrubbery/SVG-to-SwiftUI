@@ -107,12 +107,18 @@ function parseColor(c: string): FillColor | null {
   return null;
 }
 
+function detectFillRule(svgString: string): string {
+  if (/fill-?rule\s*[:=]\s*"?evenodd/i.test(svgString)) return ".evenOdd";
+  return ".winding";
+}
+
 async function renderSwift(
   swiftCode: string,
   width: number,
   height: number,
   outputPath: string,
   fillColor: FillColor,
+  fillRule: string,
 ): Promise<void> {
   const template = readFileSync(TEMPLATE_PATH, "utf-8");
   const source = template
@@ -120,7 +126,7 @@ async function renderSwift(
     .replaceAll("__SHAPE_NAME__", STRUCT_NAME)
     .replaceAll("__WIDTH__", String(width))
     .replaceAll("__HEIGHT__", String(height))
-    .replaceAll("__FILL_RULE__", ".winding")
+    .replaceAll("__FILL_RULE__", fillRule)
     .replaceAll("__FILL_R__", String(fillColor.r))
     .replaceAll("__FILL_G__", String(fillColor.g))
     .replaceAll("__FILL_B__", String(fillColor.b));
@@ -241,9 +247,10 @@ async function runTest(svgFile: string): Promise<TestResult> {
       precision: 5,
     });
 
-    // 3. Render Swift (using SVG's dominant fill color for accurate comparison)
+    // 3. Render Swift (using SVG's dominant fill color and fill rule for accurate comparison)
     const fillColor = extractDominantFillColor(svgString);
-    await renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng, fillColor);
+    const fillRule = detectFillRule(svgString);
+    await renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng, fillColor, fillRule);
 
     // 4. Compare
     const score = compareImages(svgPng, swiftPng, diffPng);

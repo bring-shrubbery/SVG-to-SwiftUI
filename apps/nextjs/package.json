@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ../../.env --",
     "knip": "knip",
-    "generate:icons": "bun run scripts/generate-lucide-data.ts"
+    "generate:icons": "bun run scripts/generate-icon-data.ts"
   },
   "dependencies": {
     "@analytics/google-analytics": "^1.1.0",
