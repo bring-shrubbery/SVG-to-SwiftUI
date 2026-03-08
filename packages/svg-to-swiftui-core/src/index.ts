@@ -13,25 +13,6 @@ import { extractSVGProperties, getSVGElement } from "./utils";
 
 export * from "./types";
 
-const LIGHT_FILLS = new Set(["white", "#fff", "#ffffff", "rgb(255,255,255)"]);
-
-function isLightFill(fill: string): boolean {
-  return LIGHT_FILLS.has(fill.replace(/\s/g, ""));
-}
-
-function hasLightFill(fills: Set<string>): boolean {
-  for (const f of fills) {
-    if (isLightFill(f)) return true;
-  }
-  return false;
-}
-
-function hasDarkFill(fills: Set<string>): boolean {
-  for (const f of fills) {
-    if (!isLightFill(f)) return true;
-  }
-  return false;
-}
 
 /**
  * This function converts SVG string into SwiftUI
@@ -75,6 +56,7 @@ function swiftUIGenerator(
     parentStyle: {},
     fillColors: new Set<string>(),
     strokeExpansion: 0,
+    reverseWinding: false,
   };
 
   const configWithDefaults = {
@@ -85,14 +67,7 @@ function swiftUIGenerator(
   // Generate SwiftUI Shape body.
   const generatedBody = handleElement(svgElement, rootTranspilerOptions);
 
-  // Detect if shape needs even-odd fill rule (mixed light/dark fills)
-  const needsEoFill = hasLightFill(rootTranspilerOptions.fillColors) &&
-    hasDarkFill(rootTranspilerOptions.fillColors);
-
   const structBody: string[] = [];
-  if (needsEoFill) {
-    structBody.push("static let eoFill = true");
-  }
   structBody.push(
     ...createFunctionTemplate({
       name: "path",

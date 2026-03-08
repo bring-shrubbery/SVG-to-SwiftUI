@@ -34,19 +34,83 @@ struct Path {
         _path.addQuadCurve(to: end, control: control)
     }
     mutating func addEllipse(in rect: CGRect) {
-        _path.addEllipse(in: rect)
+        // X-flip to reverse winding so it matches manual path direction (CW in screen coords)
+        let t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 2 * rect.midX, ty: 0)
+        _path.addEllipse(in: rect, transform: t)
     }
     mutating func addRect(_ rect: CGRect) {
-        _path.addRect(rect)
+        let t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 2 * rect.midX, ty: 0)
+        _path.addRect(rect, transform: t)
     }
     mutating func addRoundedRect(in rect: CGRect, cornerSize: CGSize) {
-        _path.addRoundedRect(in: rect, cornerWidth: cornerSize.width, cornerHeight: cornerSize.height)
+        let t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 2 * rect.midX, ty: 0)
+        _path.addRoundedRect(in: rect, cornerWidth: cornerSize.width, cornerHeight: cornerSize.height, transform: t)
     }
     mutating func closeSubpath() {
         _path.closeSubpath()
     }
     mutating func addPath(_ other: Path) {
         _path.addPath(other.cgPath)
+    }
+    mutating func addReversedPath(_ other: Path) {
+        struct Elem {
+            var type: CGPathElementType
+            var points: [CGPoint]
+        }
+        var elements: [Elem] = []
+        other.cgPath.applyWithBlock { ptr in
+            let e = ptr.pointee
+            var pts: [CGPoint] = []
+            switch e.type {
+            case .moveToPoint: pts = [e.points[0]]
+            case .addLineToPoint: pts = [e.points[0]]
+            case .addQuadCurveToPoint: pts = [e.points[0], e.points[1]]
+            case .addCurveToPoint: pts = [e.points[0], e.points[1], e.points[2]]
+            case .closeSubpath: break
+            @unknown default: break
+            }
+            elements.append(Elem(type: e.type, points: pts))
+        }
+        var idx = 0
+        while idx < elements.count {
+            guard elements[idx].type == .moveToPoint else { idx += 1; continue }
+            let subStart = elements[idx].points[0]
+            var trail: [CGPoint] = [subStart]
+            var cmds: [Elem] = []
+            var hasClose = false
+            var k = idx + 1
+            while k < elements.count && elements[k].type != .moveToPoint {
+                let e = elements[k]
+                switch e.type {
+                case .addLineToPoint:
+                    trail.append(e.points[0]); cmds.append(e)
+                case .addQuadCurveToPoint:
+                    trail.append(e.points[1]); cmds.append(e)
+                case .addCurveToPoint:
+                    trail.append(e.points[2]); cmds.append(e)
+                case .closeSubpath:
+                    hasClose = true
+                default: break
+                }
+                k += 1
+            }
+            _path.move(to: trail[trail.count - 1])
+            for ri in stride(from: cmds.count - 1, through: 0, by: -1) {
+                let cmd = cmds[ri]
+                let toPt = trail[ri]
+                switch cmd.type {
+                case .addLineToPoint:
+                    _path.addLine(to: toPt)
+                case .addQuadCurveToPoint:
+                    _path.addQuadCurve(to: toPt, control: cmd.points[0])
+                case .addCurveToPoint:
+                    _path.addCurve(to: toPt, control1: cmd.points[1], control2: cmd.points[0])
+                default: break
+                }
+            }
+            if hasClose { _path.closeSubpath() }
+            idx = k
+        }
     }
     func strokedPath(_ style: StrokeStyle) -> Path {
         var result = Path()

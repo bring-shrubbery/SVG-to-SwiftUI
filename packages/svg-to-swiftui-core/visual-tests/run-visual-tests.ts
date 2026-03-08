@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 
-import { execSync } from "child_process";
+import { exec as execCallback } from "child_process";
 import {
-  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -12,12 +11,15 @@ import {
 import { tmpdir } from "os";
 import { basename, dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+import { promisify } from "util";
 
 import { Resvg } from "@resvg/resvg-js";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
 import { convert } from "../src/index";
+
+const exec = promisify(execCallback);
 
 // ---------------------------------------------------------------------------
 // Config
@@ -29,8 +31,9 @@ const RENDERS_DIR = resolve(__dirname, "renders");
 const TEMPLATE_PATH = resolve(__dirname, "swift-template.swift");
 
 const RENDER_WIDTH = 512;
-const PASS_THRESHOLD = 95; // percent
+const PASS_THRESHOLD = 98; // percent
 const STRUCT_NAME = "TestShape";
+const CONCURRENCY = 4;
 
 // ---------------------------------------------------------------------------
 // SVG → PNG  (resvg)
@@ -104,21 +107,20 @@ function parseColor(c: string): FillColor | null {
   return null;
 }
 
-function renderSwift(
+async function renderSwift(
   swiftCode: string,
   width: number,
   height: number,
   outputPath: string,
   fillColor: FillColor,
-): void {
+): Promise<void> {
   const template = readFileSync(TEMPLATE_PATH, "utf-8");
-  const useEoFill = swiftCode.includes("eoFill = true");
   const source = template
     .replaceAll("__SHAPE_CODE__", swiftCode)
     .replaceAll("__SHAPE_NAME__", STRUCT_NAME)
     .replaceAll("__WIDTH__", String(width))
     .replaceAll("__HEIGHT__", String(height))
-    .replaceAll("__FILL_RULE__", useEoFill ? ".evenOdd" : ".winding")
+    .replaceAll("__FILL_RULE__", ".winding")
     .replaceAll("__FILL_R__", String(fillColor.r))
     .replaceAll("__FILL_G__", String(fillColor.g))
     .replaceAll("__FILL_B__", String(fillColor.b));
@@ -129,13 +131,11 @@ function renderSwift(
 
   try {
     writeFileSync(srcPath, source);
-    execSync(`swiftc -framework AppKit "${srcPath}" -o "${binPath}"`, {
+    await exec(`swiftc -framework AppKit "${srcPath}" -o "${binPath}"`, {
       timeout: 60_000,
-      stdio: ["pipe", "pipe", "pipe"],
     });
-    execSync(`"${binPath}" "${outputPath}"`, {
+    await exec(`"${binPath}" "${outputPath}"`, {
       timeout: 10_000,
-      stdio: ["pipe", "pipe", "pipe"],
     });
   } finally {
     try {
@@ -222,7 +222,7 @@ interface TestResult {
   error?: string;
 }
 
-function runTest(svgFile: string): TestResult {
+async function runTest(svgFile: string): Promise<TestResult> {
   const name = basename(svgFile, ".svg");
   const svgPng = resolve(RENDERS_DIR, `${name}-svg.png`);
   const swiftPng = resolve(RENDERS_DIR, `${name}-swift.png`);
@@ -243,7 +243,7 @@ function runTest(svgFile: string): TestResult {
 
     // 3. Render Swift (using SVG's dominant fill color for accurate comparison)
     const fillColor = extractDominantFillColor(svgString);
-    renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng, fillColor);
+    await renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng, fillColor);
 
     // 4. Compare
     const score = compareImages(svgPng, swiftPng, diffPng);
@@ -260,10 +260,37 @@ function runTest(svgFile: string): TestResult {
 }
 
 // ---------------------------------------------------------------------------
+// Concurrency pool
+// ---------------------------------------------------------------------------
+
+async function runPool<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number,
+  onResult?: (result: R) => void,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIdx = 0;
+
+  async function worker() {
+    while (true) {
+      const idx = nextIdx++;
+      if (idx >= items.length) break;
+      const result = await fn(items[idx]!);
+      results[idx] = result;
+      onResult?.(result);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
-function main() {
+async function main() {
   if (process.platform !== "darwin") {
     console.error(
       "Visual tests require macOS (swiftc + CoreGraphics). Skipping.",
@@ -291,27 +318,27 @@ function main() {
     process.exit(1);
   }
 
-  console.log(`Running ${svgFiles.length} visual test(s)...\n`);
+  console.log(`Running ${svgFiles.length} visual test(s) with ${CONCURRENCY} workers...\n`);
 
-  const results: TestResult[] = [];
-
-  for (const svgFile of svgFiles) {
-    const result = runTest(svgFile);
-    results.push(result);
-
-    const tag =
-      result.status === "pass"
-        ? "PASS"
-        : result.status === "fail"
-          ? "FAIL"
-          : "ERR ";
-    const scoreStr =
-      result.status === "error" ? "error" : `${result.score.toFixed(2)}%`;
-    const errStr = result.error
-      ? ` (${result.error.substring(0, 100)})`
-      : "";
-    console.log(`  [${tag}] ${result.name.padEnd(25)} ${scoreStr}${errStr}`);
-  }
+  const results = await runPool(
+    svgFiles,
+    runTest,
+    CONCURRENCY,
+    (result) => {
+      const tag =
+        result.status === "pass"
+          ? "PASS"
+          : result.status === "fail"
+            ? "FAIL"
+            : "ERR ";
+      const scoreStr =
+        result.status === "error" ? "error" : `${result.score.toFixed(2)}%`;
+      const errStr = result.error
+        ? ` (${result.error.substring(0, 100)})`
+        : "";
+      console.log(`  [${tag}] ${result.name.padEnd(25)} ${scoreStr}${errStr}`);
+    },
+  );
 
   // Summary
   const passed = results.filter((r) => r.status === "pass").length;

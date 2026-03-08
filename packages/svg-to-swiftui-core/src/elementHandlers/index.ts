@@ -189,18 +189,39 @@ export function handleElement(
 
   options.strokeExpansion = prevExpansion;
 
-  // Track fill colors for eoFill detection
+  // Detect light fills for winding reversal (creates holes under winding fill rule)
+  let fillColor = "";
   if (style.hasFill) {
     try {
       const elStyle = extractStyle(element);
-      const fill = elStyle.fill ? String(elStyle.fill).toLowerCase().trim() : "";
-      if (fill) {
-        options.fillColors.add(fill);
+      fillColor = elStyle.fill ? String(elStyle.fill).toLowerCase().trim() : "";
+      if (fillColor) {
+        options.fillColors.add(fillColor);
       }
     } catch {
-      // no style to extract
+      // Check parentStyle for inherited fill
+      const parentFill = options.parentStyle.fill;
+      if (parentFill) {
+        fillColor = String(parentFill).toLowerCase().trim();
+      }
     }
   }
 
-  return wrapWithStroke(rawLines, style, options);
+  const LIGHT_FILLS = new Set(["white", "#fff", "#ffffff", "rgb(255,255,255)"]);
+  const isLightFill = style.hasFill && LIGHT_FILLS.has(fillColor.replace(/\s/g, ""));
+
+  let resultLines = wrapWithStroke(rawLines, style, options);
+
+  // For light-fill elements, reverse winding direction to create holes
+  if (isLightFill && resultLines.length > 0) {
+    options.lastPathId++;
+    const holeVar = `_hole${options.lastPathId}`;
+    resultLines = [
+      `var ${holeVar} = Path()`,
+      ...resultLines.map((l) => l.replace(/^path\./, `${holeVar}.`)),
+      `path.addReversedPath(${holeVar})`,
+    ];
+  }
+
+  return resultLines;
 }

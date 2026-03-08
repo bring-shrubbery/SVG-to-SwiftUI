@@ -16,6 +16,7 @@ export interface TranspilerOptions {
   parentStyle: Record<string, string | number>;
   fillColors: Set<string>;
   strokeExpansion: number;
+  reverseWinding: boolean;
 }
 
 export interface ViewBoxData {
