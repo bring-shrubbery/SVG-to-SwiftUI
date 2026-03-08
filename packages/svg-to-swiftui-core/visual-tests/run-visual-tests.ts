@@ -1,314 +1,67 @@
 #!/usr/bin/env bun
-
-import { exec as execCallback } from "child_process";
+/**
+ * Visual regression tests — compares SVG renders (resvg) against Swift renders
+ * (CoreGraphics) to verify the SVG→SwiftUI conversion produces correct shapes.
+ *
+ * Uses batch compilation: all shapes compile into ONE Swift binary, then render
+ * all PNGs in a single execution.
+ *
+ * Caching makes subsequent runs fast:
+ *   - SVG PNGs are cached by fixture file mtime (skip resvg if unchanged)
+ *   - Swift binary is cached by converter output hash (skip compile if unchanged)
+ *   - Swift PNGs are cached when binary is unchanged (skip render)
+ *
+ * Usage:
+ *   bun run visual-tests/run-visual-tests.ts          # all fixtures
+ *   bun run visual-tests/run-visual-tests.ts star      # filter by name
+ *   bun run visual-tests/run-visual-tests.ts --fresh   # ignore caches
+ */
 import {
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
-  unlinkSync,
+  statSync,
   writeFileSync,
 } from "fs";
-import { tmpdir } from "os";
-import { basename, dirname, join, resolve } from "path";
+import { basename, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
-import { promisify } from "util";
 
 import { Resvg } from "@resvg/resvg-js";
-import pixelmatch from "pixelmatch";
-import { PNG } from "pngjs";
 
 import { convert } from "../src/index";
-
-const exec = promisify(execCallback);
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
+import {
+  type BatchTestItem,
+  type BatchTestResult,
+  detectFillRule,
+  extractDominantFillColor,
+  runBatchVisualTest,
+} from "./batch-render";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = resolve(__dirname, "fixtures");
 const RENDERS_DIR = resolve(__dirname, "renders");
-const TEMPLATE_PATH = resolve(__dirname, "swift-template.swift");
+const SVG_CACHE_PATH = resolve(RENDERS_DIR, ".svg-cache.json");
 
 const RENDER_WIDTH = 512;
-const PASS_THRESHOLD = 98; // percent
-const STRUCT_NAME = "TestShape";
-const CONCURRENCY = 4;
+const PASS_THRESHOLD = 98;
 
-// ---------------------------------------------------------------------------
-// SVG → PNG  (resvg)
-// ---------------------------------------------------------------------------
-
-function renderSvg(
-  svg: string,
-): { png: Buffer; width: number; height: number } {
-  const resvg = new Resvg(svg, {
-    background: "#ffffff",
-    fitTo: { mode: "width", value: RENDER_WIDTH },
-  });
-  const rendered = resvg.render();
-  return {
-    png: Buffer.from(rendered.asPng()),
-    width: rendered.width,
-    height: rendered.height,
-  };
+interface SvgCacheEntry {
+  w: number;
+  h: number;
+  mt: number;
 }
-
-// ---------------------------------------------------------------------------
-// Swift → PNG  (swiftc + CoreGraphics)
-// ---------------------------------------------------------------------------
-
-interface FillColor {
-  r: number;
-  g: number;
-  b: number;
-}
-
-function extractDominantFillColor(svgString: string): FillColor {
-  // Find all fill color attributes (not "none" or "white")
-  const fillRegex = /fill\s*[:=]\s*"?([^";>\s]+)/gi;
-  const colors: string[] = [];
-  let match;
-  while ((match = fillRegex.exec(svgString)) !== null) {
-    const c = match[1]!.toLowerCase();
-    if (c !== "none" && c !== "white" && c !== "#fff" && c !== "#ffffff") {
-      colors.push(c);
-    }
-  }
-
-  // Parse the most common non-black fill color
-  for (const c of colors) {
-    if (c === "black" || c === "#000" || c === "#000000") continue;
-    const parsed = parseColor(c);
-    if (parsed) return parsed;
-  }
-
-  return { r: 0, g: 0, b: 0 }; // default black
-}
-
-function parseColor(c: string): FillColor | null {
-  if (c.startsWith("#")) {
-    const hex = c.slice(1);
-    if (hex.length === 3) {
-      return {
-        r: parseInt(hex[0]! + hex[0]!, 16) / 255,
-        g: parseInt(hex[1]! + hex[1]!, 16) / 255,
-        b: parseInt(hex[2]! + hex[2]!, 16) / 255,
-      };
-    }
-    if (hex.length === 6) {
-      return {
-        r: parseInt(hex.slice(0, 2), 16) / 255,
-        g: parseInt(hex.slice(2, 4), 16) / 255,
-        b: parseInt(hex.slice(4, 6), 16) / 255,
-      };
-    }
-  }
-  return null;
-}
-
-function detectFillRule(svgString: string): string {
-  if (/fill-?rule\s*[:=]\s*"?evenodd/i.test(svgString)) return ".evenOdd";
-  return ".winding";
-}
-
-async function renderSwift(
-  swiftCode: string,
-  width: number,
-  height: number,
-  outputPath: string,
-  fillColor: FillColor,
-  fillRule: string,
-): Promise<void> {
-  const template = readFileSync(TEMPLATE_PATH, "utf-8");
-  const source = template
-    .replaceAll("__SHAPE_CODE__", swiftCode)
-    .replaceAll("__SHAPE_NAME__", STRUCT_NAME)
-    .replaceAll("__WIDTH__", String(width))
-    .replaceAll("__HEIGHT__", String(height))
-    .replaceAll("__FILL_RULE__", fillRule)
-    .replaceAll("__FILL_R__", String(fillColor.r))
-    .replaceAll("__FILL_G__", String(fillColor.g))
-    .replaceAll("__FILL_B__", String(fillColor.b));
-
-  const id = `svg-swiftui-vtest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const srcPath = join(tmpdir(), `${id}.swift`);
-  const binPath = join(tmpdir(), id);
-
-  try {
-    writeFileSync(srcPath, source);
-    await exec(`swiftc -framework AppKit "${srcPath}" -o "${binPath}"`, {
-      timeout: 60_000,
-    });
-    await exec(`"${binPath}" "${outputPath}"`, {
-      timeout: 10_000,
-    });
-  } finally {
-    try {
-      unlinkSync(srcPath);
-    } catch {}
-    try {
-      unlinkSync(binPath);
-    } catch {}
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Binary mask conversion (for shape‑only comparison)
-// ---------------------------------------------------------------------------
-
-function toBinaryMask(png: PNG): PNG {
-  const out = new PNG({ width: png.width, height: png.height });
-  for (let i = 0; i < png.width * png.height; i++) {
-    const o = i * 4;
-    const r = png.data[o]!;
-    const g = png.data[o + 1]!;
-    const b = png.data[o + 2]!;
-    const a = png.data[o + 3]!;
-
-    // "content" = not transparent AND not near‑white
-    const isContent = a > 128 && (r < 240 || g < 240 || b < 240);
-
-    out.data[o] = isContent ? 0 : 255;
-    out.data[o + 1] = isContent ? 0 : 255;
-    out.data[o + 2] = isContent ? 0 : 255;
-    out.data[o + 3] = 255;
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Pixel comparison
-// ---------------------------------------------------------------------------
-
-function compareImages(
-  svgPngPath: string,
-  swiftPngPath: string,
-  diffPath: string,
-): number {
-  const svgImg = PNG.sync.read(readFileSync(svgPngPath));
-  const swiftImg = PNG.sync.read(readFileSync(swiftPngPath));
-
-  const svgMask = toBinaryMask(svgImg);
-  const swiftMask = toBinaryMask(swiftImg);
-
-  if (
-    svgMask.width !== swiftMask.width ||
-    svgMask.height !== swiftMask.height
-  ) {
-    throw new Error(
-      `Dimension mismatch: SVG ${svgMask.width}x${svgMask.height} vs Swift ${swiftMask.width}x${swiftMask.height}`,
-    );
-  }
-
-  const diff = new PNG({ width: svgMask.width, height: svgMask.height });
-  const numDiff = pixelmatch(
-    svgMask.data,
-    swiftMask.data,
-    diff.data,
-    svgMask.width,
-    svgMask.height,
-    { threshold: 0.1 },
-  );
-
-  writeFileSync(diffPath, PNG.sync.write(diff));
-
-  const total = svgMask.width * svgMask.height;
-  return ((total - numDiff) / total) * 100;
-}
-
-// ---------------------------------------------------------------------------
-// Test runner
-// ---------------------------------------------------------------------------
-
-interface TestResult {
-  name: string;
-  score: number;
-  status: "pass" | "fail" | "error";
-  error?: string;
-}
-
-async function runTest(svgFile: string): Promise<TestResult> {
-  const name = basename(svgFile, ".svg");
-  const svgPng = resolve(RENDERS_DIR, `${name}-svg.png`);
-  const swiftPng = resolve(RENDERS_DIR, `${name}-swift.png`);
-  const diffPng = resolve(RENDERS_DIR, `${name}-diff.png`);
-
-  try {
-    const svgString = readFileSync(svgFile, "utf-8");
-
-    // 1. Render SVG
-    const svgResult = renderSvg(svgString);
-    writeFileSync(svgPng, svgResult.png);
-
-    // 2. Convert SVG → Swift
-    const swiftCode = convert(svgString, {
-      structName: STRUCT_NAME,
-      precision: 5,
-    });
-
-    // 3. Render Swift (using SVG's dominant fill color and fill rule for accurate comparison)
-    const fillColor = extractDominantFillColor(svgString);
-    const fillRule = detectFillRule(svgString);
-    await renderSwift(swiftCode, svgResult.width, svgResult.height, swiftPng, fillColor, fillRule);
-
-    // 4. Compare
-    const score = compareImages(svgPng, swiftPng, diffPng);
-
-    return {
-      name,
-      score: Math.round(score * 100) / 100,
-      status: score >= PASS_THRESHOLD ? "pass" : "fail",
-    };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { name, score: 0, status: "error", error: message };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Concurrency pool
-// ---------------------------------------------------------------------------
-
-async function runPool<T, R>(
-  items: T[],
-  fn: (item: T) => Promise<R>,
-  concurrency: number,
-  onResult?: (result: R) => void,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIdx = 0;
-
-  async function worker() {
-    while (true) {
-      const idx = nextIdx++;
-      if (idx >= items.length) break;
-      const result = await fn(items[idx]!);
-      results[idx] = result;
-      onResult?.(result);
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
-  return results;
-}
-
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
 
 async function main() {
   if (process.platform !== "darwin") {
-    console.error(
-      "Visual tests require macOS (swiftc + CoreGraphics). Skipping.",
-    );
+    console.error("Visual tests require macOS (swiftc + CoreGraphics). Skipping.");
     process.exit(0);
   }
 
   mkdirSync(RENDERS_DIR, { recursive: true });
 
-  // Optional filter via CLI args
-  const filter = process.argv[2];
+  const fresh = process.argv.includes("--fresh");
+  const filter = process.argv.find((a) => a !== "--fresh" && !a.endsWith(".ts") && !a.includes("/"));
 
   const svgFiles = readdirSync(FIXTURES_DIR)
     .filter((f) => f.endsWith(".svg"))
@@ -325,29 +78,94 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Running ${svgFiles.length} visual test(s) with ${CONCURRENCY} workers...\n`);
+  // Load SVG dimension cache
+  let svgCache: Record<string, SvgCacheEntry> = {};
+  if (!fresh) {
+    try { svgCache = JSON.parse(readFileSync(SVG_CACHE_PATH, "utf-8")); } catch {}
+  }
 
-  const results = await runPool(
-    svgFiles,
-    runTest,
-    CONCURRENCY,
-    (result) => {
-      const tag =
-        result.status === "pass"
-          ? "PASS"
-          : result.status === "fail"
-            ? "FAIL"
-            : "ERR ";
-      const scoreStr =
-        result.status === "error" ? "error" : `${result.score.toFixed(2)}%`;
-      const errStr = result.error
-        ? ` (${result.error.substring(0, 100)})`
-        : "";
-      console.log(`  [${tag}] ${result.name.padEnd(25)} ${scoreStr}${errStr}`);
-    },
-  );
+  console.log(`Processing ${svgFiles.length} fixtures...\n`);
 
-  // Summary
+  const items: BatchTestItem[] = [];
+  const conversionErrors: BatchTestResult[] = [];
+  const t0 = Date.now();
+  let svgCacheHits = 0;
+
+  for (const file of svgFiles) {
+    const name = basename(file, ".svg");
+    const svgString = readFileSync(file, "utf-8");
+    const svgPngPath = resolve(RENDERS_DIR, `${name}-svg.png`);
+
+    try {
+      let width: number;
+      let height: number;
+
+      // Check SVG PNG cache
+      const svgMtime = statSync(file).mtimeMs;
+      const cached = svgCache[name];
+
+      if (!fresh && cached && cached.mt === svgMtime && existsSync(svgPngPath)) {
+        width = cached.w;
+        height = cached.h;
+        svgCacheHits++;
+      } else {
+        const resvg = new Resvg(svgString, {
+          background: "#ffffff",
+          fitTo: { mode: "width" as const, value: RENDER_WIDTH },
+        });
+        const rendered = resvg.render();
+        writeFileSync(svgPngPath, Buffer.from(rendered.asPng()));
+        width = rendered.width;
+        height = rendered.height;
+        svgCache[name] = { w: width, h: height, mt: svgMtime };
+      }
+
+      const swiftCode = convert(svgString, {
+        structName: `S${items.length}`,
+        precision: 5,
+      });
+
+      items.push({
+        name,
+        svgPngPath,
+        swiftCode,
+        width,
+        height,
+        fillColor: extractDominantFillColor(svgString),
+        fillRule: detectFillRule(svgString),
+      });
+    } catch (err) {
+      conversionErrors.push({
+        name,
+        score: 0,
+        status: "error",
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Save SVG cache
+  writeFileSync(SVG_CACHE_PATH, JSON.stringify(svgCache));
+
+  const prepTime = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log(`  Prepared ${items.length} shapes in ${prepTime}s (${svgCacheHits} SVG cache hits)`);
+  if (conversionErrors.length > 0) {
+    console.log(`  ${conversionErrors.length} conversion error(s)`);
+  }
+
+  // Batch compile, render, compare
+  const batchResults = await runBatchVisualTest(items, RENDERS_DIR, PASS_THRESHOLD);
+  const results = [...batchResults, ...conversionErrors];
+
+  // Report
+  console.log("");
+  for (const r of results) {
+    const tag = r.status === "pass" ? "PASS" : r.status === "fail" ? "FAIL" : "ERR ";
+    const scoreStr = r.status === "error" ? "error" : `${r.score.toFixed(2)}%`;
+    const errStr = r.error ? ` (${r.error.substring(0, 100)})` : "";
+    console.log(`  [${tag}] ${r.name.padEnd(25)} ${scoreStr}${errStr}`);
+  }
+
   const passed = results.filter((r) => r.status === "pass").length;
   const failed = results.filter((r) => r.status === "fail").length;
   const errors = results.filter((r) => r.status === "error").length;
@@ -359,7 +177,6 @@ async function main() {
   console.log(`Threshold: ${PASS_THRESHOLD}%`);
   console.log(`Renders: ${RENDERS_DIR}`);
 
-  // JSON summary for machine consumption
   const summary = {
     timestamp: new Date().toISOString(),
     threshold: PASS_THRESHOLD,
@@ -371,14 +188,9 @@ async function main() {
       ...(r.error ? { error: r.error } : {}),
     })),
   };
-  writeFileSync(
-    resolve(RENDERS_DIR, "summary.json"),
-    JSON.stringify(summary, null, 2),
-  );
+  writeFileSync(resolve(RENDERS_DIR, "summary.json"), JSON.stringify(summary, null, 2));
 
-  if (failed > 0 || errors > 0) {
-    process.exit(1);
-  }
+  if (failed > 0 || errors > 0) process.exit(1);
 }
 
 main();
