@@ -4,7 +4,7 @@ import { getGithubStarsForRepo } from "@/lib/utils";
 
 import { App } from "./App";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export default async function Home() {
   const githubStars = await getGithubStarsForRepo("bring-shrubbery/SVG-to-SwiftUI");

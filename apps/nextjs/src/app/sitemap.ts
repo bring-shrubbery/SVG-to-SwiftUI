@@ -4,18 +4,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: "https://svg-to-swiftui.quassum.com",
-      lastModified: new Date(),
+      lastModified: "2026-03-08",
+      changeFrequency: "monthly",
       priority: 1,
     },
     {
       url: "https://svg-to-swiftui.quassum.com/privacy-policy",
-      lastModified: new Date(),
-      priority: 0.8,
+      lastModified: "2024-10-26",
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
       url: "https://svg-to-swiftui.quassum.com/terms-and-conditions",
-      lastModified: new Date(),
-      priority: 0.5,
+      lastModified: "2024-10-26",
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ];
 }

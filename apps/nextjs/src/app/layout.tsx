@@ -15,11 +15,19 @@ const fontSans = Inter({
   variable: "--font-sans",
 });
 
+const SITE_URL = "https://svg-to-swiftui.quassum.com";
+const SITE_TITLE = "SVG to SwiftUI Converter";
+const SITE_DESCRIPTION =
+  "Convert SVG code into SwiftUI Shape structures instantly. Paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app.";
+
 export const metadata: Metadata = {
-  title: "SVG to SwiftUI Converter",
-  applicationName: "SVG to SwiftUI Converter",
-  description:
-    "SVG to SwiftUI converter let's you convert raw svg code into a SwiftUI Shape structure. Just paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app!",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: `%s | ${SITE_TITLE}`,
+  },
+  applicationName: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   robots: {
     index: true,
     follow: true,
@@ -42,41 +50,87 @@ export const metadata: Metadata = {
   publisher: "Quassum",
   creator: "Antoni Silvestrovic",
   alternates: {
-    canonical: "https://svg-to-swiftui.quassum.com/",
+    canonical: "/",
     languages: {
-      en: "https://svg-to-swiftui.quassum.com/",
+      en: "/",
     },
   },
   keywords: [
-    "how to convert svg to swiftui",
-    "how to get svg into swift code",
+    "svg to swiftui",
+    "svg to swiftui converter",
+    "convert svg to swiftui",
+    "swiftui shape",
+    "swiftui converter",
+    "svg to swift",
+    "convert svg to swift",
     "import svg into swiftui",
     "import svg into xcode",
     "svg on ios",
-    "svg",
-    "swiftui",
-    "converter",
-    "svg to swiftui",
-    "svg to swiftui converter",
-    "swiftui converter",
-    "svg converter",
-    "svg to swift",
-    "svg to swift converter",
-    "swift converter",
     "swiftui code",
     "swift code",
-    "swiftui shape",
-    "swift shape",
-    "convert svg to swiftui",
-    "convert svg to swift",
     "ios",
+    "svg",
+    "swiftui",
+    "swift shape",
+    "svg converter",
   ],
+  openGraph: {
+    type: "website",
+    siteName: SITE_TITLE,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: SITE_TITLE,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/og-image.png"],
+  },
   manifest: "/manifest.json",
   icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
     apple: {
       url: "/apple-touch-icon.png",
       sizes: "180x180",
     },
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  url: SITE_URL,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  author: {
+    "@type": "Person",
+    name: "Antoni Silvestrovic",
+    url: "https://github.com/bring-shrubbery",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "Quassum",
+    url: "https://quassum.com",
   },
 };
 
@@ -86,6 +140,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={cn("h-screen w-full bg-background font-sans text-foreground antialiased", fontSans.variable)}>
         <Providers>{children}</Providers>
         <Toaster />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD requires this, data is a static constant */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </body>
 
       {/* umami.is Analytics Script (goes through vercel rewrite to analytics.quassum.com) */}
