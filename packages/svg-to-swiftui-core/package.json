@@ -36,6 +36,7 @@
     "clean": "rm -rf .turbo node_modules",
     "test": "jest",
     "visual-test": "bun run visual-tests/run-visual-tests.ts",
+    "test:react-icons": "bun run visual-tests/test-all-react-icons.ts",
     "coverage": "jest --ci --coverage",
     "lint": "eslint .",
     "format": "prettier --check . --ignore-path ../../.gitignore",
