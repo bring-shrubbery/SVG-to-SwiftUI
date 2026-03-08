@@ -1,4 +1,4 @@
-import type { ElementNode } from "svg-parser";
+import type { ElementNode, Node } from "svg-parser";
 import { parse } from "svg-parser";
 
 import type { SwiftUIGeneratorConfig, TranspilerOptions } from "./types";
@@ -10,6 +10,51 @@ import {
   createUsageCommentTemplate,
 } from "./templates";
 import { extractSVGProperties, getSVGElement } from "./utils";
+
+/**
+ * Pre-scan the SVG tree to detect if any elements have fill (not "none").
+ * Tracks inherited fill from parent elements.
+ */
+function svgHasFills(node: ElementNode, inheritedFill?: string): boolean {
+  const FILLABLE_TAGS = new Set(["path", "circle", "ellipse", "rect", "polygon", "polyline"]);
+
+  // Determine this element's effective fill
+  const ownFill = node.properties?.fill as string | undefined;
+  const style = node.properties?.style as string | undefined;
+
+  let effectiveFill = inheritedFill;
+
+  // Own fill attribute overrides inherited
+  if (ownFill !== undefined) {
+    effectiveFill = ownFill;
+  }
+
+  // Inline style fill overrides attribute
+  if (style) {
+    const match = /fill\s*:\s*([^;]+)/.exec(style);
+    if (match) {
+      effectiveFill = match[1]!.trim();
+    }
+  }
+
+  // Check if this is a fillable shape with non-none fill
+  if (FILLABLE_TAGS.has(node.tagName ?? "")) {
+    // Default fill is black if not specified
+    const fill = effectiveFill ?? "black";
+    if (fill !== "none") return true;
+  }
+
+  // Recurse into children
+  if (node.children) {
+    for (const child of node.children) {
+      if (typeof child !== "string" && "tagName" in (child as ElementNode)) {
+        if (svgHasFills(child as ElementNode, effectiveFill)) return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 export * from "./types";
 
@@ -57,6 +102,8 @@ function swiftUIGenerator(
     fillColors: new Set<string>(),
     strokeExpansion: 0,
     reverseWinding: false,
+    normalizeWindingCW: false,
+    hasFills: svgHasFills(svgElement),
   };
 
   const configWithDefaults = {

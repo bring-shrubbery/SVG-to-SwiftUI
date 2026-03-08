@@ -15,6 +15,7 @@ import handleRectElement from "./rectElementHandler";
 interface PresentationStyle {
   hasFill: boolean;
   hasStroke: boolean;
+  strokeColor: string;
   strokeWidth: number;
   strokeLinecap: string;
   strokeLinejoin: string;
@@ -35,6 +36,7 @@ function extractPresentationStyle(
     return {
       hasFill: fill !== "none",
       hasStroke: !!stroke && stroke !== "none",
+      strokeColor: (stroke ?? "").toLowerCase().trim(),
       strokeWidth: style["stroke-width"]
         ? parseFloat(String(style["stroke-width"]))
         : 1,
@@ -52,6 +54,7 @@ function extractPresentationStyle(
     return {
       hasFill: fill !== "none" && fill !== undefined,
       hasStroke: !!stroke && stroke !== "none",
+      strokeColor: (stroke ?? "").toLowerCase().trim(),
       strokeWidth: parentStyle["stroke-width"]
         ? parseFloat(String(parentStyle["stroke-width"]))
         : 1,
@@ -90,12 +93,36 @@ function buildStrokeLines(
   const lineCap = LINE_CAP_MAP[style.strokeLinecap] || ".butt";
   const lineJoin = LINE_JOIN_MAP[style.strokeLinejoin] || ".miter";
 
+  const LIGHT_COLORS = new Set(["white", "#fff", "#ffffff", "rgb(255,255,255)"]);
+  const isLightStroke = LIGHT_COLORS.has(style.strokeColor.replace(/\s/g, ""));
+
   options.lastPathId++;
   const varName = `strokePath${options.lastPathId}`;
+  const strokeCall = `${varName}.strokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit}))`;
+
+  if (isLightStroke) {
+    // Light strokes create holes by ensuring CCW winding
+    return [
+      `var ${varName} = Path()`,
+      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      `path.addPath(${varName}.ccwStrokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
+    ];
+  }
+
+  if (options.hasFills) {
+    // Dark strokes over fills: use cwStrokedPath to prevent unwanted holes
+    return [
+      `var ${varName} = Path()`,
+      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      `path.addPath(${varName}.cwStrokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
+    ];
+  }
+
+  // All-stroke SVG: use normal strokedPath
   return [
     `var ${varName} = Path()`,
     ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
-    `path.addPath(${varName}.strokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
+    `path.addPath(${strokeCall})`,
   ];
 }
 
@@ -145,6 +172,10 @@ export function handleElement(
     options.strokeExpansion = 0;
   }
 
+  // Enable winding normalization only for filled paths (not stroke-only)
+  const prevNormalize = options.normalizeWindingCW;
+  options.normalizeWindingCW = style.hasFill;
+
   let rawLines: string[];
 
   switch (element.tagName) {
@@ -188,6 +219,7 @@ export function handleElement(
   }
 
   options.strokeExpansion = prevExpansion;
+  options.normalizeWindingCW = prevNormalize;
 
   // Detect light fills for winding reversal (creates holes under winding fill rule)
   let fillColor = "";

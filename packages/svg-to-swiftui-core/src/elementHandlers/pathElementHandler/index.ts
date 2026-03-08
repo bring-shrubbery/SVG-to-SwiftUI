@@ -12,6 +12,170 @@ import { generateLineToSwift } from "./lineToGenerator";
 import { generateMoveToSwift } from "./moveToGenerator";
 import { generateQuadCurveSwift } from "./quadCurveGenerator";
 
+// ---------------------------------------------------------------------------
+// Winding normalization: ensure the dominant (first) subpath is CW, matching
+// CGPath.addRect/addEllipse natural winding, so overlapping elements don't
+// create unwanted holes under the non-zero (winding) fill rule.
+// Relative winding between subpaths within an element is preserved.
+// ---------------------------------------------------------------------------
+
+interface SimplePoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * Compute the signed area of a subpath using the shoelace formula.
+ * Uses normalized commands (M, L, C, Q, Z only — absolute coords).
+ * Samples bezier curves at intermediate points for accuracy.
+ * Positive = CW in screen coords (y-down), Negative = CCW.
+ */
+function computeSubpathSignedArea(commands: SVGCommand[]): number {
+  const points: SimplePoint[] = [];
+  let curX = 0;
+  let curY = 0;
+
+  for (const cmd of commands) {
+    switch (cmd.type) {
+      case SVGPathData.MOVE_TO:
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      case SVGPathData.LINE_TO:
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      case SVGPathData.CURVE_TO: {
+        const x0 = curX, y0 = curY;
+        for (const t of [0.25, 0.5, 0.75]) {
+          const mt = 1 - t;
+          const px = mt * mt * mt * x0 + 3 * mt * mt * t * cmd.x1 + 3 * mt * t * t * cmd.x2 + t * t * t * cmd.x;
+          const py = mt * mt * mt * y0 + 3 * mt * mt * t * cmd.y1 + 3 * mt * t * t * cmd.y2 + t * t * t * cmd.y;
+          points.push({ x: px, y: py });
+        }
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      }
+      case SVGPathData.QUAD_TO: {
+        const x0 = curX, y0 = curY;
+        for (const t of [0.25, 0.5, 0.75]) {
+          const mt = 1 - t;
+          const px = mt * mt * x0 + 2 * mt * t * cmd.x1 + t * t * cmd.x;
+          const py = mt * mt * y0 + 2 * mt * t * cmd.y1 + t * t * cmd.y;
+          points.push({ x: px, y: py });
+        }
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      }
+      case SVGPathData.CLOSE_PATH:
+        break;
+    }
+  }
+
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    area += points[i]!.x * points[j]!.y;
+    area -= points[j]!.x * points[i]!.y;
+  }
+  return area / 2;
+}
+
+/**
+ * Reverse a subpath's commands so CW becomes CCW and vice versa.
+ * Input: normalized commands (only M, L, C, Q, Z — absolute coords).
+ */
+function reverseSubpath(commands: SVGCommand[]): SVGCommand[] {
+  if (commands.length <= 1) return commands;
+
+  const hasClose = commands[commands.length - 1]?.type === SVGPathData.CLOSE_PATH;
+  const drawCmds = hasClose ? commands.slice(1, -1) : commands.slice(1);
+  const firstMove = commands[0]!;
+  if (firstMove.type !== SVGPathData.MOVE_TO) return commands;
+
+  const trail: SimplePoint[] = [{ x: firstMove.x, y: firstMove.y }];
+  for (const cmd of drawCmds) {
+    if ("x" in cmd && "y" in cmd) {
+      trail.push({ x: cmd.x as number, y: cmd.y as number });
+    }
+  }
+
+  const result: SVGCommand[] = [
+    { type: SVGPathData.MOVE_TO, relative: false, x: trail[trail.length - 1]!.x, y: trail[trail.length - 1]!.y },
+  ];
+
+  for (let i = drawCmds.length - 1; i >= 0; i--) {
+    const cmd = drawCmds[i]!;
+    const toPt = trail[i]!;
+
+    switch (cmd.type) {
+      case SVGPathData.LINE_TO:
+        result.push({ type: SVGPathData.LINE_TO, relative: false, x: toPt.x, y: toPt.y });
+        break;
+      case SVGPathData.QUAD_TO:
+        result.push({ type: SVGPathData.QUAD_TO, relative: false, x1: cmd.x1, y1: cmd.y1, x: toPt.x, y: toPt.y });
+        break;
+      case SVGPathData.CURVE_TO:
+        result.push({ type: SVGPathData.CURVE_TO, relative: false, x1: cmd.x2, y1: cmd.y2, x2: cmd.x1, y2: cmd.y1, x: toPt.x, y: toPt.y });
+        break;
+      default:
+        result.push({ type: SVGPathData.LINE_TO, relative: false, x: toPt.x, y: toPt.y });
+        break;
+    }
+  }
+
+  if (hasClose) {
+    result.push({ type: SVGPathData.CLOSE_PATH });
+  }
+
+  return result;
+}
+
+/**
+ * Check if the first (dominant) subpath is CCW. If so, reverse ALL subpaths
+ * to flip their winding while preserving relative winding between them.
+ * This makes the dominant subpath CW (matching addRect/addEllipse).
+ */
+function ensureDominantCW(commands: SVGCommand[]): { commands: SVGCommand[]; reversed: boolean } {
+  // Split into subpaths
+  const subpaths: SVGCommand[][] = [];
+  let current: SVGCommand[] = [];
+
+  for (const cmd of commands) {
+    if (cmd.type === SVGPathData.MOVE_TO && current.length > 0) {
+      subpaths.push(current);
+      current = [];
+    }
+    current.push(cmd);
+  }
+  if (current.length > 0) {
+    subpaths.push(current);
+  }
+
+  if (subpaths.length === 0) return { commands, reversed: false };
+
+  // Check the first subpath's winding
+  const firstArea = computeSubpathSignedArea(subpaths[0]!);
+  if (firstArea >= 0) {
+    // Already CW or degenerate — no change needed
+    return { commands, reversed: false };
+  }
+
+  // First subpath is CCW — reverse ALL subpaths to flip winding
+  const result: SVGCommand[] = [];
+  for (const subpath of subpaths) {
+    result.push(...reverseSubpath(subpath));
+  }
+
+  return { commands: result, reversed: true };
+}
+
 /**
  * Converts SVG Path element to SwiftUI path string.
  * @param element SVG Path Element
@@ -35,6 +199,24 @@ export default function handlePathElement(
     options.lastPathId++;
 
     const pathData = new SVGPathData(props.d).toAbs();
+
+    // For filled paths, normalize winding to CW to match addRect/addEllipse
+    if (options.normalizeWindingCW) {
+      // Normalize a copy for winding detection (resolve H/V/S/T/A to M/L/C/Q/Z)
+      const forAnalysis = new SVGPathData(props.d)
+        .toAbs()
+        .normalizeHVZ(false, true, true) // normalize H→L, V→L, keep Z
+        .normalizeST()
+        .aToC();
+
+      const { commands: cwCommands, reversed } = ensureDominantCW(forAnalysis.commands);
+
+      if (reversed) {
+        return convertPathToSwift(cwCommands, options);
+      }
+    }
+
+    // No reversal needed — use original commands to preserve exact output format
     return convertPathToSwift(pathData.commands, options);
   } else {
     throw new Error("Path element does not have any properties!");

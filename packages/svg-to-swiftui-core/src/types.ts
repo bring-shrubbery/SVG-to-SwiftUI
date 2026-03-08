@@ -17,6 +17,8 @@ export interface TranspilerOptions {
   fillColors: Set<string>;
   strokeExpansion: number;
   reverseWinding: boolean;
+  normalizeWindingCW: boolean;
+  hasFills: boolean;
 }
 
 export interface ViewBoxData {

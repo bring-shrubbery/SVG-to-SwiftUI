@@ -34,17 +34,13 @@ struct Path {
         _path.addQuadCurve(to: end, control: control)
     }
     mutating func addEllipse(in rect: CGRect) {
-        // X-flip to reverse winding so it matches manual path direction (CW in screen coords)
-        let t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 2 * rect.midX, ty: 0)
-        _path.addEllipse(in: rect, transform: t)
+        _path.addEllipse(in: rect)
     }
     mutating func addRect(_ rect: CGRect) {
-        let t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 2 * rect.midX, ty: 0)
-        _path.addRect(rect, transform: t)
+        _path.addRect(rect)
     }
     mutating func addRoundedRect(in rect: CGRect, cornerSize: CGSize) {
-        let t = CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 2 * rect.midX, ty: 0)
-        _path.addRoundedRect(in: rect, cornerWidth: cornerSize.width, cornerHeight: cornerSize.height, transform: t)
+        _path.addRoundedRect(in: rect, cornerWidth: cornerSize.width, cornerHeight: cornerSize.height)
     }
     mutating func closeSubpath() {
         _path.closeSubpath()
@@ -121,6 +117,100 @@ struct Path {
             miterLimit: style.miterLimit
         )
         result._path.addPath(stroked)
+        return result
+    }
+    func ccwStrokedPath(_ style: StrokeStyle) -> Path {
+        var result = Path()
+        let stroked = cgPath.copy(
+            strokingWithWidth: style.lineWidth,
+            lineCap: style.lineCap,
+            lineJoin: style.lineJoin,
+            miterLimit: style.miterLimit
+        )
+        var subpathCount = 0
+        stroked.applyWithBlock { ptr in
+            if ptr.pointee.type == .moveToPoint { subpathCount += 1 }
+        }
+        if subpathCount == 1 {
+            var trail: [CGPoint] = []
+            stroked.applyWithBlock { ptr in
+                let e = ptr.pointee
+                switch e.type {
+                case .moveToPoint: trail.append(e.points[0])
+                case .addLineToPoint: trail.append(e.points[0])
+                case .addQuadCurveToPoint: trail.append(e.points[1])
+                case .addCurveToPoint: trail.append(e.points[2])
+                default: break
+                }
+            }
+            var area: CGFloat = 0
+            for i in 0..<trail.count {
+                let j = (i + 1) % trail.count
+                area += trail[i].x * trail[j].y - trail[j].x * trail[i].y
+            }
+            if area > 0 {
+                // CW — reverse to CCW for hole-cutting
+                var src = Path()
+                src._path.addPath(stroked)
+                result.addReversedPath(src)
+            } else {
+                // Already CCW
+                result._path.addPath(stroked)
+            }
+        } else {
+            // Multi-contour: reverse all subpaths for consistent hole behavior
+            var src = Path()
+            src._path.addPath(stroked)
+            result.addReversedPath(src)
+        }
+        return result
+    }
+    func cwStrokedPath(_ style: StrokeStyle) -> Path {
+        var result = Path()
+        let stroked = cgPath.copy(
+            strokingWithWidth: style.lineWidth,
+            lineCap: style.lineCap,
+            lineJoin: style.lineJoin,
+            miterLimit: style.miterLimit
+        )
+        // Count subpaths in the stroked outline
+        var subpathCount = 0
+        stroked.applyWithBlock { ptr in
+            if ptr.pointee.type == .moveToPoint { subpathCount += 1 }
+        }
+        // Single-contour outlines (from open paths) are safe to normalize
+        // to CW, preventing holes when overlapping CW filled shapes.
+        // Multi-contour outlines (from closed paths) have intentional
+        // inner CCW contours that must be preserved.
+        if subpathCount == 1 {
+            // Check winding via signed area (shoelace on endpoints)
+            var trail: [CGPoint] = []
+            stroked.applyWithBlock { ptr in
+                let e = ptr.pointee
+                switch e.type {
+                case .moveToPoint: trail.append(e.points[0])
+                case .addLineToPoint: trail.append(e.points[0])
+                case .addQuadCurveToPoint: trail.append(e.points[1])
+                case .addCurveToPoint: trail.append(e.points[2])
+                default: break
+                }
+            }
+            var area: CGFloat = 0
+            for i in 0..<trail.count {
+                let j = (i + 1) % trail.count
+                area += trail[i].x * trail[j].y - trail[j].x * trail[i].y
+            }
+            if area < 0 {
+                // CCW — reverse to CW
+                var src = Path()
+                src._path.addPath(stroked)
+                result.addReversedPath(src)
+            } else {
+                result._path.addPath(stroked)
+            }
+        } else {
+            result._path.addPath(stroked)
+        }
         return result
     }
 }
