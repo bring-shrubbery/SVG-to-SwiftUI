@@ -38,14 +38,12 @@
     "visual-test": "bun run visual-tests/run-visual-tests.ts",
     "test:react-icons": "bun run visual-tests/test-all-react-icons.ts",
     "coverage": "jest --ci --coverage",
-    "lint": "eslint .",
-    "format": "prettier --check . --ignore-path ../../.gitignore",
+    "lint": "biome check .",
+    "format": "biome format .",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
-    "@svg-to-swiftui/eslint-config": "workspace:*",
-    "@svg-to-swiftui/prettier-config": "workspace:*",
     "@svg-to-swiftui/tsconfig": "workspace:*",
     "@swc/core": "^1.15.18",
     "@swc/jest": "^0.2.39",
@@ -54,13 +52,9 @@
     "@types/node": "^24.3.0",
     "@types/pngjs": "^6.0.5",
     "@types/svg-parser": "^2.0.6",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
-    "eslint": "^9.34.0",
     "jest": "^30.2.0",
     "pixelmatch": "^7.1.0",
     "pngjs": "^7.0.0",
-    "prettier": "^3.8.1",
     "ts-jest": "^29.4.6",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
@@ -68,6 +62,5 @@
   "dependencies": {
     "svg-parser": "^2.0.4",
     "svg-pathdata": "^6.0.3"
-  },
-  "prettier": "@svg-to-swiftui/prettier-config"
+  }
 }

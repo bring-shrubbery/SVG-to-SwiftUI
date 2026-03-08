@@ -14,12 +14,12 @@
       "persistent": false
     },
     "format": {
-      "outputs": ["node_modules/.cache/.prettiercache"],
+      "outputs": [],
       "outputLogs": "new-only"
     },
     "lint": {
       "dependsOn": ["^topo", "^build"],
-      "outputs": ["node_modules/.cache/.eslintcache"]
+      "outputs": []
     },
     "test": {
       "dependsOn": ["^topo", "^build"],

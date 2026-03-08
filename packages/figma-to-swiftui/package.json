@@ -6,14 +6,11 @@
   "scripts": {
     "build": "tsup src/index.ts --format iife --target es5 --external @figma/plugin-typings",
     "clean": "rm -rf .turbo node_modules dist",
-    "lint": "eslint ./src/**/*",
-    "lint:fix": "eslint ./src/**/* --fix",
-    "format": "prettier --write ./src --loglevel error"
+    "lint": "biome check .",
+    "format": "biome format ."
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.123.0",
-    "@svg-to-swiftui/eslint-config": "workspace:*",
-    "@svg-to-swiftui/prettier-config": "workspace:*",
     "@svg-to-swiftui/tsconfig": "workspace:*",
     "@swc/core": "^1.15.18",
     "@swc/jest": "^0.2.39",
@@ -21,15 +18,11 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
     "@types/svg-parser": "^2.0.6",
-    "@typescript-eslint/parser": "^8.56.1",
-    "eslint": "^9.34.0",
     "jest": "^30.2.0",
-    "prettier": "^3.8.1",
     "ts-jest": "^29.4.6",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
-  "prettier": "@svg-to-swiftui/prettier-config",
   "dependencies": {
     "svg-to-swiftui-core": "workspace:*"
   },
