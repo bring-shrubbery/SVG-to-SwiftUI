@@ -70,6 +70,11 @@ export const App = () => {
     }
   };
 
+  const handleExampleSelect = (svgCode: string) => {
+    svgRef.current?.setValue(svgCode);
+    setSvgValue(svgCode);
+  };
+
   const handleCopyResult = () => {
     navigator.clipboard
       .writeText(result)
@@ -96,7 +101,7 @@ export const App = () => {
 
   return (
     <>
-      <Toolbar onConvert={handleConvert} />
+      <Toolbar onConvert={handleConvert} onExampleSelect={handleExampleSelect} />
 
       <Allotment className={cn(height)}>
         <Allotment.Pane className={cn(height, "relative")}>
