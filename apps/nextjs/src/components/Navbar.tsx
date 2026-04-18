@@ -1,5 +1,6 @@
 import { HeartIcon, StarIcon } from "lucide-react";
 import Link from "next/link";
+import { FaXTwitter } from "react-icons/fa6";
 import { IoLogoGithub } from "react-icons/io5";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -63,6 +64,19 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
         </Button>
 
         {githubStars && <StarOnGithubButton githubStars={githubStars} />}
+
+        <Link
+          href="https://x.com/bringshrubberyy"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Follow on X"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "icon" }),
+            "mr-2 h-[38px] w-[38px]",
+          )}
+        >
+          <FaXTwitter className="h-5 w-5" />
+        </Link>
 
         <DarkModeToggle />
 
