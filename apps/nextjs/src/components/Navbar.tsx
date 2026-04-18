@@ -1,8 +1,8 @@
-import { HeartIcon, StarIcon } from "lucide-react";
+import { StarIcon } from "lucide-react";
 import Link from "next/link";
 import { FaXTwitter } from "react-icons/fa6";
 import { IoLogoGithub } from "react-icons/io5";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import CountingNumbers from "./counting-numbers";
@@ -49,22 +49,6 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
 
       {/* Right side content */}
       <div className="flex items-center">
-        <Button
-          variant="secondary"
-          className="group mx-4 hidden gap-2 overflow-hidden rounded-lg border border-transparent border-zinc-200 dark:border-zinc-700 md:flex"
-          asChild
-        >
-          <Link href="https://github.com/sponsors/bring-shrubbery">
-            <HeartIcon
-              size={20}
-              className="-ml-1 h-5 w-5 min-w-5 text-pink-500 transition-transform group-hover:scale-110"
-            />
-            Sponsor
-          </Link>
-        </Button>
-
-        {githubStars && <StarOnGithubButton githubStars={githubStars} />}
-
         <Link
           href="https://x.com/bringshrubberyy"
           target="_blank"
@@ -72,11 +56,13 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
           aria-label="Follow on X"
           className={cn(
             buttonVariants({ variant: "outline", size: "icon" }),
-            "mr-2 h-[38px] w-[38px]",
+            "mx-4 h-[38px] w-[38px]",
           )}
         >
           <FaXTwitter className="h-5 w-5" />
         </Link>
+
+        {githubStars && <StarOnGithubButton githubStars={githubStars} />}
 
         <DarkModeToggle />
 
