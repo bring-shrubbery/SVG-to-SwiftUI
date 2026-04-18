@@ -56,7 +56,7 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
           aria-label="Follow on X"
           className={cn(
             buttonVariants({ variant: "outline", size: "icon" }),
-            "mx-4 h-[38px] w-[38px]",
+            "mx-2 h-[38px] w-[38px]",
           )}
         >
           <FaXTwitter className="h-5 w-5" />
