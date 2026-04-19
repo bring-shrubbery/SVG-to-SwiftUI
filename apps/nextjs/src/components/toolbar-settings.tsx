@@ -2,6 +2,7 @@
 
 import { useAtom } from "jotai";
 import { SettingsIcon } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,15 @@ export const ToolbarSettings = () => {
             />
           </div>
         </CardHeader>
+        <div className="mt-4 flex justify-center gap-2 border-t pt-3 text-muted-foreground text-xs">
+          <Link href="/privacy-policy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/terms-and-conditions" className="hover:text-foreground">
+            Terms &amp; Conditions
+          </Link>
+        </div>
       </PopoverContent>
     </Popover>
   );
