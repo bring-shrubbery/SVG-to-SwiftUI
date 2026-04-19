@@ -54,10 +54,7 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Follow on X"
-          className={cn(
-            buttonVariants({ variant: "outline", size: "icon" }),
-            "mx-2 h-[38px] w-[38px]",
-          )}
+          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "mx-2 h-[38px] w-[38px]")}
         >
           <FaXTwitter className="h-5 w-5" />
         </Link>
@@ -91,10 +88,7 @@ export const StarOnGithubButton = ({ githubStars }: { githubStars: number }) => 
           Star on GitHub
           <span className="hidden w-[54px] items-center gap-1 text-sm lg:flex">
             <StarIcon className="h-4 w-4 text-yellow-500 transition-all duration-300 group-hover:text-yellow-400 dark:text-yellow-400 dark:group-hover:text-yellow-300" />
-            <CountingNumbers
-              value={githubStars}
-              className="font-display font-medium text-zinc-900 dark:text-white"
-            />
+            <CountingNumbers value={githubStars} className="font-display font-medium text-zinc-900 dark:text-white" />
           </span>
         </span>
       </Link>

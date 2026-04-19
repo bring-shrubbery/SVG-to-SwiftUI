@@ -10,6 +10,7 @@ import { usePlausible } from "next-plausible";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { convert } from "svg-to-swiftui-core";
+import { SupportDialog } from "@/components/support-dialog";
 import { Toolbar } from "@/components/toolbar";
 import { useToast } from "@/components/ui/use-toast";
 import { SettingsIndentation, SettingsPrecision, SettingsStructName } from "@/lib/store";
@@ -29,6 +30,7 @@ export const App = () => {
   const height = "min-h-[calc(100vh-200px)]";
 
   const [result, setResult] = useState("");
+  const [showSupport, setShowSupport] = useState(false);
 
   // Settings
 
@@ -55,6 +57,7 @@ export const App = () => {
       plausible("convert_success");
 
       handleCopyResult();
+      setShowSupport(true);
     } catch (e) {
       toast({
         title: "Conversion error",
@@ -152,6 +155,8 @@ export const App = () => {
           )}
         </Allotment.Pane>
       </Allotment>
+
+      <SupportDialog open={showSupport} onOpenChange={setShowSupport} />
     </>
   );
 };
