@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nextjs",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "--filter", "nextjs", "dev"],
+      "port": 5588
+    }
+  ]
+}
