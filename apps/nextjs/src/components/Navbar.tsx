@@ -88,9 +88,12 @@ export const StarOnGithubButton = ({ githubStars }: { githubStars: number }) => 
         <span className="absolute -right-10 -mt-12 h-32 w-8 translate-x-16 rotate-45 transform bg-white opacity-10 blur-lg transition-all duration-1000 ease-out group-hover:-translate-x-40" />
         <IoLogoGithub className="h-5 w-5 min-w-5" />
         Star on GitHub
-        <div className="hidden w-[54px] items-center gap-1 text-sm text-zinc-50 lg:flex">
-          <StarIcon className="h-4 w-4 transition-all duration-300 group-hover:text-yellow-300" />
-          <CountingNumbers value={githubStars} className="font-display font-medium text-white" />
+        <div className="hidden w-[54px] items-center gap-1 text-sm lg:flex">
+          <StarIcon className="h-4 w-4 text-yellow-500 transition-all duration-300 group-hover:text-yellow-400 dark:text-yellow-400 dark:group-hover:text-yellow-300" />
+          <CountingNumbers
+            value={githubStars}
+            className="font-display font-medium text-zinc-900 dark:text-white"
+          />
         </div>
       </Link>
     </div>
