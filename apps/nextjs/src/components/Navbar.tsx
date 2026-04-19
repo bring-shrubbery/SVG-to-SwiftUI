@@ -85,16 +85,18 @@ export const StarOnGithubButton = ({ githubStars }: { githubStars: number }) => 
         )}
         href={"https://github.com/bring-shrubbery/SVG-to-SwiftUI"}
       >
-        <span className="absolute -right-10 -mt-12 h-32 w-8 translate-x-16 rotate-45 transform bg-white opacity-10 blur-lg transition-all duration-1000 ease-out group-hover:-translate-x-40" />
-        <IoLogoGithub className="h-5 w-5 min-w-5" />
-        Star on GitHub
-        <div className="hidden w-[54px] items-center gap-1 text-sm lg:flex">
-          <StarIcon className="h-4 w-4 text-yellow-500 transition-all duration-300 group-hover:text-yellow-400 dark:text-yellow-400 dark:group-hover:text-yellow-300" />
-          <CountingNumbers
-            value={githubStars}
-            className="font-display font-medium text-zinc-900 dark:text-white"
-          />
-        </div>
+        <span className="pointer-events-none absolute -right-10 -mt-12 z-0 h-32 w-8 translate-x-16 rotate-45 transform bg-yellow-50 opacity-70 blur-lg transition-all duration-1000 ease-out group-hover:-translate-x-40 dark:bg-white dark:opacity-10" />
+        <span className="relative z-10 flex items-center gap-2">
+          <IoLogoGithub className="h-5 w-5 min-w-5" />
+          Star on GitHub
+          <span className="hidden w-[54px] items-center gap-1 text-sm lg:flex">
+            <StarIcon className="h-4 w-4 text-yellow-500 transition-all duration-300 group-hover:text-yellow-400 dark:text-yellow-400 dark:group-hover:text-yellow-300" />
+            <CountingNumbers
+              value={githubStars}
+              className="font-display font-medium text-zinc-900 dark:text-white"
+            />
+          </span>
+        </span>
       </Link>
     </div>
   );
