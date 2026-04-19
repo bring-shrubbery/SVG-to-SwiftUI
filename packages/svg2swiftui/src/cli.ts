@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { convertFile } from "./convert-file";
 import pkg from "../package.json";
+import { convertFile } from "./convert-file";
 
 function main(argv: string[]): void {
   const program = new Command();

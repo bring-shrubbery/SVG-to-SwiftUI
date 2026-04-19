@@ -56,9 +56,7 @@ describe("convertFile", () => {
     const missing = path.join(tmp, "nope.svg");
     const out = path.join(tmp, "out.swift");
 
-    expect(() => convertFile({ input: missing, output: out })).toThrow(
-      /Input file not found/,
-    );
+    expect(() => convertFile({ input: missing, output: out })).toThrow(/Input file not found/);
   });
 
   it("passes usageComment through to the core converter", () => {
