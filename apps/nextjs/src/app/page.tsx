@@ -1,5 +1,4 @@
 import { Navbar } from "@/components/Navbar";
-import { ODC } from "@/components/odc-popup";
 import { getGithubStarsForRepo } from "@/lib/utils";
 
 import { App } from "./App";
@@ -15,7 +14,6 @@ export default async function Home() {
       <main>
         <App />
       </main>
-      <ODC />
     </>
   );
 }
