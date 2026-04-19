@@ -88,12 +88,10 @@ function IconGrid({ icons, onSelect }: { icons: IconEntry[]; onSelect: (icon: Ic
                       xmlns="http://www.w3.org/2000/svg"
                       width="20"
                       height="20"
-                      viewBox={data.attr.viewBox || "0 0 24 24"}
-                      fill={data.attr.fill}
-                      stroke={data.attr.stroke}
-                      strokeWidth={data.attr.strokeWidth}
-                      strokeLinecap={data.attr.strokeLinecap as "round" | "butt" | "square" | undefined}
-                      strokeLinejoin={data.attr.strokeLinejoin as "round" | "miter" | "bevel" | undefined}
+                      fill="currentColor"
+                      stroke="currentColor"
+                      strokeWidth="0"
+                      {...(data.attr as React.SVGProps<SVGSVGElement>)}
                     >
                       {renderIconChildren(data.child)}
                     </svg>
