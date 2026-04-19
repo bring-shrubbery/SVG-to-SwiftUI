@@ -10,9 +10,15 @@ export const DarkModeToggle = () => {
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
-    <Button className="h-10 w-10 rounded-full p-0" variant="ghost" onClick={toggleTheme}>
-      <MoonIcon className="hidden dark:block" />
-      <SunIcon className="dark:hidden" />
+    <Button
+      variant="outline"
+      size="icon"
+      className="h-[38px] w-[38px]"
+      aria-label="Toggle theme"
+      onClick={toggleTheme}
+    >
+      <MoonIcon className="hidden h-5 w-5 dark:block" />
+      <SunIcon className="h-5 w-5 dark:hidden" />
     </Button>
   );
 };
