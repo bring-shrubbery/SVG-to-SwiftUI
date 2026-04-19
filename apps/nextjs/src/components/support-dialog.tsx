@@ -1,6 +1,5 @@
 "use client";
 
-import { StarIcon } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { IoLogoGithub } from "react-icons/io5";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -19,22 +18,21 @@ export function SupportDialog({ open, onOpenChange }: { open: boolean; onOpenCha
           </p>
         </DialogHeader>
 
-        <div className="flex flex-col gap-2 py-2">
+        <div className="flex flex-col gap-2 py-2 sm:flex-row">
           <a
             href="https://github.com/bring-shrubbery/SVG-to-SwiftUI"
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: "outline" }), "justify-start gap-2")}
+            className={cn(buttonVariants({ variant: "outline" }), "flex-1 gap-2")}
           >
             <IoLogoGithub className="h-5 w-5" />
             Star on GitHub
-            <StarIcon className="ml-auto h-4 w-4 text-yellow-500" />
           </a>
           <a
             href="https://x.com/bringshrubberyy"
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: "outline" }), "justify-start gap-2")}
+            className={cn(buttonVariants({ variant: "outline" }), "flex-1 gap-2")}
           >
             <FaXTwitter className="h-5 w-5" />
             Follow on X
