@@ -75,21 +75,13 @@ export const App = () => {
   };
 
   const handleCopyResult = () => {
-    navigator.clipboard
-      .writeText(result)
-      .then(() => {
-        toast({
-          title: "Success!",
-          description: "Code was successfully copied into clipboard.",
-        });
-      })
-      .catch(() => {
-        toast({
-          title: "Copy failed!",
-          description: "Could not copy result into clipboard.",
-          variant: "destructive",
-        });
+    navigator.clipboard.writeText(result).catch(() => {
+      toast({
+        title: "Copy failed!",
+        description: "Could not copy result into clipboard.",
+        variant: "destructive",
       });
+    });
   };
 
   // Effects

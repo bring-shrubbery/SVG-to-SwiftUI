@@ -1,8 +1,9 @@
 "use client";
 
+import { StarIcon } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { IoLogoGithub } from "react-icons/io5";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -10,15 +11,19 @@ export function SupportDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Enjoying SVG to SwiftUI?</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            If this saved you time, please consider starring the repo on GitHub and following the author on X. It&apos;s
-            free and helps a lot!
-          </p>
-        </DialogHeader>
+        <div className="flex items-start gap-3">
+          <StarIcon className="mt-1 h-6 w-6 flex-shrink-0 fill-yellow-500 text-yellow-500" />
+          <DialogHeader className="flex-1 text-left">
+            <DialogTitle>Copied! Enjoying SVG to SwiftUI?</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              If this saved you time, please consider starring the repo on GitHub and following the author on X.
+              <br />
+              It&apos;s free and helps a lot!
+            </p>
+          </DialogHeader>
+        </div>
 
-        <div className="flex flex-col gap-2 py-2 sm:flex-row">
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
           <a
             href="https://github.com/bring-shrubbery/SVG-to-SwiftUI"
             target="_blank"
@@ -37,12 +42,6 @@ export function SupportDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <FaXTwitter className="h-5 w-5" />
             Follow on X
           </a>
-        </div>
-
-        <div className="flex justify-end">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Dismiss
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
