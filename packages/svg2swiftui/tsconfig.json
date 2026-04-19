@@ -1,0 +1,9 @@
+{
+  "extends": "@svg-to-swiftui/tsconfig/base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "tsup.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

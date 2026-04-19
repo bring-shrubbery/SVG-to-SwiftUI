@@ -1,0 +1,56 @@
+{
+  "name": "svg2swiftui",
+  "version": "0.1.0",
+  "description": "CLI for converting SVG files into SwiftUI Shape structs.",
+  "main": "dist/cli.js",
+  "bin": {
+    "svg2swiftui": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "svg",
+    "swiftui",
+    "cli",
+    "swift",
+    "converter"
+  ],
+  "author": {
+    "name": "Antoni Silvestrovic",
+    "email": "antoni.silvestrovic@gmail.com",
+    "url": "https://antoni.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quassum/svg-to-swiftui-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/quassum/svg-to-swiftui-core/issues"
+  },
+  "homepage": "https://github.com/quassum/svg-to-swiftui-core#readme",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf .turbo node_modules dist",
+    "test": "jest",
+    "lint": "biome check .",
+    "format": "biome format .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "svg-to-swiftui-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@svg-to-swiftui/tsconfig": "workspace:*",
+    "@swc/core": "^1.15.18",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.3.0",
+    "jest": "^30.2.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
