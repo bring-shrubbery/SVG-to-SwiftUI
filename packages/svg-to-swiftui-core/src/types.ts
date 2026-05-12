@@ -19,6 +19,8 @@ export interface TranspilerOptions {
   reverseWinding: boolean;
   normalizeWindingCW: boolean;
   hasFills: boolean;
+  /** Active SVG fill-rule for the current path: "nonzero" | "evenodd". */
+  fillRule: string;
 }
 
 export interface ViewBoxData {
