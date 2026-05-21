@@ -1,5 +1,19 @@
 # svg-to-swiftui-core
 
+## 0.4.0
+
+### Minor Changes
+
+- Release the backlog of unreleased compiler work:
+  - Add `polyline` and `polygon` element support
+  - Normalize path winding to clockwise (`ensureDominantCW`) so filled paths render correctly regardless of input direction; preserves relative winding of internal holes
+  - Stroke direction handling via new `cwStrokedPath` / `ccwStrokedPath` SwiftUI helpers so dark strokes don't accidentally create holes and light strokes do
+  - Pre-scan SVG tree for fills with style inheritance (`hasFills`) to drive the winding-normalization decision
+  - Add `templates` module exposing `createUsageCommentTemplate`, `createFunctionTemplate`, and `createStructTemplate`
+  - Support a usage-comment prefix in the generated output
+  - Expand `pathElementHandler` coverage and simplify commands via svg-pathdata `normalizeHVZ` / `normalizeST` / `aToC` before analysis
+  - Verified against 1765 SVGs (62 custom + 1703 Lucide) at 99.95% average pixel accuracy
+
 ## 0.3.5
 
 ### Patch Changes

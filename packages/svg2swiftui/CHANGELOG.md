@@ -1,5 +1,12 @@
 # svg2swiftui
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies
+  - svg-to-swiftui-core@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes
