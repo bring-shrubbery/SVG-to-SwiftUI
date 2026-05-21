@@ -159,6 +159,12 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
   const prevNormalize = options.normalizeWindingCW;
   options.normalizeWindingCW = style.hasFill && style.fillRule !== "evenodd";
 
+  // Expose this element's fill-rule to the path handler. SwiftUI's Path uses
+  // non-zero winding by default, so evenodd paths need their nested subpaths
+  // reversed to produce holes equivalent to SVG's evenodd semantics.
+  const prevFillRule = options.fillRule;
+  options.fillRule = style.fillRule;
+
   let rawLines: string[];
 
   switch (element.tagName) {
@@ -203,6 +209,7 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
 
   options.strokeExpansion = prevExpansion;
   options.normalizeWindingCW = prevNormalize;
+  options.fillRule = prevFillRule;
 
   // Detect light fills for winding reversal (creates holes under winding fill rule)
   let fillColor = "";

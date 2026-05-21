@@ -90,6 +90,7 @@ function swiftUIGenerator(svgElement: ElementNode, config?: SwiftUIGeneratorConf
     reverseWinding: false,
     normalizeWindingCW: false,
     hasFills: svgHasFills(svgElement),
+    fillRule: "nonzero",
   };
 
   const configWithDefaults = {

@@ -152,6 +152,151 @@ function reverseSubpath(commands: SVGCommand[]): SVGCommand[] {
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// evenodd → nonzero conversion
+//
+// SwiftUI's `Path` renders with the non-zero winding rule by default. SVGs
+// authored with `fill-rule="evenodd"` express "holes" by drawing nested
+// subpaths in the same direction as their parent — even-odd then leaves
+// odd-depth regions unfilled. Under non-zero winding, same-direction nested
+// subpaths add up to a solid fill (no hole).
+//
+// To preserve the visual under non-zero we compute each subpath's containment
+// depth (how many other subpaths it lies inside) and reverse every subpath at
+// an odd depth. After reversal a point inside a nested subpath accumulates a
+// winding total of 0, producing the same hole evenodd would have produced.
+// ---------------------------------------------------------------------------
+
+/** Split a flat command stream into one subpath per MOVE_TO. */
+function splitSubpaths(commands: SVGCommand[]): SVGCommand[][] {
+  const subpaths: SVGCommand[][] = [];
+  let current: SVGCommand[] = [];
+  for (const cmd of commands) {
+    if (cmd.type === SVGPathData.MOVE_TO && current.length > 0) {
+      subpaths.push(current);
+      current = [];
+    }
+    current.push(cmd);
+  }
+  if (current.length > 0) subpaths.push(current);
+  return subpaths;
+}
+
+/** Sample a subpath into a polyline; beziers contribute intermediate points. */
+function sampleSubpathPoints(commands: SVGCommand[]): SimplePoint[] {
+  const points: SimplePoint[] = [];
+  let curX = 0;
+  let curY = 0;
+  for (const cmd of commands) {
+    switch (cmd.type) {
+      case SVGPathData.MOVE_TO:
+      case SVGPathData.LINE_TO:
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      case SVGPathData.CURVE_TO: {
+        const x0 = curX;
+        const y0 = curY;
+        for (const t of [0.25, 0.5, 0.75]) {
+          const mt = 1 - t;
+          const px = mt * mt * mt * x0 + 3 * mt * mt * t * cmd.x1 + 3 * mt * t * t * cmd.x2 + t * t * t * cmd.x;
+          const py = mt * mt * mt * y0 + 3 * mt * mt * t * cmd.y1 + 3 * mt * t * t * cmd.y2 + t * t * t * cmd.y;
+          points.push({ x: px, y: py });
+        }
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      }
+      case SVGPathData.QUAD_TO: {
+        const x0 = curX;
+        const y0 = curY;
+        for (const t of [0.25, 0.5, 0.75]) {
+          const mt = 1 - t;
+          const px = mt * mt * x0 + 2 * mt * t * cmd.x1 + t * t * cmd.x;
+          const py = mt * mt * y0 + 2 * mt * t * cmd.y1 + t * t * cmd.y;
+          points.push({ x: px, y: py });
+        }
+        curX = cmd.x;
+        curY = cmd.y;
+        points.push({ x: curX, y: curY });
+        break;
+      }
+      case SVGPathData.CLOSE_PATH:
+        break;
+    }
+  }
+  return points;
+}
+
+/** Ray-cast point-in-polygon. Polygon is implicitly closed (last → first). */
+function pointInPolygon(pt: SimplePoint, polygon: SimplePoint[]): boolean {
+  if (polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i]!;
+    const b = polygon[j]!;
+    const intersects =
+      a.y > pt.y !== b.y > pt.y && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y || 1e-12) + a.x;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * For each subpath, count how many *other* subpaths contain it — that's its
+ * nesting depth. Reverse every subpath at odd depth so a non-zero fill
+ * produces the same visual that evenodd would have.
+ *
+ * Containment is tested by sampling many probe points along subpath i's
+ * boundary (edge midpoints of the sampled polyline) and checking what
+ * fraction of those probes fall inside subpath j. A single centroid is
+ * unreliable for concentric shapes (donut-style geometry), where both
+ * subpaths share a centroid; using many boundary probes keeps the test
+ * accurate for both Moon-style nesting and centered donuts.
+ */
+function evenOddToNonZero(commands: SVGCommand[]): SVGCommand[] {
+  const subpaths = splitSubpaths(commands);
+  if (subpaths.length <= 1) return commands;
+
+  const sampled = subpaths.map(sampleSubpathPoints);
+
+  // Probes: midpoints of every sampled edge of each subpath. These lie on
+  // subpath i's boundary, so checking "are most of i's probes inside j?" is
+  // a robust containment test independent of where i and j are centered.
+  const probes: SimplePoint[][] = sampled.map((pts) => {
+    if (pts.length < 2) return [];
+    const out: SimplePoint[] = [];
+    for (let k = 0; k < pts.length; k++) {
+      const a = pts[k]!;
+      const b = pts[(k + 1) % pts.length]!;
+      out.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    }
+    return out;
+  });
+
+  const result: SVGCommand[] = [];
+  for (let i = 0; i < subpaths.length; i++) {
+    let depth = 0;
+    const myProbes = probes[i]!;
+    if (myProbes.length > 0) {
+      for (let j = 0; j < subpaths.length; j++) {
+        if (i === j) continue;
+        let inside = 0;
+        for (const p of myProbes) if (pointInPolygon(p, sampled[j]!)) inside++;
+        if (inside * 2 > myProbes.length) depth++;
+      }
+    }
+    if (depth % 2 === 1) {
+      result.push(...reverseSubpath(subpaths[i]!));
+    } else {
+      result.push(...subpaths[i]!);
+    }
+  }
+  return result;
+}
+
 /**
  * Check if the first (dominant) subpath is CCW. If so, reverse ALL subpaths
  * to flip their winding while preserving relative winding between them.
@@ -209,6 +354,23 @@ export default function handlePathElement(element: ElementNode, options: Transpi
     options.lastPathId++;
 
     const pathData = new SVGPathData(props.d).toAbs();
+
+    // SwiftUI's Path uses non-zero winding by default. When the SVG declares
+    // fill-rule="evenodd", reverse odd-depth nested subpaths so that a
+    // non-zero fill of the resulting Path produces the same visual as evenodd.
+    if (options.fillRule === "evenodd") {
+      try {
+        const normalized = new SVGPathData(props.d)
+          .toAbs()
+          .normalizeHVZ(false, true, true)
+          .normalizeST()
+          .aToC();
+        const converted = evenOddToNonZero(normalized.commands);
+        return convertPathToSwift(converted, options);
+      } catch {
+        // Fall through to untransformed output on arc/normalization failure.
+      }
+    }
 
     // For filled paths, normalize winding to CW to match addRect/addEllipse
     if (options.normalizeWindingCW) {
