@@ -1,6 +1,6 @@
 {
   "name": "svg2swiftui",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "CLI for converting SVG files into SwiftUI Shape structs.",
   "main": "dist/cli.js",
   "bin": {
@@ -42,7 +42,7 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
-    "svg-to-swiftui-core": "workspace:*"
+    "svg-to-swiftui-core": "^0.4.0"
   },
   "devDependencies": {
     "@svg-to-swiftui/tsconfig": "workspace:*",
