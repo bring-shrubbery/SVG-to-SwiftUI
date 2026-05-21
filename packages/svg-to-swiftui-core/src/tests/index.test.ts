@@ -70,3 +70,57 @@ test("convert-ln", () => {
   });
   expect(result).toBe(expectedResult);
 });
+
+// evenodd → nonzero conversion: SwiftUI's Path uses non-zero winding by default,
+// so paths with fill-rule="evenodd" need nested subpaths reversed at odd depths
+// to preserve the original hole semantics.
+
+test("convert-evenodd-donut", () => {
+  const rawSVG = loadContentFile("evenodd-donut.svg");
+  const expectedResult = loadContentFile("evenodd-donut.swift");
+  const result = convert(rawSVG, {
+    precision: 4,
+    structName: "EvenOddDonutShape",
+  });
+  expect(result).toBe(expectedResult);
+});
+
+test("convert-evenodd-nested-deep", () => {
+  const rawSVG = loadContentFile("evenodd-nested-deep.svg");
+  const expectedResult = loadContentFile("evenodd-nested-deep.swift");
+  const result = convert(rawSVG, {
+    precision: 4,
+    structName: "EvenOddNestedDeepShape",
+  });
+  expect(result).toBe(expectedResult);
+});
+
+test("convert-evenodd-moon", () => {
+  const rawSVG = loadContentFile("evenodd-moon.svg");
+  const expectedResult = loadContentFile("evenodd-moon.swift");
+  const result = convert(rawSVG, {
+    precision: 4,
+    structName: "EvenOddMoonShape",
+  });
+  expect(result).toBe(expectedResult);
+});
+
+test("convert-evenodd-arc-donut", () => {
+  const rawSVG = loadContentFile("evenodd-arc-donut.svg");
+  const expectedResult = loadContentFile("evenodd-arc-donut.swift");
+  const result = convert(rawSVG, {
+    precision: 4,
+    structName: "EvenOddArcDonutShape",
+  });
+  expect(result).toBe(expectedResult);
+});
+
+test("convert-nonzero-two-rects", () => {
+  const rawSVG = loadContentFile("nonzero-two-rects.svg");
+  const expectedResult = loadContentFile("nonzero-two-rects.swift");
+  const result = convert(rawSVG, {
+    precision: 4,
+    structName: "NonZeroTwoRectsShape",
+  });
+  expect(result).toBe(expectedResult);
+});
