@@ -19,6 +19,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
+      - name: Build
+        run: bun run build
+
       - name: Create .npmrc
         run: |
           cat << EOF > "$HOME/.npmrc"
