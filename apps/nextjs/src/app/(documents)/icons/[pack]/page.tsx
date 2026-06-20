@@ -6,6 +6,11 @@ import { getIconPackArticle, ICON_PACK_ARTICLES } from "@/lib/icon-pack-articles
 
 const SITE_URL = "https://svg-to-swiftui.quassum.com";
 
+/** Appends "Icons" only when the pack name doesn't already contain it, avoiding "Icons Icons". */
+function packLabel(name: string): string {
+  return /icon/i.test(name) ? name : `${name} Icons`;
+}
+
 export function generateStaticParams() {
   return ICON_PACK_ARTICLES.map((article) => ({ pack: article.slug }));
 }
@@ -15,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pack: str
   const article = getIconPackArticle(pack);
   if (!article) return {};
 
-  const title = `How to Use ${article.name} Icons in SwiftUI & iOS`;
+  const title = `How to Use ${packLabel(article.name)} in SwiftUI & iOS`;
   const description = `Add ${article.name} icons to your SwiftUI and iOS apps. Convert any ${article.name} SVG icon into a native SwiftUI Shape for iPhone, iPad, and Mac — free and in your browser.`;
   const path = `/icons/${article.slug}`;
 
@@ -34,7 +39,7 @@ export default async function IconPackArticlePage({ params }: { params: Promise<
   if (!article) notFound();
 
   const example = await generateIconExample(article.manifestId, article.sampleIconNames);
-  const title = `How to Use ${article.name} Icons in SwiftUI & iOS`;
+  const title = `How to Use ${packLabel(article.name)} in SwiftUI & iOS`;
   const examplesHref = `/?examples=${article.manifestId}`;
 
   const jsonLd = [
