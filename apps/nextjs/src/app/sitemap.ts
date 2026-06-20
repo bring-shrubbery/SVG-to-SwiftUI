@@ -4,9 +4,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: "https://svg-to-swiftui.quassum.com",
-      lastModified: "2026-03-08",
+      lastModified: "2026-06-20",
       changeFrequency: "monthly",
       priority: 1,
+    },
+    {
+      url: "https://svg-to-swiftui.quassum.com/convert-svg-to-swiftui",
+      lastModified: "2026-06-20",
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
     {
       url: "https://svg-to-swiftui.quassum.com/privacy-policy",
