@@ -2,6 +2,7 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { BookOpen, Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -109,12 +110,19 @@ function IconGrid({ icons, onSelect }: { icons: IconEntry[]; onSelect: (icon: Ic
 
 export function ExamplesDialog({ onSelect }: { onSelect: (svgCode: string) => void }) {
   const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const examplesParam = searchParams.get("examples");
   const [manifest, setManifest] = useState<ManifestEntry[]>([]);
   const [icons, setIcons] = useState<IconEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [activeLibrary, setActiveLibrary] = useState<string>("");
   const iconCache = useRef<Map<string, IconEntry[]>>(new Map());
+
+  // Auto-open from a deep link like /?examples=fa6
+  useEffect(() => {
+    if (examplesParam) setOpen(true);
+  }, [examplesParam]);
 
   // Load manifest on first open
   useEffect(() => {
@@ -124,11 +132,12 @@ export function ExamplesDialog({ onSelect }: { onSelect: (svgCode: string) => vo
       .then((data: ManifestEntry[]) => {
         setManifest(data);
         if (data.length > 0 && !activeLibrary) {
-          setActiveLibrary(data[0]!.id);
+          const wanted = examplesParam && data.some((lib) => lib.id === examplesParam) ? examplesParam : null;
+          setActiveLibrary(wanted ?? data[0]!.id);
         }
       })
       .catch(console.error);
-  }, [open, manifest.length, activeLibrary]);
+  }, [open, manifest.length, activeLibrary, examplesParam]);
 
   // Load icons for active library
   useEffect(() => {

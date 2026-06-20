@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { ArrowLeftRightIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -18,7 +19,9 @@ export const Toolbar = ({
     <div className="flex w-full items-center justify-between border-b border-border p-2 md:px-4">
       <div className="flex items-center gap-2">
         <VideoTutorialPopover />
-        <ExamplesDialog onSelect={onExampleSelect} />
+        <Suspense fallback={null}>
+          <ExamplesDialog onSelect={onExampleSelect} />
+        </Suspense>
       </div>
 
       <div className="flex items-center gap-2">
