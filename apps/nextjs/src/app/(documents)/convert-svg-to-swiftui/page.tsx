@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ICON_PACK_ARTICLES } from "@/lib/icon-pack-articles";
 
 const SITE_URL = "https://svg-to-swiftui.quassum.com";
 const PAGE_PATH = "/convert-svg-to-swiftui";
@@ -140,6 +141,16 @@ struct MyIconShape: Shape {
         you give it without losing sharpness — the whole point of converting an <strong>SVG path to SwiftUI</strong>{" "}
         rather than shipping a bitmap.
       </p>
+
+      <h2>Using a specific icon pack?</h2>
+      <p>These guides show how to bring popular icon libraries into SwiftUI and iOS:</p>
+      <ul>
+        {ICON_PACK_ARTICLES.map((article) => (
+          <li key={article.slug}>
+            <Link href={`/icons/${article.slug}`}>How to use {article.name} in SwiftUI</Link>
+          </li>
+        ))}
+      </ul>
 
       <h2>Ready to convert your SVG?</h2>
       <p>

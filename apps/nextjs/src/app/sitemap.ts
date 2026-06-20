@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { ICON_PACK_ARTICLES } from "@/lib/icon-pack-articles";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -14,6 +15,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    ...ICON_PACK_ARTICLES.map((article) => ({
+      url: `https://svg-to-swiftui.quassum.com/icons/${article.slug}`,
+      lastModified: "2026-06-20",
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     {
       url: "https://svg-to-swiftui.quassum.com/privacy-policy",
       lastModified: "2024-10-26",

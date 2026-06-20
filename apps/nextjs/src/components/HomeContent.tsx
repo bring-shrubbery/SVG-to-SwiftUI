@@ -68,7 +68,19 @@ export function HomeContent() {
           <a href="/convert-svg-to-swiftui" className="font-medium text-foreground underline underline-offset-4">
             step-by-step guide to converting SVG to SwiftUI
           </a>
-          .
+          , or jump to a guide for{" "}
+          <a href="/icons/font-awesome" className="font-medium text-foreground underline underline-offset-4">
+            Font Awesome
+          </a>
+          ,{" "}
+          <a href="/icons/material-design-icons" className="font-medium text-foreground underline underline-offset-4">
+            Material Design
+          </a>
+          , or{" "}
+          <a href="/icons/heroicons" className="font-medium text-foreground underline underline-offset-4">
+            Heroicons
+          </a>{" "}
+          icons.
         </p>
       </div>
 
