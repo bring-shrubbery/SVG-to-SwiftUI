@@ -119,9 +119,13 @@ export function ExamplesDialog({ onSelect }: { onSelect: (svgCode: string) => vo
   const [activeLibrary, setActiveLibrary] = useState<string>("");
   const iconCache = useRef<Map<string, IconEntry[]>>(new Map());
 
-  // Auto-open from a deep link like /?examples=fa6
+  // Auto-open from a deep link like /?examples=fa6 (once, never fighting the user)
+  const didAutoOpen = useRef(false);
   useEffect(() => {
-    if (examplesParam) setOpen(true);
+    if (examplesParam && !didAutoOpen.current) {
+      didAutoOpen.current = true;
+      setOpen(true);
+    }
   }, [examplesParam]);
 
   // Load manifest on first open
