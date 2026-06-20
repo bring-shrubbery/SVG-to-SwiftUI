@@ -24,10 +24,10 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
           <SVGtoSwiftUILogo width={64} height={64} className="h-16 w-16" />
         </Link>
 
-        <div className="relative hidden sm:block">
+        <div className="relative">
           <Link href="/">
             <h1
-              className="bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text pl-3 pt-1 text-4xl font-bold"
+              className="sr-only bg-gradient-to-r from-[#F5E338] to-[#F05137] bg-clip-text pl-3 pt-1 text-4xl font-bold sm:not-sr-only"
               style={{
                 WebkitTextFillColor: "transparent",
               }}
@@ -38,7 +38,7 @@ export function Navbar({ githubStars, sticky }: { githubStars?: number; sticky?:
 
           <Link
             href="https://quassum.com/?utm_source=svg-to-swiftui"
-            className="items-bottom absolute -bottom-5 right-0 flex"
+            className="items-bottom absolute -bottom-5 right-0 hidden sm:flex"
             target="_blank"
           >
             <span className="mr-1 text-sm">by</span>
