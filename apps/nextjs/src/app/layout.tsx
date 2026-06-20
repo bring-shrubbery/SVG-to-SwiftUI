@@ -17,13 +17,14 @@ const fontSans = Inter({
 
 const SITE_URL = "https://svg-to-swiftui.quassum.com";
 const SITE_TITLE = "SVG to SwiftUI Converter";
+const HOME_TITLE = "SVG to SwiftUI Converter — Convert SVG to SwiftUI Shape & Path";
 const SITE_DESCRIPTION =
   "Convert SVG code into SwiftUI Shape structures instantly. Paste your SVG icon source code or upload a file and get the Swift code you need for your iOS app.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: SITE_TITLE,
+    default: HOME_TITLE,
     template: `%s | ${SITE_TITLE}`,
   },
   applicationName: SITE_TITLE,
@@ -77,7 +78,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_TITLE,
-    title: SITE_TITLE,
+    title: HOME_TITLE,
     description: SITE_DESCRIPTION,
     url: "/",
     locale: "en_US",
@@ -92,7 +93,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_TITLE,
+    title: HOME_TITLE,
     description: SITE_DESCRIPTION,
     images: ["/og-image.png"],
   },
