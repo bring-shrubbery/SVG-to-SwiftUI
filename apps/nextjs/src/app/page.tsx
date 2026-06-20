@@ -1,3 +1,4 @@
+import { HomeContent } from "@/components/HomeContent";
 import { Navbar } from "@/components/Navbar";
 import { getGithubStarsForRepo } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ export default async function Home() {
       <Navbar githubStars={githubStars} />
       <main>
         <App />
+        <HomeContent />
       </main>
     </>
   );
