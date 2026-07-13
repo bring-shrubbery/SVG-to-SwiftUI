@@ -166,6 +166,136 @@
       "expectedMode": "view",
       "tags": ["geometry", "path", "rect", "view"]
     },
+    "gradient-coordinate-units": {
+      "width": 128,
+      "height": 58,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "gradient-units", "linearGradient", "rect", "stop", "units", "view"]
+    },
+    "gradient-fallbacks": {
+      "width": 128,
+      "height": 50,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "gradient-href", "linearGradient", "radialGradient", "rect", "view"]
+    },
+    "gradient-fill-stroke": {
+      "width": 128,
+      "height": 71,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "gradient-units", "linearGradient", "rect", "stop", "stroke", "view"]
+    },
+    "gradient-href-inheritance": {
+      "width": 128,
+      "height": 51,
+      "expectedMode": "view",
+      "tags": [
+        "geometry",
+        "gradient",
+        "gradient-href",
+        "gradient-spread",
+        "gradient-transform",
+        "linearGradient",
+        "rect",
+        "stop",
+        "view"
+      ]
+    },
+    "gradient-linear-basic": {
+      "width": 128,
+      "height": 75,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "linearGradient", "rect", "stop", "view"]
+    },
+    "gradient-linear-directions": {
+      "width": 128,
+      "height": 50,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "linearGradient", "rect", "stop", "view"]
+    },
+    "gradient-nonzero-viewbox": {
+      "width": 128,
+      "height": 48,
+      "expectedMode": "view",
+      "tags": [
+        "ellipse",
+        "geometry",
+        "gradient",
+        "gradient-units",
+        "linearGradient",
+        "radialGradient",
+        "rect",
+        "stop",
+        "view"
+      ]
+    },
+    "gradient-radial-focal": {
+      "width": 128,
+      "height": 57,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "gradient", "gradient-units", "radialGradient", "stop", "view"]
+    },
+    "gradient-radial-spread": {
+      "width": 128,
+      "height": 57,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "gradient", "gradient-spread", "gradient-units", "radialGradient", "stop", "view"]
+    },
+    "gradient-radial-transform": {
+      "width": 128,
+      "height": 58,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "gradient-transform", "radialGradient", "rect", "stop", "transform", "view"]
+    },
+    "gradient-realistic-export": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "gradient",
+        "gradient-href",
+        "gradient-units",
+        "linearGradient",
+        "opacity",
+        "path",
+        "radialGradient",
+        "rect",
+        "stop",
+        "stroke",
+        "view"
+      ]
+    },
+    "gradient-spread-methods": {
+      "width": 128,
+      "height": 55,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "gradient-spread", "linearGradient", "rect", "stop", "view"]
+    },
+    "gradient-stop-alpha-css": {
+      "width": 128,
+      "height": 82,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "gradient", "linearGradient", "opacity", "stop", "units", "view"]
+    },
+    "gradient-stop-counts": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "linearGradient", "opacity", "radialGradient", "rect", "stop", "view"]
+    },
+    "gradient-stop-normalization": {
+      "width": 128,
+      "height": 56,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "linearGradient", "rect", "stop", "units", "view"]
+    },
+    "gradient-transforms": {
+      "width": 128,
+      "height": 61,
+      "expectedMode": "view",
+      "tags": ["geometry", "gradient", "gradient-transform", "linearGradient", "rect", "stop", "transform", "view"]
+    },
     "group-transform": {
       "width": 128,
       "height": 85,

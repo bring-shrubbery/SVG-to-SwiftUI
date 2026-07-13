@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 20 240 90">
+  <defs>
+    <linearGradient id="user" gradientUnits="userSpaceOnUse" x1="-40" y1="20" x2="200" y2="110"><stop stop-color="#a7f3d0"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+    <radialGradient id="box"><stop stop-color="#fdf4ff"/><stop offset="1" stop-color="#a21caf"/></radialGradient>
+  </defs>
+  <rect x="-30" y="28" width="125" height="74" fill="url(#user)"/>
+  <ellipse cx="150" cy="65" rx="42" ry="34" fill="url(#box)"/>
+</svg>

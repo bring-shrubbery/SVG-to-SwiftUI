@@ -1,0 +1,14 @@
+<!-- Adapted from a design-tool export with reusable gradient templates and translucent overlays. -->
+<svg width="240" height="120" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#172554"/><stop offset=".55" stop-color="#3730A3"/><stop offset="1" stop-color="#7E22CE"/></linearGradient>
+    <radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="174" cy="25" r="95" fx="192" fy="8"><stop stop-color="#F0ABFC" stop-opacity=".9"/><stop offset="1" stop-color="#A855F7" stop-opacity="0"/></radialGradient>
+    <linearGradient id="shine" href="#card" x1="0" y1="0" x2="1" y2="0"><stop stop-color="white" stop-opacity=".72"/><stop offset="1" stop-color="white" stop-opacity=".08"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="232" height="112" rx="24" fill="url(#card)"/>
+  <rect x="4" y="4" width="232" height="112" rx="24" fill="url(#glow)" opacity=".72"/>
+  <circle cx="54" cy="60" r="31" fill="url(#shine)"/>
+  <path d="M40 60L50 70L70 48" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="108" y="43" width="92" height="13" rx="6.5" fill="white" fill-opacity=".92"/>
+  <rect x="108" y="66" width="64" height="9" rx="4.5" fill="white" fill-opacity=".52"/>
+</svg>

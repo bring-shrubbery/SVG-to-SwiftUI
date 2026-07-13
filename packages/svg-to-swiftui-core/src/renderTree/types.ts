@@ -1,4 +1,6 @@
 import type { ElementNode } from "svg-parser";
+import type { RGBAColor } from "../colorUtils";
+import type { FontMetrics, ParsedSVGLength } from "../lengths";
 import type { AffineTransform } from "../transformUtils";
 import type { ViewBoxData } from "../types";
 import type { PreserveAspectRatio } from "../viewports";
@@ -33,6 +35,55 @@ export type Paint =
   | { type: "none" }
   | { type: "solid"; value: string }
   | { type: "reference"; id: string; fallback?: string };
+
+export type GradientUnits = "objectBoundingBox" | "userSpaceOnUse";
+export type GradientSpreadMethod = "pad" | "reflect" | "repeat";
+export type GradientColorInterpolation = "sRGB" | "linearRGB";
+
+export interface GradientStop {
+  offset: number;
+  color: RGBAColor;
+  source: SourceLocation;
+}
+
+interface GradientPaintBase {
+  id: string;
+  units: GradientUnits;
+  transform: AffineTransform;
+  spreadMethod: GradientSpreadMethod;
+  stops: GradientStop[];
+  colorInterpolation: GradientColorInterpolation;
+  href?: string;
+  source: SourceLocation;
+}
+
+export interface LinearGradientPaint extends GradientPaintBase {
+  type: "linearGradient";
+  x1: ParsedSVGLength;
+  y1: ParsedSVGLength;
+  x2: ParsedSVGLength;
+  y2: ParsedSVGLength;
+}
+
+export interface RadialGradientPaint extends GradientPaintBase {
+  type: "radialGradient";
+  cx: ParsedSVGLength;
+  cy: ParsedSVGLength;
+  r: ParsedSVGLength;
+  fx: ParsedSVGLength;
+  fy: ParsedSVGLength;
+  fr: ParsedSVGLength;
+}
+
+export interface InvalidPaintServer {
+  type: "invalid" | "unsupported";
+  id: string;
+  element: string;
+  source: SourceLocation;
+}
+
+export type GradientPaint = LinearGradientPaint | RadialGradientPaint;
+export type PaintServer = GradientPaint | InvalidPaintServer;
 
 export interface StrokeStyle {
   width: number;
@@ -81,6 +132,12 @@ export interface RenderShape {
   style: ComputedStyle;
   transform: AffineTransform;
   source: SourceLocation;
+  /** Coordinate context at the referencing element, retained for user-space paint percentages. */
+  paintContext: {
+    viewport: { width: number; height: number };
+    rootViewport: { width: number; height: number };
+    fontMetrics: FontMetrics;
+  };
 }
 
 export interface RenderGroup {
@@ -128,7 +185,10 @@ export type RenderNode = RenderGroup | RenderShape | RenderText | RenderImage;
 export interface ResourceRegistry {
   definitions: Map<string, ElementNode>;
   symbols: Map<string, ElementNode>;
-  paints: Map<string, ElementNode>;
+  /** Typed paint resources consumed by the renderer. */
+  paints: Map<string, PaintServer>;
+  /** Original paint elements retained for future pattern/resource resolvers. */
+  paintElements: Map<string, ElementNode>;
   clips: Map<string, ElementNode>;
   masks: Map<string, ElementNode>;
   markers: Map<string, ElementNode>;

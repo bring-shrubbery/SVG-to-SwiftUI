@@ -39,6 +39,14 @@ Element and group `opacity` are applied once after their children have been pain
 
 The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms and stroke extents, exclude `display: none`, retain zero-opacity geometry, and intersect nested viewport clips. Future marker and filter tickets can extend the same query.
 
+### Linear and radial gradients
+
+`linearGradient`, `radialGradient`, and `stop` definitions are resolved as typed paint resources for fills and strokes. The resolver supports `objectBoundingBox` and `userSpaceOnUse`, percentage or length coordinates, `gradientTransform`, `pad`/`reflect`/`repeat`, `href` and `xlink:href` inheritance, local stop replacement, focal circles, CSS-styled stops, `currentColor`, alpha, and fallback paints.
+
+Gradient layers remain vector output. Generated SwiftUI uses `Canvas` to clip a Core Graphics axial or radial gradient to the native generated path; it does not rasterize the SVG during conversion. Affine gradient transforms are composed before element and ancestor transforms. Degenerate object bounding boxes deterministically paint nothing, as required for a valid paint server that cannot produce paint.
+
+Color stops are sampled in unpremultiplied SVG color space before Core Graphics draws them. `color-interpolation: sRGB`/`auto` uses sRGB channel interpolation; `linearRGB` applies the standard sRGB transfer functions, interpolates linear-light channels, then encodes back to sRGB. Sampling uses 256 intervals per spread period, which keeps Core Graphics interpolation within the RGBA harness tolerance while supporting repeat and reflect without whole-image rasterization.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).
@@ -108,6 +116,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG lengths, nested viewports, `<view>` fragments, and `preserveAspectRatio`
 - [x] SVG transforms (`matrix`, `translate`, `scale`, `rotate`, `skewX`, `skewY`)
 - [x] Solid fill/stroke styling with colours
+- [x] Linear/radial gradient fills and strokes, stops, inheritance, transforms, and spread methods
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [ ] SVG `<text>` element
 - [ ] Automatic animation support

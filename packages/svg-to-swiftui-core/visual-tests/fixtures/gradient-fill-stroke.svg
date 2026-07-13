@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 100">
+  <defs>
+    <linearGradient id="fill"><stop stop-color="#fde047"/><stop offset="1" stop-color="#f97316"/></linearGradient>
+    <linearGradient id="stroke" gradientUnits="userSpaceOnUse" x1="10" y1="10" x2="170" y2="90"><stop stop-color="#06b6d4"/><stop offset=".5" stop-color="#4f46e5"/><stop offset="1" stop-color="#db2777"/></linearGradient>
+  </defs>
+  <rect x="20" y="20" width="140" height="60" rx="18" fill="url(#fill)" stroke="url(#stroke)" stroke-width="12"/>
+</svg>

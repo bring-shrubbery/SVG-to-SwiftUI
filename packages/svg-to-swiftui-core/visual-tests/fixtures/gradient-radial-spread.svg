@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 80">
+  <defs>
+    <radialGradient id="reflect" gradientUnits="userSpaceOnUse" cx="45" cy="40" r="15" spreadMethod="reflect"><stop stop-color="#fef08a"/><stop offset="1" stop-color="#dc2626"/></radialGradient>
+    <radialGradient id="repeat" gradientUnits="userSpaceOnUse" cx="135" cy="40" r="15" spreadMethod="repeat"><stop stop-color="#bae6fd"/><stop offset="1" stop-color="#1d4ed8"/></radialGradient>
+  </defs>
+  <circle cx="45" cy="40" r="36" fill="url(#reflect)"/>
+  <circle cx="135" cy="40" r="36" fill="url(#repeat)"/>
+</svg>

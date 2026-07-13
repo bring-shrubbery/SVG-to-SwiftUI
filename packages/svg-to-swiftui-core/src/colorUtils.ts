@@ -1,6 +1,6 @@
 import colorNames from "color-name";
 
-interface RGBAColor {
+export interface RGBAColor {
   red: number;
   green: number;
   blue: number;
@@ -143,6 +143,19 @@ export function parseOpacity(value: string | number | undefined): number {
   return parseAlpha(String(value)) ?? 1;
 }
 
+/** Parse a supported SVG/CSS color without converting it to Swift source. */
+export function parseRGBAColor(paint: string): RGBAColor | undefined {
+  const normalized = paint.trim().toLowerCase();
+  const namedChannels = colorNames[normalized as keyof typeof colorNames];
+  return normalized === "transparent"
+    ? parseHexColor("#00000000")
+    : namedChannels
+      ? { red: namedChannels[0] / 255, green: namedChannels[1] / 255, blue: namedChannels[2] / 255, alpha: 1 }
+      : normalized.startsWith("#")
+        ? parseHexColor(normalized)
+        : (parseRGBColor(normalized) ?? parseHSLColor(normalized));
+}
+
 export function swiftUIColor(paint: string, opacity = 1): string | undefined {
   const normalized = paint.trim().toLowerCase();
   if (normalized === "currentcolor") {
@@ -150,15 +163,7 @@ export function swiftUIColor(paint: string, opacity = 1): string | undefined {
     return effectiveOpacity === 1 ? "Color.primary" : `Color.primary.opacity(${formatComponent(effectiveOpacity)})`;
   }
 
-  const namedChannels = colorNames[normalized as keyof typeof colorNames];
-  const color =
-    normalized === "transparent"
-      ? parseHexColor("#00000000")
-      : namedChannels
-        ? { red: namedChannels[0] / 255, green: namedChannels[1] / 255, blue: namedChannels[2] / 255, alpha: 1 }
-        : normalized.startsWith("#")
-          ? parseHexColor(normalized)
-          : (parseRGBColor(normalized) ?? parseHSLColor(normalized));
+  const color = parseRGBAColor(normalized);
   if (!color) return undefined;
 
   const alpha = clamp(color.alpha * opacity);

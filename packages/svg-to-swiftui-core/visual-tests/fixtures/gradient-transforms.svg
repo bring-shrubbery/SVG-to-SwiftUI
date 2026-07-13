@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 100">
+  <defs>
+    <linearGradient id="plain"><stop stop-color="#facc15"/><stop offset="1" stop-color="#dc2626"/></linearGradient>
+    <linearGradient id="skewed" gradientTransform="rotate(35 .5 .5) skewX(18)"><stop stop-color="#facc15"/><stop offset="1" stop-color="#dc2626"/></linearGradient>
+  </defs>
+  <rect x="12" y="16" width="78" height="58" rx="8" fill="url(#plain)" transform="rotate(-8 51 45)"/>
+  <rect x="118" y="16" width="78" height="58" rx="8" fill="url(#skewed)" transform="translate(2 8) rotate(8 157 45)"/>
+</svg>

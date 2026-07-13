@@ -56,7 +56,8 @@ function pointsBounds(points: string): RenderBounds | undefined {
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
-function geometryBounds(geometry: Geometry): RenderBounds | undefined {
+/** Untransformed geometry bounds, excluding stroke expansion and paint effects. */
+export function geometryBounds(geometry: Geometry): RenderBounds | undefined {
   switch (geometry.type) {
     case "rect":
       return { x: geometry.x, y: geometry.y, width: geometry.width, height: geometry.height };

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 70">
+  <defs>
+    <rect id="wrong" width="2" height="2"/>
+    <linearGradient id="cycle-a" href="#cycle-b"/>
+    <radialGradient id="cycle-b" href="#cycle-a"/>
+  </defs>
+  <rect x="5" y="5" width="50" height="60" fill="url(#missing) #ef4444"/>
+  <rect x="65" y="5" width="50" height="60" fill="url(#wrong)"/>
+  <rect x="125" y="5" width="50" height="60" fill="url(#cycle-a) #3b82f6"/>
+</svg>

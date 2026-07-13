@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1" spreadMethod="reflect">
+      <stop stop-color="#14b8a6"/><stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="inherited" href="#base" gradientTransform="rotate(12 .5 .5)"/>
+    <linearGradient id="overridden" xlink:href="#base"><stop stop-color="#fef3c7"/><stop offset="1" stop-color="#b91c1c"/></linearGradient>
+  </defs>
+  <rect x="8" y="8" width="84" height="64" fill="url(#inherited)"/>
+  <rect x="108" y="8" width="84" height="64" fill="url(#overridden)"/>
+</svg>
