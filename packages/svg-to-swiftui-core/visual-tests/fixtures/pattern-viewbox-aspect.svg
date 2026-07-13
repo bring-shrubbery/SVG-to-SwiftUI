@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 96">
+  <defs>
+    <g id="motif"><rect width="10" height="20" fill="#e0e7ff"/><circle cx="5" cy="10" r="4" fill="#4f46e5"/></g>
+    <pattern id="none" width="28" height="24" patternUnits="userSpaceOnUse" viewBox="0 0 10 20" preserveAspectRatio="none"><use href="#motif"/></pattern>
+    <pattern id="min" width="28" height="24" patternUnits="userSpaceOnUse" viewBox="0 0 10 20" preserveAspectRatio="xMinYMin meet"><use href="#motif"/></pattern>
+    <pattern id="mid" width="28" height="24" patternUnits="userSpaceOnUse" viewBox="0 0 10 20" preserveAspectRatio="xMidYMid meet"><use href="#motif"/></pattern>
+    <pattern id="max" width="28" height="24" patternUnits="userSpaceOnUse" viewBox="0 0 10 20" preserveAspectRatio="xMaxYMax meet"><use href="#motif"/></pattern>
+    <pattern id="slice" width="28" height="24" patternUnits="userSpaceOnUse" viewBox="0 0 10 20" preserveAspectRatio="xMidYMid slice"><use href="#motif"/></pattern>
+  </defs>
+  <rect x="2" y="4" width="28" height="88" fill="url(#none)"/>
+  <rect x="34" y="4" width="28" height="88" fill="url(#min)"/>
+  <rect x="66" y="4" width="28" height="88" fill="url(#mid)"/>
+  <rect x="98" y="4" width="28" height="88" fill="url(#max)"/>
+  <rect x="130" y="4" width="28" height="88" fill="url(#slice)"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <defs>
+    <pattern id="asymmetric" x="5" y="7" width="20" height="16" patternUnits="userSpaceOnUse">
+      <rect width="20" height="16" fill="#fef3c7"/>
+      <rect width="7" height="16" fill="#f97316"/>
+      <circle cx="15" cy="5" r="3" fill="#7c3aed"/>
+    </pattern>
+  </defs>
+  <path d="M9 6H119V72H9Z" fill="url(#asymmetric)"/>
+</svg>

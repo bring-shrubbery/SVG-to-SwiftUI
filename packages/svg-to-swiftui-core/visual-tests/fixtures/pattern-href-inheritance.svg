@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <pattern id="base" x="2" y="3" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#ede9fe"/><circle cx="5" cy="5" r="4" fill="#7c3aed"/>
+    </pattern>
+    <pattern id="inherited" href="#base" x="6" patternTransform="rotate(8)"/>
+    <pattern id="override" xlink:href="#inherited"><rect width="16" height="16" fill="#cffafe"/><path d="M0 0L16 16H0Z" fill="#0891b2"/></pattern>
+  </defs>
+  <rect x="4" y="4" width="56" height="72" fill="url(#inherited)"/>
+  <rect x="68" y="4" width="56" height="72" fill="url(#override)"/>
+</svg>

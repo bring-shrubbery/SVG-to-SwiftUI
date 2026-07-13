@@ -1,10 +1,12 @@
 import type { ElementNode } from "svg-parser";
-import { swiftUIColor } from "../colorUtils";
+import { parseRGBAColor, type RGBAColor, swiftUIColor } from "../colorUtils";
 import { handleElement } from "../elementHandlers";
 import { createFunctionTemplate, createStructTemplate } from "../templates";
-import { wrapWithTransform } from "../transformUtils";
-import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions } from "../types";
+import { multiplyTransforms, wrapWithTransform } from "../transformUtils";
+import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
+import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
+import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
 import type { ComputedStyle, Geometry, GradientStop, Paint, RenderDocument, RenderNode, RenderShape } from "./types";
 
 export interface GeneratedSwiftUI {
@@ -18,14 +20,29 @@ interface ShapeHelper {
 }
 
 type GeneratedViewNode =
-  | { type: "paint"; helper: string; swiftColor: string }
+  | {
+      type: "paint";
+      helper: string;
+      swiftColor: string;
+      cgColor: RGBAColor;
+      tileContained?: boolean;
+    }
   | {
       type: "gradient";
       helper: string;
       gradient: ResolvedGradient;
       paintOpacity: number;
-      coordinateWidth: number;
-      coordinateHeight: number;
+      coordinateSpace: ViewBoxData;
+    }
+  | {
+      type: "pattern";
+      helper: string;
+      pattern: ResolvedPattern;
+      paintOpacity: number;
+      coordinateSpace: ViewBoxData;
+      patternIndex: number;
+      tileClip?: string;
+      contentNodes: GeneratedViewNode[];
     }
   | {
       type: "group";
@@ -33,6 +50,7 @@ type GeneratedViewNode =
       opacity: number;
       isolated: boolean;
       clip?: string;
+      tileContained?: boolean;
     };
 
 interface ViewBuildContext {
@@ -40,8 +58,11 @@ interface ViewBuildContext {
   helpers: ShapeHelper[];
   nextLayer: number;
   nextClip: number;
+  nextPattern: number;
   document: RenderDocument;
   precision: number;
+  coordinateSpace: ViewBoxData;
+  activePatterns: Set<string>;
 }
 
 function createOptions(
@@ -163,6 +184,13 @@ function colorForPaint(paint: Paint, opacity: number): string | undefined {
   return undefined;
 }
 
+function rgbaForPaint(paint: Paint, opacity: number): RGBAColor | undefined {
+  const source = paint.type === "solid" ? paint.value : paint.type === "reference" ? paint.fallback : undefined;
+  if (!source) return undefined;
+  const color = parseRGBAColor(source);
+  return color ? { ...color, alpha: color.alpha * opacity } : undefined;
+}
+
 function formatNumber(value: number, precision = 10): string {
   const rounded = Number(value.toFixed(precision));
   return String(Object.is(rounded, -0) ? 0 : rounded);
@@ -177,9 +205,39 @@ function colorForStop(stop: GradientStop, opacity: number, precision: number): s
     : `Color(${channels}, opacity: ${formatNumber(effectiveAlpha, precision)})`;
 }
 
+function rgbaForStop(stop: GradientStop, opacity: number): RGBAColor {
+  return { ...stop.color, alpha: stop.color.alpha * opacity };
+}
+
 function addHelper(context: ViewBuildContext, name: string, lines: string[]): string {
   context.helpers.push({ name, lines });
   return name;
+}
+
+function isContainedInTile(node: RenderNode, pattern: ResolvedPattern): boolean {
+  const bounds = renderNodeBounds(node, pattern.contentTransform);
+  if (!bounds) return false;
+  const epsilon = 1e-9;
+  return (
+    bounds.x >= -epsilon &&
+    bounds.y >= -epsilon &&
+    bounds.x + bounds.width <= pattern.tile.width + epsilon &&
+    bounds.y + bounds.height <= pattern.tile.height + epsilon
+  );
+}
+
+function markTileContained(nodes: GeneratedViewNode[]): GeneratedViewNode[] {
+  return nodes.map((node) => {
+    if (node.type === "paint") return { ...node, tileContained: true };
+    if (node.type === "group") {
+      return {
+        ...node,
+        tileContained: true,
+        children: markTileContained(node.children),
+      };
+    }
+    return node;
+  });
 }
 
 function buildViewNodes(
@@ -252,6 +310,7 @@ function buildViewNodes(
               type: "paint",
               helper,
               swiftColor: colorForStop(server.stops[0]!, paintOpacity, context.precision),
+              cgColor: rgbaForStop(server.stops[0]!, paintOpacity),
             });
             return;
           }
@@ -261,6 +320,7 @@ function buildViewNodes(
               type: "paint",
               helper,
               swiftColor: colorForStop(gradient.stop, paintOpacity, context.precision),
+              cgColor: rgbaForStop(gradient.stop, paintOpacity),
             });
             return;
           }
@@ -270,14 +330,66 @@ function buildViewNodes(
             helper,
             gradient,
             paintOpacity,
-            coordinateWidth: context.document.viewport.coordinateSpace.width,
-            coordinateHeight: context.document.viewport.coordinateSpace.height,
+            coordinateSpace: context.coordinateSpace,
+          });
+          return;
+        }
+        if (server?.type === "pattern" && !server.invalid) {
+          if (context.activePatterns.has(server.id)) return;
+          const pattern = resolvePatternForShape(server, node, kind, ancestorTransforms);
+          if (pattern.type === "none") return;
+          const patternIndex = context.nextPattern++;
+          let tileClip: string | undefined;
+          if (pattern.clipTile) {
+            let clipLines = handleElement(
+              {
+                type: "element",
+                tagName: "rect",
+                properties: {
+                  x: 0,
+                  y: 0,
+                  width: pattern.tile.width,
+                  height: pattern.tile.height,
+                  fill: "black",
+                  stroke: "none",
+                },
+                children: [],
+              },
+              context.options,
+            );
+            clipLines = wrapWithTransform(clipLines, pattern.matrix, context.options);
+            tileClip = addHelper(context, `PatternClip${patternIndex}`, clipLines);
+          }
+          const patternContext: ViewBuildContext = {
+            ...context,
+            options: { ...context.options, lastPathId: 0 },
+            activePatterns: new Set(context.activePatterns).add(server.id),
+          };
+          const contentTransform = multiplyTransforms(pattern.matrix, pattern.contentTransform);
+          const contentNodes = pattern.children.flatMap((child) => {
+            const childNodes = buildViewNodes([child], patternContext, [contentTransform]);
+            return isContainedInTile(child, pattern) ? markTileContained(childNodes) : childNodes;
+          });
+          context.nextLayer = patternContext.nextLayer;
+          context.nextClip = patternContext.nextClip;
+          context.nextPattern = patternContext.nextPattern;
+          if (contentNodes.length === 0) return;
+          paints.push({
+            type: "pattern",
+            helper,
+            pattern,
+            paintOpacity,
+            coordinateSpace: context.coordinateSpace,
+            patternIndex,
+            ...(tileClip ? { tileClip } : {}),
+            contentNodes,
           });
           return;
         }
       }
       const swiftColor = colorForPaint(paint, paintOpacity);
-      if (swiftColor) paints.push({ type: "paint", helper, swiftColor });
+      const cgColor = rgbaForPaint(paint, paintOpacity);
+      if (swiftColor && cgColor) paints.push({ type: "paint", helper, swiftColor, cgColor });
     };
 
     for (const kind of node.style.paintOrder) {
@@ -312,6 +424,12 @@ function gradientStopLiteral(stop: GradientStop, opacity: number): string {
   return `SVGGradientStop(offset: ${formatNumber(stop.offset)}, red: ${formatNumber(stop.color.red)}, green: ${formatNumber(stop.color.green)}, blue: ${formatNumber(stop.color.blue)}, alpha: ${formatNumber(stop.color.alpha * opacity)})`;
 }
 
+function runtimeTransform(matrix: RenderNode["transform"], coordinateSpace: ViewBoxData): string {
+  const scaleX = `size.width / ${formatNumber(coordinateSpace.width)}`;
+  const scaleY = `size.height / ${formatNumber(coordinateSpace.height)}`;
+  return `CGAffineTransform(a: ${formatNumber(matrix.a)} * ${scaleX}, b: ${formatNumber(matrix.b)} * ${scaleY}, c: ${formatNumber(matrix.c)} * ${scaleX}, d: ${formatNumber(matrix.d)} * ${scaleY}, tx: ${formatNumber(matrix.e - coordinateSpace.x)} * ${scaleX}, ty: ${formatNumber(matrix.f - coordinateSpace.y)} * ${scaleY})`;
+}
+
 function renderGradientNode(
   node: Extract<GeneratedViewNode, { type: "gradient" }>,
   level: number,
@@ -324,7 +442,7 @@ function renderGradientNode(
   const gradient = node.gradient;
   const matrix = gradient.matrix;
   const stops = gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ");
-  const transform = `CGAffineTransform(a: ${formatNumber(matrix.a)} * size.width / ${formatNumber(node.coordinateWidth)}, b: ${formatNumber(matrix.b)} * size.height / ${formatNumber(node.coordinateHeight)}, c: ${formatNumber(matrix.c)} * size.width / ${formatNumber(node.coordinateWidth)}, d: ${formatNumber(matrix.d)} * size.height / ${formatNumber(node.coordinateHeight)}, tx: ${formatNumber(matrix.e)} * size.width / ${formatNumber(node.coordinateWidth)}, ty: ${formatNumber(matrix.f)} * size.height / ${formatNumber(node.coordinateHeight)})`;
+  const transform = runtimeTransform(matrix, node.coordinateSpace);
   const lines = [
     `${prefix}Canvas { context, size in`,
     `${inner}let clipPath = ${node.helper}().path(in: CGRect(origin: .zero, size: size))`,
@@ -358,10 +476,265 @@ function renderGradientNode(
   return lines;
 }
 
+function renderPatternNode(
+  node: Extract<GeneratedViewNode, { type: "pattern" }>,
+  level: number,
+  indentation: string,
+): string[] {
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  const lines = [
+    `${prefix}Canvas { context, size in`,
+    `${inner}context.withCGContext { graphics in`,
+    ...renderPatternCommands(node, "graphics", level + 2, indentation),
+    `${inner}}`,
+    `${prefix}}`,
+  ];
+  return lines;
+}
+
+function renderGradientCommands(
+  node: Extract<GeneratedViewNode, { type: "gradient" }>,
+  graphicsName: string,
+  level: number,
+  indentation: string,
+): string[] {
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  const nested = indentation.repeat(level + 2);
+  const gradient = node.gradient;
+  const transform = runtimeTransform(gradient.matrix, node.coordinateSpace);
+  const stops = gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ");
+  const lines = [
+    `${prefix}do {`,
+    `${inner}let clipPath = ${node.helper}().path(in: CGRect(origin: .zero, size: size))`,
+    `${inner}let stops = [${stops}]`,
+    `${inner}if let gradient = svgGradient(stops: stops, spread: .${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${gradient.colorInterpolation === "linearRGB"}) {`,
+    `${nested}${graphicsName}.saveGState()`,
+    `${nested}${graphicsName}.addPath(clipPath.cgPath)`,
+    `${nested}${graphicsName}.clip()`,
+    `${nested}${graphicsName}.concatenate(${transform})`,
+  ];
+  if (gradient.type === "linearGradient") {
+    const dx = gradient.x2 - gradient.x1;
+    const dy = gradient.y2 - gradient.y1;
+    lines.push(
+      `${nested}${graphicsName}.drawLinearGradient(gradient, start: CGPoint(x: ${formatNumber(gradient.x1 + dx * gradient.startT)}, y: ${formatNumber(gradient.y1 + dy * gradient.startT)}), end: CGPoint(x: ${formatNumber(gradient.x1 + dx * gradient.endT)}, y: ${formatNumber(gradient.y1 + dy * gradient.endT)}), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+    );
+  } else {
+    const dx = gradient.cx - gradient.fx;
+    const dy = gradient.cy - gradient.fy;
+    const dr = gradient.r - gradient.fr;
+    lines.push(
+      `${nested}${graphicsName}.drawRadialGradient(gradient, startCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.startT)}, y: ${formatNumber(gradient.fy + dy * gradient.startT)}), startRadius: ${formatNumber(gradient.fr + dr * gradient.startT)}, endCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.endT)}, y: ${formatNumber(gradient.fy + dy * gradient.endT)}), endRadius: ${formatNumber(gradient.fr + dr * gradient.endT)}, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+    );
+  }
+  lines.push(`${nested}${graphicsName}.restoreGState()`, `${inner}}`, `${prefix}}`);
+  return lines;
+}
+
+function renderGeneratedCommands(
+  nodes: GeneratedViewNode[],
+  graphicsName: string,
+  level: number,
+  indentation: string,
+): string[] {
+  const lines: string[] = [];
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  for (const node of nodes) {
+    if (node.type === "paint") {
+      const color = node.cgColor;
+      lines.push(
+        `${prefix}do {`,
+        `${inner}${graphicsName}.saveGState()`,
+        `${inner}${graphicsName}.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        `${inner}${graphicsName}.setFillColor(CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [${formatNumber(color.red)}, ${formatNumber(color.green)}, ${formatNumber(color.blue)}, ${formatNumber(color.alpha)}])!)`,
+        `${inner}${graphicsName}.fillPath()`,
+        `${inner}${graphicsName}.restoreGState()`,
+        `${prefix}}`,
+      );
+      continue;
+    }
+    if (node.type === "gradient") {
+      lines.push(...renderGradientCommands(node, graphicsName, level, indentation));
+      continue;
+    }
+    if (node.type === "pattern") {
+      lines.push(...renderPatternCommands(node, graphicsName, level, indentation));
+      continue;
+    }
+    const needsLayer = node.isolated || node.clip !== undefined;
+    if (!needsLayer) {
+      lines.push(...renderGeneratedCommands(node.children, graphicsName, level, indentation));
+      continue;
+    }
+    lines.push(`${prefix}do {`, `${inner}${graphicsName}.saveGState()`);
+    if (node.clip)
+      lines.push(
+        `${inner}${graphicsName}.addPath(${node.clip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        `${inner}${graphicsName}.clip()`,
+      );
+    if (node.isolated) {
+      if (node.opacity !== 1) lines.push(`${inner}${graphicsName}.setAlpha(${formatNumber(node.opacity)})`);
+      lines.push(`${inner}${graphicsName}.beginTransparencyLayer(auxiliaryInfo: nil)`);
+    }
+    lines.push(...renderGeneratedCommands(node.children, graphicsName, level + 1, indentation));
+    if (node.isolated) lines.push(`${inner}${graphicsName}.endTransparencyLayer()`);
+    lines.push(`${inner}${graphicsName}.restoreGState()`, `${prefix}}`);
+  }
+  return lines;
+}
+
+interface PatternRepeatRuntime {
+  minRow: number;
+  maxRow: number;
+  minColumn: number;
+  maxColumn: number;
+  columnX: string;
+  columnY: string;
+  rowX: string;
+  rowY: string;
+  originX: string;
+  originY: string;
+  scaleX: string;
+  scaleY: string;
+  suffix: number;
+  tileClip?: string;
+}
+
+function canBatchPatternNode(node: GeneratedViewNode): boolean {
+  if (node.type === "paint") return node.tileContained === true;
+  return (
+    node.type === "group" &&
+    node.tileContained === true &&
+    !node.isolated &&
+    !node.clip &&
+    node.children.every(canBatchPatternNode)
+  );
+}
+
+function renderBatchedPatternNode(
+  node: GeneratedViewNode,
+  runtime: PatternRepeatRuntime,
+  graphicsName: string,
+  level: number,
+  indentation: string,
+): string[] {
+  if (node.type === "group")
+    return node.children.flatMap((child) => renderBatchedPatternNode(child, runtime, graphicsName, level, indentation));
+  if (node.type !== "paint") return [];
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  const nested = indentation.repeat(level + 2);
+  const deep = indentation.repeat(level + 3);
+  const color = node.cgColor;
+  return [
+    `${prefix}do {`,
+    `${inner}${graphicsName}.saveGState()`,
+    `${inner}let repeatedPath = CGMutablePath()`,
+    `${inner}for row in (${runtime.minRow})...(${runtime.maxRow}) {`,
+    `${nested}for column in (${runtime.minColumn})...(${runtime.maxColumn}) {`,
+    `${deep}let offsetX${runtime.suffix} = (${runtime.originX} + CGFloat(column) * ${runtime.columnX} + CGFloat(row) * ${runtime.rowX}) * ${runtime.scaleX}`,
+    `${deep}let offsetY${runtime.suffix} = (${runtime.originY} + CGFloat(column) * ${runtime.columnY} + CGFloat(row) * ${runtime.rowY}) * ${runtime.scaleY}`,
+    `${deep}repeatedPath.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath, transform: CGAffineTransform(translationX: offsetX${runtime.suffix}, y: offsetY${runtime.suffix}))`,
+    `${nested}}`,
+    `${inner}}`,
+    `${inner}${graphicsName}.addPath(repeatedPath)`,
+    `${inner}${graphicsName}.setFillColor(CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [${formatNumber(color.red)}, ${formatNumber(color.green)}, ${formatNumber(color.blue)}, ${formatNumber(color.alpha)}])!)`,
+    `${inner}${graphicsName}.fillPath()`,
+    `${inner}${graphicsName}.restoreGState()`,
+    `${prefix}}`,
+  ];
+}
+
+function renderUnbatchedPatternNode(
+  node: GeneratedViewNode,
+  runtime: PatternRepeatRuntime,
+  graphicsName: string,
+  level: number,
+  indentation: string,
+): string[] {
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  const nested = indentation.repeat(level + 2);
+  const lines = [
+    `${prefix}for row in (${runtime.minRow})...(${runtime.maxRow}) {`,
+    `${inner}for column in (${runtime.minColumn})...(${runtime.maxColumn}) {`,
+    `${nested}${graphicsName}.saveGState()`,
+    `${nested}let offsetX${runtime.suffix} = (${runtime.originX} + CGFloat(column) * ${runtime.columnX} + CGFloat(row) * ${runtime.rowX}) * ${runtime.scaleX}`,
+    `${nested}let offsetY${runtime.suffix} = (${runtime.originY} + CGFloat(column) * ${runtime.columnY} + CGFloat(row) * ${runtime.rowY}) * ${runtime.scaleY}`,
+    `${nested}${graphicsName}.translateBy(x: offsetX${runtime.suffix}, y: offsetY${runtime.suffix})`,
+  ];
+  if (runtime.tileClip)
+    lines.push(
+      `${nested}${graphicsName}.addPath(${runtime.tileClip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+      `${nested}${graphicsName}.clip()`,
+    );
+  lines.push(
+    ...renderGeneratedCommands([node], graphicsName, level + 2, indentation),
+    `${nested}${graphicsName}.restoreGState()`,
+    `${inner}}`,
+    `${prefix}}`,
+  );
+  return lines;
+}
+
+function renderPatternCommands(
+  node: Extract<GeneratedViewNode, { type: "pattern" }>,
+  graphicsName: string,
+  level: number,
+  indentation: string,
+): string[] {
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  const pattern = node.pattern;
+  const matrix = pattern.matrix;
+  const runtime: PatternRepeatRuntime = {
+    minRow: pattern.minRow,
+    maxRow: pattern.maxRow,
+    minColumn: pattern.minColumn,
+    maxColumn: pattern.maxColumn,
+    columnX: formatNumber(matrix.a * pattern.tile.width),
+    columnY: formatNumber(matrix.b * pattern.tile.width),
+    rowX: formatNumber(matrix.c * pattern.tile.height),
+    rowY: formatNumber(matrix.d * pattern.tile.height),
+    originX: formatNumber(matrix.a * pattern.tile.x + matrix.c * pattern.tile.y),
+    originY: formatNumber(matrix.b * pattern.tile.x + matrix.d * pattern.tile.y),
+    scaleX: `size.width / ${formatNumber(node.coordinateSpace.width)}`,
+    scaleY: `size.height / ${formatNumber(node.coordinateSpace.height)}`,
+    suffix: node.patternIndex,
+    ...(node.tileClip ? { tileClip: node.tileClip } : {}),
+  };
+  const lines = [
+    `${prefix}do {`,
+    `${inner}${graphicsName}.saveGState()`,
+    `${inner}${graphicsName}.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+    `${inner}${graphicsName}.clip()`,
+  ];
+  if (node.paintOpacity !== 1) {
+    lines.push(
+      `${inner}${graphicsName}.setAlpha(${formatNumber(node.paintOpacity)})`,
+      `${inner}${graphicsName}.beginTransparencyLayer(auxiliaryInfo: nil)`,
+    );
+  }
+  for (const contentNode of node.contentNodes) {
+    lines.push(
+      ...(canBatchPatternNode(contentNode)
+        ? renderBatchedPatternNode(contentNode, runtime, graphicsName, level + 1, indentation)
+        : renderUnbatchedPatternNode(contentNode, runtime, graphicsName, level + 1, indentation)),
+    );
+  }
+  if (node.paintOpacity !== 1) lines.push(`${inner}${graphicsName}.endTransparencyLayer()`);
+  lines.push(`${inner}${graphicsName}.restoreGState()`, `${prefix}}`);
+  return lines;
+}
+
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
   if (node.type === "paint") return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
   if (node.type === "gradient") return renderGradientNode(node, level, indentation);
+  if (node.type === "pattern") return renderPatternNode(node, level, indentation);
   const lines = [`${prefix}ZStack {`];
   for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
   lines.push(`${prefix}}`);
@@ -373,7 +746,10 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
 
 function containsGradientNode(nodes: GeneratedViewNode[]): boolean {
   return nodes.some(
-    (node) => node.type === "gradient" || (node.type === "group" && containsGradientNode(node.children)),
+    (node) =>
+      node.type === "gradient" ||
+      (node.type === "group" && containsGradientNode(node.children)) ||
+      (node.type === "pattern" && containsGradientNode(node.contentNodes)),
   );
 }
 
@@ -489,7 +865,12 @@ function createView(
     body.push("", ...layerStruct);
   }
   if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
-  return createStructTemplate({ name, indent: indentationSize, returnType: "View", body });
+  return createStructTemplate({
+    name,
+    indent: indentationSize,
+    returnType: "View",
+    body,
+  });
 }
 
 export function generateShape(
@@ -529,8 +910,11 @@ export function generateView(
     helpers: [],
     nextLayer: 0,
     nextClip: 0,
+    nextPattern: 0,
     document,
     precision: config.precision ?? 10,
+    coordinateSpace: document.viewport.coordinateSpace,
+    activePatterns: new Set(),
   };
   const nodes = buildViewNodes(document.children, context);
   return {

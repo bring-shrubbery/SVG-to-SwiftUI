@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 96">
+  <defs>
+    <pattern id="object" width="25%" height="50%" patternContentUnits="objectBoundingBox">
+      <rect width="1" height="1" fill="#dbeafe"/>
+      <rect width=".5" height=".5" fill="#2563eb"/>
+    </pattern>
+    <pattern id="user" x="4" y="3" width="16" height="12" patternUnits="userSpaceOnUse">
+      <rect width="16" height="12" fill="#dcfce7"/>
+      <path d="M0 0L16 12H0Z" fill="#16a34a"/>
+    </pattern>
+    <pattern id="object-user" width="25%" height="50%">
+      <rect width="14" height="21" fill="#ffedd5"/>
+      <path d="M0 0L14 21H0Z" fill="#ea580c"/>
+    </pattern>
+    <pattern id="mixed" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse" patternContentUnits="objectBoundingBox">
+      <rect width="1" height="1" fill="#fae8ff"/>
+      <circle cx=".5" cy=".5" r=".22" fill="#c026d3"/>
+    </pattern>
+  </defs>
+  <rect x="4" y="4" width="56" height="38" fill="url(#object)"/>
+  <rect x="68" y="4" width="56" height="38" fill="url(#user)"/>
+  <rect x="4" y="50" width="56" height="42" fill="url(#object-user)"/>
+  <rect x="68" y="50" width="56" height="42" fill="url(#mixed)"/>
+</svg>

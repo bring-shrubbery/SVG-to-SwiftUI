@@ -75,6 +75,40 @@ export interface RadialGradientPaint extends GradientPaintBase {
   fr: ParsedSVGLength;
 }
 
+export type PatternUnits = "objectBoundingBox" | "userSpaceOnUse";
+
+export interface PatternContentInstance {
+  /** Children resolved in the coordinate context of one referencing shape. */
+  children: RenderNode[];
+}
+
+export interface PatternPaint {
+  type: "pattern";
+  id: string;
+  x: ParsedSVGLength;
+  y: ParsedSVGLength;
+  width: ParsedSVGLength;
+  height: ParsedSVGLength;
+  units: PatternUnits;
+  contentUnits: PatternUnits;
+  transform: AffineTransform;
+  viewBox?: ViewBoxData;
+  preserveAspectRatio: PreserveAspectRatio;
+  overflow: string;
+  href?: string;
+  source: SourceLocation;
+  /** Ordered shadow-tree content retained from the nearest template with children. */
+  contentElements: ElementNode[];
+  /** First materialized render-tree instance, useful for resource inspection. */
+  children: RenderNode[];
+  /** Per-reference render trees preserve nested viewport percentage semantics. */
+  instances: Map<RenderShape, PatternContentInstance>;
+  /** Computed presentation inherited by shadow-tree children. */
+  presentation: Readonly<Record<string, string | number>>;
+  /** Set when nested use/paint dependency analysis finds a cycle. */
+  invalid: boolean;
+}
+
 export interface InvalidPaintServer {
   type: "invalid" | "unsupported";
   id: string;
@@ -83,7 +117,7 @@ export interface InvalidPaintServer {
 }
 
 export type GradientPaint = LinearGradientPaint | RadialGradientPaint;
-export type PaintServer = GradientPaint | InvalidPaintServer;
+export type PaintServer = GradientPaint | PatternPaint | InvalidPaintServer;
 
 export interface StrokeStyle {
   width: number;

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <defs>
+    <pattern id="clipped" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect width="20" height="20" fill="#e0f2fe"/>
+      <circle cx="0" cy="10" r="8" fill="#0284c7"/>
+    </pattern>
+  </defs>
+  <rect x="4" y="4" width="120" height="72" rx="8" fill="url(#clipped)"/>
+</svg>
