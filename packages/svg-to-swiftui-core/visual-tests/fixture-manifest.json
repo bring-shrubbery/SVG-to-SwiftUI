@@ -52,7 +52,14 @@
       "width": 128,
       "height": 64,
       "expectedMode": "view",
-      "tags": ["blend-mode", "circle", "g", "geometry", "opacity", "path", "rect", "view"]
+      "tags": ["blend-mode", "circle", "g", "geometry", "opacity", "path", "rect", "view"],
+      "tolerance": {
+        "channel": 24,
+        "maxOutsidePercent": 4,
+        "maxMeanRgbError": 3,
+        "maxMeanAlphaError": 3
+      },
+      "toleranceReason": "WebKit and CoreGraphics use slightly different edge antialiasing for blended shapes."
     },
     "chevron-double": {
       "width": 128,

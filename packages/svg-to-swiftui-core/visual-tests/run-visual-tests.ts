@@ -29,11 +29,23 @@ function ensureWebKitRenderer(): void {
   webKitRendererReady = true;
 }
 
-function renderWebKitReference(source: string, name: string, outputPath: string, width: number, height: number): void {
+function renderWebKitReference(
+  source: string,
+  name: string,
+  outputPath: string,
+  width: number,
+  height: number,
+  pixelWidth: number,
+  pixelHeight: number,
+): void {
   ensureWebKitRenderer();
   const inputPath = resolve(RENDERS_DIR, ".cache", `${name}-webkit-source.svg`);
   writeFileSync(inputPath, withPixelViewport(source, width, height));
-  execFileSync(WEBKIT_RENDERER_BINARY, [inputPath, outputPath, String(width), String(height)], { stdio: "pipe" });
+  execFileSync(
+    WEBKIT_RENDERER_BINARY,
+    [inputPath, outputPath, String(width), String(height), String(pixelWidth), String(pixelHeight)],
+    { stdio: "pipe" },
+  );
 }
 
 interface ReferenceCacheEntry {
@@ -160,7 +172,7 @@ async function main() {
       const referenceHash = hash(
         source,
         JSON.stringify({
-          renderer: usesWebKitReference ? "rgba-webkit-v1" : REFERENCE_RENDERER_VERSION,
+          renderer: usesWebKitReference ? "rgba-webkit-v2" : REFERENCE_RENDERER_VERSION,
           pixelWidth,
           pixelHeight,
           background: fixture.background,
@@ -172,7 +184,15 @@ async function main() {
         referenceCacheHits++;
       } else {
         if (usesWebKitReference) {
-          renderWebKitReference(source, fixture.name, referencePath, fixture.width, fixture.height);
+          renderWebKitReference(
+            source,
+            fixture.name,
+            referencePath,
+            fixture.width,
+            fixture.height,
+            pixelWidth,
+            pixelHeight,
+          );
         } else {
           const sizedSource = withPixelViewport(source, pixelWidth, pixelHeight);
           const resvg = new Resvg(sizedSource, {
