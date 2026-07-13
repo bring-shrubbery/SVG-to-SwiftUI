@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 80">
+  <defs>
+    <pattern id="local" width="20%" height="35%" patternContentUnits="objectBoundingBox"><rect width="1" height="1" fill="#e2e8f0"/><path d="M0 0L.2 .35H0Z" fill="#334155"/></pattern>
+  </defs>
+  <g transform="translate(30 5) rotate(13 45 35) scale(1.25 .8)"><rect x="0" y="0" width="90" height="70" rx="8" fill="url(#local)"/></g>
+  <rect x="130" y="10" width="38" height="60" fill="url(#local)"/>
+</svg>

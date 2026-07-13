@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <defs>
+    <pattern id="stripes" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(12)"><rect width="12" height="12" fill="#fef3c7"/><rect width="4" height="12" fill="#d97706"/></pattern>
+  </defs>
+  <circle cx="36" cy="40" r="27" fill="url(#stripes)"/>
+  <path d="M72 16C108 4 118 30 95 40C72 50 82 76 118 64" fill="none" stroke="url(#stripes)" stroke-width="9" stroke-linecap="round"/>
+</svg>

@@ -117,6 +117,13 @@ function localShapeBounds(shape: RenderShape): RenderBounds | undefined {
   return bounds ? expandForStroke(bounds, shape) : undefined;
 }
 
+/** Local bounds for one paint phase, including stroke expansion when requested. */
+export function shapePaintBounds(shape: RenderShape, kind: "fill" | "stroke"): RenderBounds | undefined {
+  const bounds = geometryBounds(shape.geometry);
+  if (!bounds) return undefined;
+  return kind === "stroke" ? expandForStroke(bounds, shape) : bounds;
+}
+
 function hidden(visibility: string): boolean {
   return visibility === "hidden" || visibility === "collapse";
 }

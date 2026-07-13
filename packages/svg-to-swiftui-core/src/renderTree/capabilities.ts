@@ -79,13 +79,19 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
     const server = document.resources.paints.get(paint.id);
     return server?.type === "linearGradient" || server?.type === "radialGradient";
   });
+  const hasPatternPaint = paints.some(({ paint }) => {
+    if (paint.type !== "reference") return false;
+    const server = document.resources.paints.get(paint.id);
+    return server?.type === "pattern" && !server.invalid;
+  });
+  const hasPaintServer = hasGradientPaint || hasPatternPaint;
   const needsIndependentCompositing =
     containsIndependentCompositing(document.children) || paints.some(({ paint }) => hasIntrinsicAlpha(paint));
 
   if (
     config.preserveColors === false &&
     !needsViewportClip &&
-    !hasGradientPaint &&
+    !hasPaintServer &&
     !needsIndependentCompositing &&
     !containsGeneralViewContent(document.children)
   ) {
@@ -99,12 +105,14 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   if (containsGeneralViewContent(document.children)) reasons.push("document contains non-geometry view content");
   if (needsViewportClip) reasons.push("document contains a clipped nested viewport");
   if (hasGradientPaint) reasons.push("document uses an SVG gradient paint server");
+  if (hasPatternPaint) reasons.push("document uses an SVG pattern paint server");
   if (needsIndependentCompositing) reasons.push("document uses independent paint or group opacity");
 
   const colors = paints.map(({ paint, opacity }) => {
     if (paint.type === "reference") {
       const server = document.resources.paints.get(paint.id);
       if (server?.type === "linearGradient" || server?.type === "radialGradient") return `gradient:#${paint.id}`;
+      if (server?.type === "pattern" && !server.invalid) return `pattern:#${paint.id}`;
     }
     return solidColor(paint, opacity);
   });
@@ -112,7 +120,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   if (!allColorsSupported) {
     return {
       mode:
-        config.preserveColors === true || containsGeneralViewContent(document.children) || hasGradientPaint
+        config.preserveColors === true || containsGeneralViewContent(document.children) || hasPaintServer
           ? "view"
           : "shape",
       reasons: ["one or more source paints require a future paint backend"],

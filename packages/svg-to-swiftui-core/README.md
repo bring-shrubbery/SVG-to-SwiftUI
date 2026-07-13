@@ -47,6 +47,12 @@ Gradient layers remain vector output. Generated SwiftUI uses `Canvas` to clip a 
 
 Color stops are sampled in unpremultiplied SVG color space before Core Graphics draws them. `color-interpolation: sRGB`/`auto` uses sRGB channel interpolation; `linearRGB` applies the standard sRGB transfer functions, interpolates linear-light channels, then encodes back to sRGB. Sampling uses 256 intervals per spread period, which keeps Core Graphics interpolation within the RGBA harness tolerance while supporting repeat and reflect without whole-image rasterization.
 
+### Pattern paint servers
+
+`pattern` definitions are resolved as typed fill and stroke resources. The resolver supports `patternUnits`, `patternContentUnits`, `viewBox`/`preserveAspectRatio`, `patternTransform`, `href` and `xlink:href` inheritance, local content replacement, nested patterns, groups, `use`, gradients, alpha, and diagnostics for invalid dimensions or cyclic references.
+
+Generated SwiftUI keeps pattern content vector-based in `Canvas`. It repeats compound paths without tile seams, clips overflowing content to each tile, preserves fractional origins at different display scales, and resolves object-bounding-box patterns against each painted shape.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).
@@ -117,6 +123,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG transforms (`matrix`, `translate`, `scale`, `rotate`, `skewX`, `skewY`)
 - [x] Solid fill/stroke styling with colours
 - [x] Linear/radial gradient fills and strokes, stops, inheritance, transforms, and spread methods
+- [x] Pattern fills and strokes, inheritance, coordinate systems, transforms, viewBox behavior, and vector tiling
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [ ] SVG `<text>` element
 - [ ] Automatic animation support

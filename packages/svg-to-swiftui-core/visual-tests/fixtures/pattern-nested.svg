@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <defs>
+    <pattern id="dots" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#e0f2fe"/><circle cx="2" cy="2" r="1.5" fill="#0369a1"/></pattern>
+    <pattern id="nested" width="24" height="16" patternUnits="userSpaceOnUse"><rect width="24" height="16" fill="url(#dots)"/><path d="M0 16L24 0V5L0 21Z" fill="#fb7185" opacity=".75"/></pattern>
+  </defs>
+  <ellipse cx="64" cy="40" rx="58" ry="34" fill="url(#nested)"/>
+</svg>

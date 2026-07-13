@@ -253,10 +253,7 @@ export function resolvePaintServers(
 
   const result = new Map<string, PaintServer>();
   for (const [id, element] of paintElements) {
-    if (element.tagName === "pattern") {
-      result.set(id, invalidServer(element, "unsupported"));
-      continue;
-    }
+    if (element.tagName === "pattern") continue;
     const chain = chainFor(id);
     if (!chain) {
       result.set(id, invalidServer(element, "invalid"));

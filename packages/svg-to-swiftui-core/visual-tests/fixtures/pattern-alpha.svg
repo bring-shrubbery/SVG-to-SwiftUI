@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <rect width="128" height="80" fill="#0f172a"/>
+  <defs>
+    <pattern id="alpha" width="18" height="18" patternUnits="userSpaceOnUse">
+      <rect width="18" height="18" fill="#38bdf8" fill-opacity=".35"/>
+      <circle cx="6" cy="6" r="6" fill="#f472b6" opacity=".72"/>
+      <circle cx="12" cy="12" r="6" fill="#facc15" opacity=".58"/>
+    </pattern>
+  </defs>
+  <rect x="5" y="5" width="118" height="70" fill="url(#alpha)" fill-opacity=".82"/>
+</svg>

@@ -15,16 +15,19 @@ import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTran
 import type { SVGElementProperties, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { resolvePaintServers } from "./gradients";
+import { resolvePatternPaintServers } from "./patterns";
 import type {
   ComputedStyle,
   CSSDiagnosticContext,
   Geometry,
   Paint,
   PaintOrderPhase,
+  PatternPaint,
   RenderDiagnostic,
   RenderDocument,
   RenderGroup,
   RenderNode,
+  RenderShape,
   ResourceRegistry,
   SourceLocation,
 } from "./types";
@@ -875,6 +878,16 @@ export function buildRenderDocument(
     resolved.effective,
     diagnostics,
   );
+  for (const [id, paint] of resolvePatternPaintServers(
+    svg,
+    resources.paintElements,
+    resources.definitions,
+    styleResolver,
+    resolved.effective,
+    diagnostics,
+  )) {
+    resources.paints.set(id, paint);
+  }
   const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
@@ -888,6 +901,97 @@ export function buildRenderDocument(
   };
   const children: RenderNode[] = [root];
 
+  function diagnosePatternOnce(pattern: PatternPaint, code: string, message: string): void {
+    if (diagnostics.some((item) => item.code === code && item.source.id === pattern.id && item.message === message))
+      return;
+    diagnostics.push({ code, message, severity: "warning", source: pattern.source });
+  }
+
+  function buildPatternChildren(pattern: PatternPaint, shape: RenderShape): RenderNode[] {
+    const viewport = pattern.viewBox
+      ? { width: pattern.viewBox.width, height: pattern.viewBox.height }
+      : pattern.contentUnits === "objectBoundingBox"
+        ? { width: 1, height: 1 }
+        : { ...shape.paintContext.viewport };
+    const patternCoordinate: CoordinateContext = {
+      viewport,
+      rootViewport: { ...shape.paintContext.rootViewport },
+      fontMetrics: { ...shape.paintContext.fontMetrics },
+    };
+    const patternContext: BuildContext = {
+      ...context,
+      activeReferences: new Set(context.activeReferences).add(pattern.id),
+    };
+    const built: RenderNode[] = [];
+    for (const content of pattern.contentElements) {
+      try {
+        built.push(...buildNode(content, pattern.presentation as Presentation, patternCoordinate, patternContext));
+      } catch (error) {
+        pattern.invalid = true;
+        const message = error instanceof Error ? error.message : String(error);
+        diagnosePatternOnce(
+          pattern,
+          message.toLowerCase().includes("circular")
+            ? "cyclic-pattern-use-reference"
+            : "invalid-pattern-content-reference",
+          `Pattern #${pattern.id} content could not be resolved: ${message}`,
+        );
+      }
+    }
+    return built;
+  }
+
+  function materializePattern(pattern: PatternPaint, shape: RenderShape, stack: PatternPaint[]): void {
+    const cycleIndex = stack.findIndex((candidate) => candidate.id === pattern.id);
+    if (cycleIndex >= 0) {
+      const cycle = [...stack.slice(cycleIndex), pattern];
+      for (const candidate of cycle) candidate.invalid = true;
+      diagnosePatternOnce(
+        pattern,
+        "cyclic-pattern-content-reference",
+        `Pattern paint cycle detected: ${cycle.map((candidate) => `#${candidate.id}`).join(" -> ")}.`,
+      );
+      return;
+    }
+    if (pattern.instances.has(shape)) return;
+
+    const patternChildren = buildPatternChildren(pattern, shape);
+    pattern.instances.set(shape, { children: patternChildren });
+    if (pattern.children.length === 0) pattern.children = patternChildren;
+
+    const visit = (nodes: RenderNode[]): void => {
+      for (const node of nodes) {
+        if (node.type === "group") {
+          visit(node.children);
+          continue;
+        }
+        if (node.type !== "shape") continue;
+        for (const paint of [node.style.fill, node.style.stroke]) {
+          if (paint.type !== "reference") continue;
+          const dependency = resources.paints.get(paint.id);
+          if (dependency?.type === "pattern") materializePattern(dependency, node, [...stack, pattern]);
+        }
+      }
+    };
+    visit(patternChildren);
+  }
+
+  function materializeReferencedPatterns(nodes: RenderNode[]): void {
+    for (const node of nodes) {
+      if (node.type === "group") {
+        materializeReferencedPatterns(node.children);
+        continue;
+      }
+      if (node.type !== "shape") continue;
+      for (const paint of [node.style.fill, node.style.stroke]) {
+        if (paint.type !== "reference") continue;
+        const pattern = resources.paints.get(paint.id);
+        if (pattern?.type === "pattern") materializePattern(pattern, node, []);
+      }
+    }
+  }
+  materializeReferencedPatterns(children);
+
   function diagnosePaintReferences(nodes: RenderNode[]): void {
     for (const node of nodes) {
       if (node.type === "group") {
@@ -898,13 +1002,26 @@ export function buildRenderDocument(
       for (const paint of [node.style.fill, node.style.stroke]) {
         if (paint.type !== "reference") continue;
         const server = resources.paints.get(paint.id);
-        if (server?.type === "linearGradient" || server?.type === "radialGradient") continue;
+        if (
+          server?.type === "linearGradient" ||
+          server?.type === "radialGradient" ||
+          (server?.type === "pattern" && !server.invalid)
+        )
+          continue;
         const exists = resources.definitions.get(paint.id);
         diagnostics.push({
-          code: exists ? "wrong-paint-server-type" : "missing-paint-server",
-          message: exists
-            ? `Paint reference #${paint.id} targets <${exists.tagName}> instead of a supported gradient.`
-            : `Paint reference #${paint.id} does not resolve to a local resource.`,
+          code:
+            server?.type === "pattern"
+              ? "invalid-pattern-paint-server"
+              : exists
+                ? "wrong-paint-server-type"
+                : "missing-paint-server",
+          message:
+            server?.type === "pattern"
+              ? `Paint reference #${paint.id} targets an invalid pattern resource.`
+              : exists
+                ? `Paint reference #${paint.id} targets <${exists.tagName}> instead of a supported paint server.`
+                : `Paint reference #${paint.id} does not resolve to a local resource.`,
           severity: "warning",
           source: node.source,
         });
