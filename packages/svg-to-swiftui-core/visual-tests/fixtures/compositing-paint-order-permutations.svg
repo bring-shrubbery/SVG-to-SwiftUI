@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 60">
+  <g fill="#fde047" stroke="#1d4ed8" stroke-width="14">
+    <rect x="15" y="15" width="30" height="30" rx="5" paint-order="normal"/>
+    <rect x="75" y="15" width="30" height="30" rx="5" paint-order="stroke"/>
+    <rect x="135" y="15" width="30" height="30" rx="5" paint-order="markers stroke fill"/>
+  </g>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -10 200 90" preserveAspectRatio="xMidYMid meet">
+  <g transform="translate(18 6) rotate(8 60 35)" opacity="0.58">
+    <rect x="0" y="0" width="100" height="55" rx="9" fill="#fb7185"/>
+    <ellipse cx="92" cy="42" rx="55" ry="25" fill="#4f46e5"/>
+  </g>
+</svg>

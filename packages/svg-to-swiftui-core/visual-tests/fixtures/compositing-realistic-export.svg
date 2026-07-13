@@ -1,0 +1,16 @@
+<!-- Adapted from a Figma-style exported status badge: nested named groups and presentation attributes retained. -->
+<svg width="240" height="96" viewBox="0 0 240 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="Badge/Success" opacity="0.92">
+    <rect width="240" height="96" rx="24" fill="#052E16"/>
+    <g id="Glow" opacity="0.55">
+      <circle cx="62" cy="48" r="32" fill="#22C55E" fill-opacity="0.55"/>
+      <circle cx="78" cy="48" r="32" fill="#10B981" fill-opacity="0.55"/>
+    </g>
+    <g id="Check" transform="translate(43 29)">
+      <circle cx="19" cy="19" r="18" fill="#DCFCE7"/>
+      <path d="M10 19L16.5 25.5L29 12.5" stroke="#15803D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <rect x="112" y="30" width="94" height="14" rx="7" fill="#DCFCE7"/>
+    <rect x="112" y="54" width="66" height="10" rx="5" fill="#86EFAC" fill-opacity="0.8"/>
+  </g>
+</svg>

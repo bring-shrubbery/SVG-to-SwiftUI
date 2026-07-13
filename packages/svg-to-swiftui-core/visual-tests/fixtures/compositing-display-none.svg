@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 70">
+  <defs><path id="tile" d="M0 0h24v24H0z" fill="#8b5cf6"/></defs>
+  <rect width="120" height="70" fill="#f8fafc"/>
+  <rect x="5" y="5" width="20" height="60" fill="#ef4444" display="none"/>
+  <g display="none"><circle cx="55" cy="35" r="30" fill="#f59e0b"/></g>
+  <use href="#tile" x="20" y="23"/>
+  <use href="#tile" x="76" y="23" display="none"/>
+  <circle cx="92" cy="35" r="12" fill="#14b8a6"/>
+</svg>

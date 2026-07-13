@@ -11,10 +11,26 @@ export interface GeneratedSwiftUI {
   preservesColors: boolean;
 }
 
-interface PaintLayer {
+interface ShapeHelper {
+  name: string;
   lines: string[];
-  swiftColor: string;
-  clips: string[][];
+}
+
+type GeneratedViewNode =
+  | { type: "paint"; helper: string; swiftColor: string }
+  | {
+      type: "group";
+      children: GeneratedViewNode[];
+      opacity: number;
+      isolated: boolean;
+      clip?: string;
+    };
+
+interface ViewBuildContext {
+  options: TranspilerOptions;
+  helpers: ShapeHelper[];
+  nextLayer: number;
+  nextClip: number;
 }
 
 function createOptions(
@@ -117,8 +133,9 @@ function renderShape(
 function renderShapeNodes(nodes: RenderNode[], options: TranspilerOptions): string[] {
   const lines: string[] = [];
   for (const node of nodes) {
-    if (node.style.display === "none" || node.style.visibility === "hidden") continue;
+    if (node.style.display === "none") continue;
     if (node.type === "shape") {
+      if (node.style.visibility === "hidden" || node.style.visibility === "collapse") continue;
       lines.push(...renderShape(node, options));
       continue;
     }
@@ -135,27 +152,21 @@ function colorForPaint(paint: Paint, opacity: number): string | undefined {
   return undefined;
 }
 
-function paintOrder(value: string | number): ("fill" | "stroke")[] {
-  const defaults = ["fill", "stroke", "markers"] as const;
-  const normalized = String(value).trim().toLowerCase();
-  const specified = normalized === "normal" ? [] : normalized.split(/\s+/);
-  const ordered = [...new Set([...specified, ...defaults])];
-  return ordered.filter((item): item is "fill" | "stroke" => item === "fill" || item === "stroke");
+function addHelper(context: ViewBuildContext, name: string, lines: string[]): string {
+  context.helpers.push({ name, lines });
+  return name;
 }
 
-function collectPaintLayers(
+function buildViewNodes(
   nodes: RenderNode[],
-  options: TranspilerOptions,
-  inheritedOpacity = 1,
+  context: ViewBuildContext,
   ancestorTransforms: RenderNode["transform"][] = [],
-  ancestorClips: string[][] = [],
-  layers: PaintLayer[] = [],
-): PaintLayer[] {
+): GeneratedViewNode[] {
+  const generated: GeneratedViewNode[] = [];
   for (const node of nodes) {
-    if (node.style.display === "none" || node.style.visibility === "hidden") continue;
-    const opacity = inheritedOpacity * node.style.opacity;
+    if (node.style.display === "none") continue;
     if (node.type === "group") {
-      let clips = ancestorClips;
+      let clip: string | undefined;
       if (node.viewport?.clip) {
         const { rect, clipTransform } = node.viewport;
         let clipLines = handleElement(
@@ -172,98 +183,117 @@ function collectPaintLayers(
             },
             children: [],
           },
-          options,
+          context.options,
         );
-        clipLines = wrapWithTransform(clipLines, clipTransform, options);
+        clipLines = wrapWithTransform(clipLines, clipTransform, context.options);
         for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
-          clipLines = wrapWithTransform(clipLines, ancestorTransforms[index]!, options);
+          clipLines = wrapWithTransform(clipLines, ancestorTransforms[index]!, context.options);
         }
-        clips = [...ancestorClips, clipLines];
+        clip = addHelper(context, `Clip${context.nextClip++}`, clipLines);
       }
-      collectPaintLayers(node.children, options, opacity, [...ancestorTransforms, node.transform], clips, layers);
+      const children = buildViewNodes(node.children, context, [...ancestorTransforms, node.transform]);
+      if (children.length > 0) {
+        generated.push({
+          type: "group",
+          children,
+          opacity: node.style.opacity,
+          isolated: node.style.opacity !== 1 || String(node.style.presentation.isolation).toLowerCase() === "isolate",
+          ...(clip ? { clip } : {}),
+        });
+      }
       continue;
     }
-    if (node.type !== "shape") continue;
+    if (node.type !== "shape" || node.style.visibility === "hidden" || node.style.visibility === "collapse") continue;
+
+    const paints: GeneratedViewNode[] = [];
 
     const addLayer = (kind: "fill" | "stroke", paint: Paint, paintOpacity: number) => {
-      const swiftColor = colorForPaint(paint, opacity * paintOpacity);
+      const swiftColor = colorForPaint(paint, paintOpacity);
       if (!swiftColor) return;
       let lines = renderShape(
         node,
-        options,
+        context.options,
         kind === "fill" ? { fill: "black", stroke: "none" } : { fill: "none", stroke: "black" },
       );
       for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
-        lines = wrapWithTransform(lines, ancestorTransforms[index]!, options);
+        lines = wrapWithTransform(lines, ancestorTransforms[index]!, context.options);
       }
-      if (lines.length > 0) layers.push({ lines, swiftColor, clips: ancestorClips });
+      if (lines.length > 0) {
+        const helper = addHelper(context, `Layer${context.nextLayer++}`, lines);
+        paints.push({ type: "paint", helper, swiftColor });
+      }
     };
 
-    for (const kind of paintOrder(node.style.presentation["paint-order"] ?? "normal")) {
-      if (kind === "fill" && node.style.fill.type !== "none" && opacity * node.style.fillOpacity > 0) {
+    for (const kind of node.style.paintOrder) {
+      if (kind === "fill" && node.style.fill.type !== "none") {
         addLayer("fill", node.style.fill, node.style.fillOpacity);
       }
-      if (kind === "stroke" && node.style.stroke.type !== "none" && opacity * node.style.strokeOpacity > 0) {
+      if (kind === "stroke" && node.style.stroke.type !== "none") {
         addLayer("stroke", node.style.stroke, node.style.strokeOpacity);
       }
     }
+    if (paints.length > 0) {
+      generated.push({
+        type: "group",
+        children: paints,
+        opacity: node.style.opacity,
+        isolated: node.style.opacity !== 1 || String(node.style.presentation.isolation).toLowerCase() === "isolate",
+      });
+    }
   }
-  return layers;
+  return generated;
 }
 
 function createPathBody(lines: string[]): string[] {
   return ["var path = Path()", "let width = rect.size.width", "let height = rect.size.height", ...lines, "return path"];
 }
 
-function createView(name: string, layers: PaintLayer[], indentationSize: number): string[] {
+function swiftNumber(value: number): string {
+  return String(Object.is(value, -0) ? 0 : value);
+}
+
+function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
+  const prefix = indentation.repeat(level);
+  if (node.type === "paint") return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
+  const lines = [`${prefix}ZStack {`];
+  for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
+  lines.push(`${prefix}}`);
+  if (node.clip) lines.push(`${prefix}.clipShape(${node.clip}())`);
+  if (node.isolated) lines.push(`${prefix}.compositingGroup()`);
+  if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
+  return lines;
+}
+
+function createView(
+  name: string,
+  nodes: GeneratedViewNode[],
+  helpers: ShapeHelper[],
+  indentationSize: number,
+): string[] {
   const indentation = " ".repeat(indentationSize);
-  const layerExpression = (layer: PaintLayer, index: number) => {
-    let expression = `Layer${index}().fill(${layer.swiftColor})`;
-    for (let clipIndex = 0; clipIndex < layer.clips.length; clipIndex++) {
-      expression += `.clipShape(Layer${index}Clip${clipIndex}())`;
-    }
-    return expression;
-  };
   const body: string[] = [
     "var body: some View {",
     `${indentation}ZStack {`,
-    ...layers.map((layer, index) => `${indentation}${indentation}${layerExpression(layer, index)}`),
+    ...nodes.flatMap((node) => renderViewNode(node, 2, indentation)),
     `${indentation}}`,
     "}",
   ];
-  for (const [index, layer] of layers.entries()) {
+  for (const helper of helpers) {
     const pathFunction = createFunctionTemplate({
       name: "path",
       parameters: [["in rect", "CGRect"]],
       returnType: "Path",
       indent: indentationSize,
-      body: createPathBody(layer.lines),
+      body: createPathBody(helper.lines),
     });
     const layerStruct = createStructTemplate({
-      name: `Layer${index}`,
+      name: helper.name,
       indent: indentationSize,
       returnType: "Shape",
       body: pathFunction,
     });
     layerStruct[0] = `private ${layerStruct[0]}`;
     body.push("", ...layerStruct);
-    for (const [clipIndex, clip] of layer.clips.entries()) {
-      const clipFunction = createFunctionTemplate({
-        name: "path",
-        parameters: [["in rect", "CGRect"]],
-        returnType: "Path",
-        indent: indentationSize,
-        body: createPathBody(clip),
-      });
-      const clipStruct = createStructTemplate({
-        name: `Layer${index}Clip${clipIndex}`,
-        indent: indentationSize,
-        returnType: "Shape",
-        body: clipFunction,
-      });
-      clipStruct[0] = `private ${clipStruct[0]}`;
-      body.push("", ...clipStruct);
-    }
   }
   return createStructTemplate({ name, indent: indentationSize, returnType: "View", body });
 }
@@ -300,9 +330,10 @@ export function generateView(
 ): GeneratedSwiftUI {
   const indentationSize = config.indentationSize ?? 4;
   const options = createOptions(svgProperties, document, config, true);
-  const layers = collectPaintLayers(document.children, options);
+  const context: ViewBuildContext = { options, helpers: [], nextLayer: 0, nextClip: 0 };
+  const nodes = buildViewNodes(document.children, context);
   return {
-    lines: createView(config.structName ?? "SVGView", layers, indentationSize),
+    lines: createView(config.structName ?? "SVGView", nodes, context.helpers, indentationSize),
     preservesColors: true,
   };
 }

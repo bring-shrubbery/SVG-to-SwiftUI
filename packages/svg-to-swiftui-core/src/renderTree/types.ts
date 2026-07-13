@@ -43,6 +43,8 @@ export interface StrokeStyle {
   dashOffset: number;
 }
 
+export type PaintOrderPhase = "fill" | "stroke" | "markers";
+
 /** Presentation properties after inheritance and inline-style precedence have been resolved. */
 export interface ComputedStyle {
   fill: Paint;
@@ -51,6 +53,8 @@ export interface ComputedStyle {
   opacity: number;
   fillOpacity: number;
   strokeOpacity: number;
+  /** Complete SVG paint sequence after omitted phases are appended in default order. */
+  paintOrder: readonly PaintOrderPhase[];
   fillRule: "nonzero" | "evenodd";
   clipRule: "nonzero" | "evenodd";
   display: string;
@@ -145,6 +149,14 @@ export interface RenderDocument {
   resources: ResourceRegistry;
   children: RenderNode[];
   diagnostics: RenderDiagnostic[];
+}
+
+/** Axis-aligned painted bounds in the root generated-view coordinate space. */
+export interface RenderBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export type OutputMode = "shape" | "view";

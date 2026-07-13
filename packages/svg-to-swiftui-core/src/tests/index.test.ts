@@ -149,8 +149,9 @@ test("preserve paint opacity and inline style precedence", () => {
 
   const result = convert(rawSVG, { structName: "TransparentIcon" });
 
-  expect(result).toContain("Layer0().fill(Color(red: 1, green: 0, blue: 0, opacity: 0.25))");
-  expect(result).toContain("Layer1().fill(Color(red: 0, green: 0, blue: 1, opacity: 0.5))");
+  expect(result).toContain("Layer0().fill(Color(red: 1, green: 0, blue: 0, opacity: 0.5))");
+  expect(result).toContain("Layer1().fill(Color(red: 0, green: 0, blue: 1))");
+  expect(result).toMatch(/\.compositingGroup\(\)\s+\.opacity\(0\.5\)/);
 });
 
 test("allow callers to keep legacy single-shape output", () => {

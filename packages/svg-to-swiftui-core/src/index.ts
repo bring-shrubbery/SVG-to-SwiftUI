@@ -1,6 +1,7 @@
 import type { ElementNode } from "svg-parser";
 import { parse } from "svg-parser";
 import { DEFAULT_CONFIG } from "./constants";
+import { renderDocumentBounds, renderNodeBounds, renderNodesBounds } from "./renderTree/bounds";
 import { buildRenderDocument } from "./renderTree/buildRenderTree";
 import { analyzeCapabilities } from "./renderTree/capabilities";
 import { generateShape, generateView } from "./renderTree/generateSwiftUI";
@@ -38,7 +39,14 @@ function inspectComputedStyles(rawSVGString: string, config: SwiftUIGeneratorCon
   return result;
 }
 
-export const __testing = { parseRenderDocument, inspectComputedStyles, analyzeCapabilities };
+export const __testing = {
+  parseRenderDocument,
+  inspectComputedStyles,
+  analyzeCapabilities,
+  renderDocumentBounds,
+  renderNodeBounds,
+  renderNodesBounds,
+};
 
 /** Convert a complete SVG source string into a SwiftUI Shape or View declaration. */
 export function convert(rawSVGString: string, config?: SwiftUIGeneratorConfig): string {

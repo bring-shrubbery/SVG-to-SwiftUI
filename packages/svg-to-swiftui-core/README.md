@@ -31,6 +31,14 @@ Static selectors include universal, type, class, ID, attribute, selector lists, 
 
 SVG presentation defaults include SVG 2 properties such as `paint-order`, `mix-blend-mode`, and `isolation`. The SwiftUI backend currently consumes supported paint, geometry, visibility, opacity, stroke, transform, and paint-order values; other computed properties remain inspectable for later rendering features.
 
+### Painter order and compositing
+
+Rendered children keep SVG document order. `display: none` removes a subtree, while `visibility: hidden` can be overridden by a visible descendant. Fill, stroke, and marker phases use the computed `paint-order`; marker rendering will be added by the marker feature.
+
+Element and group `opacity` are applied once after their children have been painted into an isolated SwiftUI compositing group. Fill and stroke opacity remain independent. The generator intentionally keeps zero-opacity content in its semantic render tree and uses `.compositingGroup()` instead of rasterizing with `.drawingGroup()`.
+
+The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms and stroke extents, exclude `display: none`, retain zero-opacity geometry, and intersect nested viewport clips. Future marker and filter tickets can extend the same query.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).
