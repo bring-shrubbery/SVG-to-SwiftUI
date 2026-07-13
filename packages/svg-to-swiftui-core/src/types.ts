@@ -3,6 +3,8 @@ export interface SwiftUIGeneratorConfig {
   precision?: number;
   indentationSize?: number;
   usageCommentPrefix?: boolean;
+  /** Preserve SVG paints in a layered View. Defaults to automatic detection for multicolor SVGs. */
+  preserveColors?: boolean;
 }
 
 export interface TranspilerOptions {
@@ -19,6 +21,8 @@ export interface TranspilerOptions {
   reverseWinding: boolean;
   normalizeWindingCW: boolean;
   hasFills: boolean;
+  /** Generate an independent paint layer instead of geometry for a shared silhouette. */
+  separatePaintLayer: boolean;
   /** Active SVG fill-rule for the current path: "nonzero" | "evenodd". */
   fillRule: string;
 }

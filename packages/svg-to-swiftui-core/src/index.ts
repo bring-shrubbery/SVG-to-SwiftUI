@@ -2,8 +2,9 @@ import type { ElementNode } from "svg-parser";
 import { parse } from "svg-parser";
 import { DEFAULT_CONFIG } from "./constants";
 import { handleElement } from "./elementHandlers";
+import { collectPaintDescriptors, collectPaintLayers, type PaintLayer } from "./paintLayerHandler";
 import { createFunctionTemplate, createStructTemplate, createUsageCommentTemplate } from "./templates";
-import type { SwiftUIGeneratorConfig, TranspilerOptions } from "./types";
+import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions } from "./types";
 import { extractSVGProperties, getSVGElement } from "./utils";
 
 /**
@@ -51,6 +52,64 @@ function svgHasFills(node: ElementNode, inheritedFill?: string): boolean {
   return false;
 }
 
+function createRootOptions(
+  svgProperties: SVGElementProperties,
+  hasFills: boolean,
+  config?: SwiftUIGeneratorConfig,
+  separatePaintLayer = false,
+): TranspilerOptions {
+  return {
+    ...svgProperties,
+    precision: config?.precision ?? 10,
+    lastPathId: 0,
+    indentationSize: config?.indentationSize ?? 4,
+    currentIndentationLevel: 0,
+    parentStyle: {},
+    fillColors: new Set<string>(),
+    strokeExpansion: 0,
+    reverseWinding: false,
+    normalizeWindingCW: false,
+    hasFills,
+    separatePaintLayer,
+    fillRule: "nonzero",
+  };
+}
+
+function createPathBody(lines: string[]): string[] {
+  return ["var path = Path()", "let width = rect.size.width", "let height = rect.size.height", ...lines, "return path"];
+}
+
+function createMulticolorView(name: string, layers: PaintLayer[], indentationSize: number): string[] {
+  const indentation = " ".repeat(indentationSize);
+  const body: string[] = [
+    "var body: some View {",
+    `${indentation}ZStack {`,
+    ...layers.map((layer, index) => `${indentation}${indentation}Layer${index}().fill(${layer.swiftColor})`),
+    `${indentation}}`,
+    "}",
+  ];
+
+  for (const [index, layer] of layers.entries()) {
+    const pathFunction = createFunctionTemplate({
+      name: "path",
+      parameters: [["in rect", "CGRect"]],
+      returnType: "Path",
+      indent: indentationSize,
+      body: createPathBody(layer.lines),
+    });
+    const layerStruct = createStructTemplate({
+      name: `Layer${index}`,
+      indent: indentationSize,
+      returnType: "Shape",
+      body: pathFunction,
+    });
+    layerStruct[0] = `private ${layerStruct[0]}`;
+    body.push("", ...layerStruct);
+  }
+
+  return createStructTemplate({ name, indent: indentationSize, returnType: "View", body });
+}
+
 export * from "./types";
 
 /**
@@ -76,27 +135,43 @@ export function convert(rawSVGString: string, config?: SwiftUIGeneratorConfig): 
  */
 function swiftUIGenerator(svgElement: ElementNode, config?: SwiftUIGeneratorConfig): string {
   const svgProperties = extractSVGProperties(svgElement);
-
-  // The initial options passed to the first element.
-  const rootTranspilerOptions: TranspilerOptions = {
-    ...svgProperties,
-    precision: config?.precision ?? 10,
-    lastPathId: 0,
-    indentationSize: config?.indentationSize ?? 4,
-    currentIndentationLevel: 0,
-    parentStyle: {},
-    fillColors: new Set<string>(),
-    strokeExpansion: 0,
-    reverseWinding: false,
-    normalizeWindingCW: false,
-    hasFills: svgHasFills(svgElement),
-    fillRule: "nonzero",
-  };
-
   const configWithDefaults = {
     ...DEFAULT_CONFIG,
     ...config,
   };
+
+  const paintDescriptors = config?.preserveColors === false ? [] : collectPaintDescriptors(svgElement);
+  const colorsAreSupported = paintDescriptors.length > 0 && paintDescriptors.every((paint) => paint.swiftColor);
+  const distinctColors = new Set(paintDescriptors.map((paint) => paint.swiftColor));
+  const preservesColors =
+    colorsAreSupported &&
+    (config?.preserveColors === true || (config?.preserveColors === undefined && distinctColors.size > 1));
+
+  if (preservesColors) {
+    const layers = collectPaintLayers(
+      svgElement,
+      createRootOptions(svgProperties, svgHasFills(svgElement), config, true),
+    );
+    const fullSwiftUIView = createMulticolorView(
+      configWithDefaults.structName ?? "SVGView",
+      layers,
+      configWithDefaults.indentationSize ?? 4,
+    );
+
+    if (config?.usageCommentPrefix) {
+      const usageComment = createUsageCommentTemplate({
+        config: configWithDefaults,
+        viewBox: svgProperties.viewBox,
+        preservesColors,
+      });
+      return [...usageComment, "", ...fullSwiftUIView].join("\n");
+    }
+
+    return fullSwiftUIView.join("\n");
+  }
+
+  // The initial options passed to the first element.
+  const rootTranspilerOptions = createRootOptions(svgProperties, svgHasFills(svgElement), config);
 
   // Generate SwiftUI Shape body.
   const generatedBody = handleElement(svgElement, rootTranspilerOptions);
@@ -108,13 +183,7 @@ function swiftUIGenerator(svgElement: ElementNode, config?: SwiftUIGeneratorConf
       parameters: [["in rect", "CGRect"]],
       returnType: "Path",
       indent: configWithDefaults.indentationSize,
-      body: [
-        "var path = Path()",
-        "let width = rect.size.width",
-        "let height = rect.size.height",
-        ...generatedBody,
-        "return path",
-      ],
+      body: createPathBody(generatedBody),
     }),
   );
 

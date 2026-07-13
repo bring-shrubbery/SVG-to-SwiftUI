@@ -2,7 +2,7 @@
 
 # SVG to SwiftUI Converter
 
-Tool to convert SVG to SwiftUI's Shape structure. This approach is much more memory efficient than introducing a SVG library for rendering.
+Tool to convert SVG into native SwiftUI shapes. Multicolor SVGs are emitted as layered SwiftUI views so their original solid colors are preserved.
 
 ## Disclaimer (Before you use this tool)
 
