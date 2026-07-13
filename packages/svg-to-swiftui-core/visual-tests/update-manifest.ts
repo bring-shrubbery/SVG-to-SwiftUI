@@ -40,6 +40,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     tags.add("rgba");
   }
   if (name.startsWith("structure-")) tags.add("structure");
+  if (name.startsWith("css-")) tags.add("css");
   if (name.startsWith("viewport-")) tags.add("viewport");
   if (name.startsWith("viewport-realistic-")) tags.add("realistic");
   for (const element of [
@@ -64,6 +65,8 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/\boverflow\s*=/.test(source) || /<svg\b[\s\S]*<svg\b/i.test(source)) tags.add("overflow");
   if (/\bstroke\s*(?:=|:)/.test(source)) tags.add("stroke");
   if (/\bopacity\s*(?:=|:)/.test(source)) tags.add("opacity");
+  if (/\bpaint-order\s*(?:=|:)/.test(source)) tags.add("paint-order");
+  if (/var\(\s*--|--[\w-]+\s*:/.test(source)) tags.add("css-variables");
   return [...tags].sort();
 }
 

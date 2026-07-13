@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
+  <style>
+    #one { fill: #f97316 }
+    #two { fill: #06b6d4 }
+    #three { fill: #8b5cf6 }
+  </style>
+  <rect id="one" x="5" y="5" width="30" height="30" rx="6" />
+  <rect id="two" x="45" y="5" width="30" height="30" rx="6" />
+  <rect id="three" x="85" y="5" width="30" height="30" rx="6" />
+</svg>

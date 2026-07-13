@@ -1,130 +1,45 @@
 import type { Properties } from "hast";
+import type { Rule } from "postcss";
+import safeParse from "postcss-safe-parser";
 import type { ElementNode } from "svg-parser";
+import { canonicalPropertyName, StylePropertiesSet } from "./styleProperties";
 
 type StyleData = Record<string, string | number>;
 
-/**
- * Extracts
- * @param element Element node which
- * @param options
- */
+/** Legacy geometry-adapter helper. Semantic rendering uses SVGStyleResolver. */
 export function extractStyle(element: ElementNode): StyleData {
   const props = element.properties;
-
-  if (props) {
-    if (typeof props.style === "string") {
-      return parseStyle(props.style);
-    } else {
-      return filterStyleProps(props);
-    }
-  } else {
-    throw new Error(`No properties found on ${element.tagName} node!`);
-  }
+  if (!props) throw new Error(`No properties found on ${element.tagName} node!`);
+  return {
+    ...filterStyleProps(props),
+    ...(typeof props.style === "string" ? parseStyle(props.style) : {}),
+  };
 }
 
-/**
- * Converts style property value into a map where key is
- * the style rule and value is the value of that rule.
- * @param style Style property string.
- */
+/** Parse an inline declaration list with PostCSS error recovery. */
 export function parseStyle(style: string): StyleData {
-  const styleProperties: StyleData = {};
+  const root = safeParse(`__inline__ { ${style} }`);
+  const rule = root.nodes.find((node): node is Rule => node.type === "rule");
+  const result: StyleData = {};
+  if (!rule) return result;
+  for (const node of rule.nodes) {
+    if (node.type !== "decl") continue;
+    const property = canonicalPropertyName(node.prop);
+    if (StylePropertiesSet.has(property)) result[property] = node.value.trim();
+  }
+  return result;
+}
 
-  // Extract style statements into array of strings.
-  const styleArray = style
-    .replace(/\s/g, "")
-    .split(";")
-    .map((el) => {
-      const [property, value] = el.split(":");
-      return { property, value };
-    });
-
-  // Remap array of {property, value} objects into a map.
-  for (const el of styleArray) {
-    if ("property" in el && "value" in el) {
-      styleProperties[el.property] = el.value;
+/** Extract recognized presentation attributes, canonicalizing parser aliases. */
+export function filterStyleProps(props: Properties): StyleData {
+  const result: StyleData = {};
+  for (const [rawName, value] of Object.entries(props)) {
+    const property = canonicalPropertyName(rawName);
+    if (StylePropertiesSet.has(property) && value !== undefined && value !== null) {
+      result[property] = Array.isArray(value) ? value.join(" ") : typeof value === "boolean" ? String(value) : value;
     }
   }
-
-  return styleProperties;
+  return result;
 }
 
-/**
- * Filters out just the properties that are considered
- * style properties, i.e. `fill`, `color`, etc.
- * @param props Any properties from the HAST node.
- */
-export function filterStyleProps(props: Properties): StyleData {
-  return Object.keys(props)
-    .filter((key) => StylePropertiesSet.has(key))
-    .reduce((obj, key) => {
-      obj[key] = props[key];
-      return obj;
-    }, {});
-}
-
-export const StylePropertiesSet = new Set([
-  "alignment-baseline",
-  "baseline-shift",
-  "clip", // Deprecated
-  "clip-path",
-  "clip-rule",
-  "color",
-  "color-interpolation",
-  "color-interpolation-filters",
-  "color-profile", // Deprecated since SVG 2
-  "color-rendering",
-  "cursor",
-  "direction",
-  "display",
-  "dominant-baseline",
-  "enable-background", // Deprecated since SVG 2
-  "fill",
-  "fill-opacity",
-  "fill-rule",
-  "filter",
-  "flood-color",
-  "flood-opacity",
-  "font-family",
-  "font-size",
-  "font-size-adjust",
-  "font-stretch",
-  "font-style",
-  "font-variant",
-  "font-weight",
-  "glyph-orientation-horizontal", // Deprecated since SVG 2
-  "glyph-orientation-vertical", // Deprecated since SVG 2
-  "image-rendering",
-  "kerning", // Deprecated since SVG 2
-  "letter-spacing",
-  "lighting-color",
-  "marker-end",
-  "marker-mid",
-  "marker-start",
-  "mask",
-  "opacity",
-  "overflow",
-  "pointer-events",
-  "shape-rendering",
-  "solid-color",
-  "solid-opacity",
-  "stop-color",
-  "stop-opacity",
-  "stroke",
-  "stroke-dasharray",
-  "stroke-dashoffset",
-  "stroke-linecap",
-  "stroke-linejoin",
-  "stroke-miterlimit",
-  "stroke-opacity",
-  "stroke-width",
-  "text-anchor",
-  "text-decoration",
-  "text-rendering",
-  "transform",
-  "unicode-bidi",
-  "vector-effect",
-  "visibility",
-  "word-spacing",
-  "writing-mode",
-]);
+export { StylePropertiesSet } from "./styleProperties";

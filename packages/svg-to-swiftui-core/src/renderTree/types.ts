@@ -11,12 +11,21 @@ export interface SourceLocation {
 
 export type DiagnosticSeverity = "warning" | "error";
 
+export interface CSSDiagnosticContext {
+  source: "embedded-style" | "inline-style" | "presentation-attribute";
+  selector?: string;
+  property?: string;
+  line?: number;
+  column?: number;
+}
+
 /** A structured conversion diagnostic. Later features can add codes without changing the public converter API. */
 export interface RenderDiagnostic {
   code: string;
   message: string;
   severity: DiagnosticSeverity;
   source: SourceLocation;
+  css?: CSSDiagnosticContext;
 }
 
 /** SVG paint is deliberately semantic; Swift source is only introduced by the generator. */
@@ -49,6 +58,8 @@ export interface ComputedStyle {
   strokeStyle: StrokeStyle;
   /** Typed values not yet consumed by issue #51, retained for later rendering tickets. */
   presentation: Readonly<Record<string, string | number>>;
+  /** Winning CSS declaration context for inspectable cascade results. */
+  provenance: Readonly<Record<string, CSSDiagnosticContext>>;
 }
 
 export type Geometry =

@@ -66,6 +66,36 @@
       "expectedMode": "shape",
       "tags": ["geometry", "path", "shape"]
     },
+    "css-cascade-selectors": {
+      "width": 128,
+      "height": 43,
+      "expectedMode": "view",
+      "tags": ["css", "geometry", "rect", "view"]
+    },
+    "css-geometry": {
+      "width": 128,
+      "height": 43,
+      "expectedMode": "view",
+      "tags": ["css", "geometry", "rect", "view"]
+    },
+    "css-inheritance-use": {
+      "width": 128,
+      "height": 43,
+      "expectedMode": "view",
+      "tags": ["circle", "css", "css-variables", "geometry", "stroke", "symbol", "use", "view"]
+    },
+    "css-paint-order": {
+      "width": 128,
+      "height": 53,
+      "expectedMode": "view",
+      "tags": ["css", "geometry", "paint-order", "rect", "stroke", "view"]
+    },
+    "css-visibility-opacity": {
+      "width": 128,
+      "height": 43,
+      "expectedMode": "view",
+      "tags": ["css", "geometry", "opacity", "rect", "view"]
+    },
     "ellipse": {
       "width": 128,
       "height": 64,

@@ -4,6 +4,7 @@ import { DEFAULT_CONFIG } from "./constants";
 import { buildRenderDocument } from "./renderTree/buildRenderTree";
 import { analyzeCapabilities } from "./renderTree/capabilities";
 import { generateShape, generateView } from "./renderTree/generateSwiftUI";
+import type { RenderNode } from "./renderTree/types";
 import { createUsageCommentTemplate } from "./templates";
 import type { SwiftUIGeneratorConfig } from "./types";
 import { getSVGElement, resolveSVGProperties } from "./utils";
@@ -24,7 +25,20 @@ function parseRenderDocument(rawSVGString: string, config: SwiftUIGeneratorConfi
   return buildRenderDocument(svgElement, resolution.properties, resolution.diagnostics);
 }
 
-export const __testing = { parseRenderDocument, analyzeCapabilities };
+function inspectComputedStyles(rawSVGString: string, config: SwiftUIGeneratorConfig = {}) {
+  const document = parseRenderDocument(rawSVGString, config);
+  const result: Array<{ source: RenderNode["source"]; style: RenderNode["style"] }> = [];
+  const visit = (nodes: RenderNode[]): void => {
+    for (const node of nodes) {
+      result.push({ source: node.source, style: node.style });
+      if (node.type === "group") visit(node.children);
+    }
+  };
+  visit(document.children);
+  return result;
+}
+
+export const __testing = { parseRenderDocument, inspectComputedStyles, analyzeCapabilities };
 
 /** Convert a complete SVG source string into a SwiftUI Shape or View declaration. */
 export function convert(rawSVGString: string, config?: SwiftUIGeneratorConfig): string {

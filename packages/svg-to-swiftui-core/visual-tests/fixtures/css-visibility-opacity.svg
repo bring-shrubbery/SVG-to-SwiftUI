@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
+  <style>
+    g { fill: #9333ea; opacity: 0.75 }
+    .hidden { display: none }
+    .invisible { visibility: hidden }
+    .visible { visibility: visible; fill-opacity: 0.6 }
+  </style>
+  <rect width="120" height="40" fill="#e2e8f0" />
+  <g>
+    <rect class="hidden" width="40" height="40" />
+    <rect class="invisible" x="40" width="40" height="40" />
+    <rect class="visible" x="80" width="40" height="40" />
+  </g>
+</svg>

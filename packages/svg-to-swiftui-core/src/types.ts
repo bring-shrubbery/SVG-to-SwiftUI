@@ -36,6 +36,8 @@ export interface TranspilerOptions {
   definitions: Map<string, import("svg-parser").ElementNode>;
   /** Active <use> references, used to reject circular definitions. */
   activeUseReferences: Set<string>;
+  /** Precomputed semantic style supplied by the render-tree generator. */
+  resolvedStyle?: import("./renderTree/types").ComputedStyle;
 }
 
 export interface ViewBoxData {

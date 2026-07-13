@@ -46,7 +46,22 @@ interface PresentationStyle {
 function extractPresentationStyle(
   element: ElementNode,
   parentStyle: Record<string, string | number>,
+  resolved?: import("../renderTree/types").ComputedStyle,
 ): PresentationStyle {
+  if (resolved) {
+    const stroke =
+      resolved.stroke.type === "solid" ? resolved.stroke.value : resolved.stroke.type === "none" ? "none" : "";
+    return {
+      hasFill: resolved.fill.type !== "none",
+      hasStroke: resolved.stroke.type !== "none",
+      strokeColor: stroke.toLowerCase().trim(),
+      strokeWidth: resolved.strokeStyle.width,
+      strokeLinecap: resolved.strokeStyle.lineCap,
+      strokeLinejoin: resolved.strokeStyle.lineJoin,
+      strokeMiterlimit: resolved.strokeStyle.miterLimit,
+      fillRule: resolved.fillRule,
+    };
+  }
   try {
     const ownStyle = extractStyle(element);
     // Merge: own style overrides inherited parent style
@@ -167,7 +182,7 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
   if (element.tagName === "use") return handleUseElement(element, options);
   if (element.tagName === "switch") return handleSwitchElement(element, options);
 
-  const style = extractPresentationStyle(element, options.parentStyle);
+  const style = extractPresentationStyle(element, options.parentStyle, options.resolvedStyle);
 
   // <line> elements have no fillable area — always stroke-only
   if (element.tagName === "line") {
@@ -243,17 +258,18 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
   // Detect light fills for winding reversal (creates holes under winding fill rule)
   let fillColor = "";
   if (style.hasFill) {
-    try {
-      const elStyle = extractStyle(element);
-      fillColor = elStyle.fill ? String(elStyle.fill).toLowerCase().trim() : "";
-      if (fillColor) {
-        options.fillColors.add(fillColor);
-      }
-    } catch {
-      // Check parentStyle for inherited fill
-      const parentFill = options.parentStyle.fill;
-      if (parentFill) {
-        fillColor = String(parentFill).toLowerCase().trim();
+    if (options.resolvedStyle?.fill.type === "solid") {
+      fillColor = options.resolvedStyle.fill.value.toLowerCase().trim();
+      options.fillColors.add(fillColor);
+    } else if (!options.resolvedStyle) {
+      try {
+        const elStyle = extractStyle(element);
+        fillColor = elStyle.fill ? String(elStyle.fill).toLowerCase().trim() : "";
+        if (fillColor) options.fillColors.add(fillColor);
+      } catch {
+        // Legacy direct-handler callers can still provide inherited paint.
+        const parentFill = options.parentStyle.fill;
+        if (parentFill) fillColor = String(parentFill).toLowerCase().trim();
       }
     }
   }
