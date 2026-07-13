@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 50">
+  <style>
+    rect { fill: #facc15; stroke: #1d4ed8; stroke-width: 12 }
+    #stroke-first { paint-order: stroke fill }
+  </style>
+  <rect x="12" y="12" width="36" height="26" rx="5" />
+  <rect id="stroke-first" x="72" y="12" width="36" height="26" rx="5" />
+</svg>

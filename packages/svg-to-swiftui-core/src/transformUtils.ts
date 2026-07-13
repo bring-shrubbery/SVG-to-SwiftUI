@@ -112,7 +112,8 @@ export function parseSVGTransform(value: string): AffineTransform {
 }
 
 export function parseTransform(value: unknown): AffineTransform {
-  return typeof value === "string" && value.trim() ? parseSVGTransform(value) : IDENTITY_TRANSFORM;
+  if (typeof value !== "string" || !value.trim() || value.trim().toLowerCase() === "none") return IDENTITY_TRANSFORM;
+  return parseSVGTransform(value);
 }
 
 export function getSVGTransform(element: ElementNode | RootNode): string | undefined {

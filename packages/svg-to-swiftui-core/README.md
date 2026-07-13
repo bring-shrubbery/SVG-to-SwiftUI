@@ -23,6 +23,14 @@ convert(svg, { outerViewport: { width: 320, height: 180 } });
 
 Without `outerViewport`, permissive mode resolves against the valid `viewBox`, or the deterministic 300×150 fallback when no viewBox exists, and records a diagnostic. `strict: true` rejects that fallback. Missing root dimensions are inferred from a valid viewBox. Zero-sized viewports render nothing. Until deterministic font loading lands with text rendering, `ex` and `ch` use the resolver’s documented 0.5em fallback metrics.
 
+### Embedded CSS and computed styles
+
+The converter computes one deterministic style for every rendered node. It supports `<style>` rules, presentation attributes, inline `style`, `!important`, specificity, source order, inheritance, CSS-wide keywords, custom properties with nested `var()` fallbacks, cycle detection, and `currentColor`. Geometry properties such as `x`, `y`, `width`, `height`, `rx`, and `d` also participate in the cascade.
+
+Static selectors include universal, type, class, ID, attribute, selector lists, compound selectors, child/descendant/adjacent/general-sibling combinators, `:root`, `:first-child`, `:last-child`, `:nth-child()`, `:not()`, `:is()`, and `:where()`. Dynamic selectors and media-dependent styles are skipped with structured diagnostics because conversion has no browser interaction or media environment.
+
+SVG presentation defaults include SVG 2 properties such as `paint-order`, `mix-blend-mode`, and `isolation`. The SwiftUI backend currently consumes supported paint, geometry, visibility, opacity, stroke, transform, and paint-order values; other computed properties remain inspectable for later rendering features.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).
@@ -92,6 +100,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG lengths, nested viewports, `<view>` fragments, and `preserveAspectRatio`
 - [x] SVG transforms (`matrix`, `translate`, `scale`, `rotate`, `skewX`, `skewY`)
 - [x] Solid fill/stroke styling with colours
+- [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [ ] SVG `<text>` element
 - [ ] Automatic animation support
 

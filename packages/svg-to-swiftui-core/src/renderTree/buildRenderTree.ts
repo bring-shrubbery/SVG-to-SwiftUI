@@ -10,12 +10,13 @@ import {
   resolveSVGLength,
   SVGLengthError,
 } from "../lengths";
-import { filterStyleProps, parseStyle } from "../styleUtils";
-import { getSVGTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTransform } from "../transformUtils";
+import { type Presentation, type StyleResolution, SVGStyleResolver } from "../styleCascade";
+import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTransform } from "../transformUtils";
 import type { SVGElementProperties, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import type {
   ComputedStyle,
+  CSSDiagnosticContext,
   Geometry,
   Paint,
   RenderDiagnostic,
@@ -25,8 +26,6 @@ import type {
   ResourceRegistry,
   SourceLocation,
 } from "./types";
-
-type Presentation = Record<string, string | number>;
 
 interface CoordinateContext {
   viewport: { width: number; height: number };
@@ -38,6 +37,7 @@ interface BuildContext {
   resources: ResourceRegistry;
   diagnostics: RenderDiagnostic[];
   activeReferences: Set<string>;
+  styleResolver: SVGStyleResolver;
 }
 
 const GEOMETRY_ELEMENTS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
@@ -66,20 +66,20 @@ function sourceLocation(element: ElementNode): SourceLocation {
   return { element: element.tagName ?? "unknown", ...(id === undefined ? {} : { id: String(id) }) };
 }
 
-function addDiagnostic(context: BuildContext, element: ElementNode, code: string, message: string): void {
-  context.diagnostics.push({ code, message, severity: "warning", source: sourceLocation(element) });
-}
-
-function ownPresentation(element: ElementNode): Presentation {
-  const properties = element.properties ?? {};
-  const attributes = filterStyleProps(properties);
-  const inline = typeof properties.style === "string" ? parseStyle(properties.style) : {};
-  return { ...attributes, ...inline };
-}
-
-function inheritablePresentation(inherited: Presentation, own: Presentation): Presentation {
-  const { transform: _transform, opacity: _opacity, ...inheritableOwn } = own;
-  return { ...inherited, ...inheritableOwn };
+function addDiagnostic(
+  context: BuildContext,
+  element: ElementNode,
+  code: string,
+  message: string,
+  css?: CSSDiagnosticContext,
+): void {
+  context.diagnostics.push({
+    code,
+    message,
+    severity: "warning",
+    source: sourceLocation(element),
+    ...(css ? { css } : {}),
+  });
 }
 
 function parsePaint(value: unknown, currentColor: string): Paint {
@@ -106,6 +106,7 @@ function lengthValue(
     auto?: number;
     negative?: "allow" | "reject" | "clamp-zero";
     label: string;
+    css?: CSSDiagnosticContext;
   },
 ): number | undefined {
   try {
@@ -117,7 +118,7 @@ function lengthValue(
     let value = resolved === undefined ? options.fallback : resolved === "auto" ? options.auto : resolved;
     if (value === undefined) return undefined;
     if (value < 0 && options.negative !== "allow") {
-      addDiagnostic(context, element, `negative-${options.label}`, `${options.label} cannot be negative.`);
+      addDiagnostic(context, element, `negative-${options.label}`, `${options.label} cannot be negative.`, options.css);
       value = options.negative === "clamp-zero" ? 0 : undefined;
     }
     return value;
@@ -127,6 +128,7 @@ function lengthValue(
       element,
       error instanceof SVGLengthError ? error.code : `invalid-${options.label}`,
       error instanceof Error ? error.message : String(error),
+      options.css,
     );
     return options.fallback;
   }
@@ -134,7 +136,8 @@ function lengthValue(
 
 function computedFontMetrics(
   inherited: Presentation,
-  own: Presentation,
+  effective: Presentation,
+  provenance: StyleResolution["provenance"],
   coordinate: CoordinateContext,
   element: ElementNode,
   context: BuildContext,
@@ -144,12 +147,13 @@ function computedFontMetrics(
     typeof inherited["font-size"] === "number" ? inherited["font-size"] : coordinate.fontMetrics.fontSize;
   const fontCoordinate = { ...coordinate, fontMetrics: { ...coordinate.fontMetrics, fontSize: inheritedSize } };
   const fontSize =
-    own["font-size"] === undefined
+    effective["font-size"] === undefined
       ? inheritedSize
-      : (lengthValue(own["font-size"], fontCoordinate, inheritedSize, "other", element, context, {
+      : (lengthValue(effective["font-size"], fontCoordinate, inheritedSize, "other", element, context, {
           fallback: inheritedSize,
           negative: "reject",
           label: "font-size",
+          css: provenance["font-size"],
         }) ?? inheritedSize);
   if (fontSize === 0) addDiagnostic(context, element, "zero-font-size", "font-size must be greater than zero.");
   const validSize = fontSize > 0 ? fontSize : inheritedSize;
@@ -162,26 +166,32 @@ function plainNumber(
   label: string,
   element: ElementNode,
   context: BuildContext,
+  css?: CSSDiagnosticContext,
 ): number {
   if (value === undefined || value === null || String(value).trim() === "") return fallback;
   try {
     return parsePlainNumber(value, label);
   } catch (error) {
-    addDiagnostic(context, element, error instanceof SVGLengthError ? error.code : `invalid-${label}`, String(error));
+    addDiagnostic(
+      context,
+      element,
+      error instanceof SVGLengthError ? error.code : `invalid-${label}`,
+      String(error),
+      css,
+    );
     return fallback;
   }
 }
 
 function computeStyle(
-  inherited: Presentation,
-  own: Presentation,
+  effective: Presentation,
+  provenance: StyleResolution["provenance"],
   coordinate: CoordinateContext,
   fontMetrics: FontMetrics,
   element: ElementNode,
   context: BuildContext,
   isLine = false,
 ): ComputedStyle {
-  const effective = inheritablePresentation(inherited, own);
   effective["font-size"] = fontMetrics.fontSize;
   const styleCoordinate = { ...coordinate, fontMetrics };
   const color = String(effective.color ?? "black");
@@ -192,12 +202,14 @@ function computeStyle(
       fallback: 1,
       negative: "reject",
       label: "stroke-width",
+      css: provenance["stroke-width"],
     }) ?? 1;
   const dashOffset =
     lengthValue(effective["stroke-dashoffset"], styleCoordinate, "viewport-diagonal", "other", element, context, {
       fallback: 0,
       negative: "allow",
       label: "stroke-dashoffset",
+      css: provenance["stroke-dashoffset"],
     }) ?? 0;
 
   let dashArray: number[] | undefined;
@@ -211,6 +223,7 @@ function computeStyle(
       lengthValue(value, styleCoordinate, "viewport-diagonal", "other", element, context, {
         negative: "reject",
         label: "stroke-dasharray",
+        css: provenance["stroke-dasharray"],
       }),
     );
     if (resolved.length > 0 && resolved.every((value): value is number => value !== undefined)) dashArray = resolved;
@@ -220,7 +233,7 @@ function computeStyle(
     fill: parsePaint(isLine ? "none" : (effective.fill ?? "black"), color),
     stroke: parsePaint(effective.stroke ?? "none", color),
     color,
-    opacity: parseOpacity(own.opacity),
+    opacity: parseOpacity(effective.opacity),
     fillOpacity: parseOpacity(effective["fill-opacity"]),
     strokeOpacity: parseOpacity(effective["stroke-opacity"]),
     fillRule: fillRule === "evenodd" ? "evenodd" : "nonzero",
@@ -231,11 +244,19 @@ function computeStyle(
       width,
       lineCap: String(effective["stroke-linecap"] ?? "butt"),
       lineJoin: String(effective["stroke-linejoin"] ?? "miter"),
-      miterLimit: plainNumber(effective["stroke-miterlimit"], 4, "stroke-miterlimit", element, context),
+      miterLimit: plainNumber(
+        effective["stroke-miterlimit"],
+        4,
+        "stroke-miterlimit",
+        element,
+        context,
+        provenance["stroke-miterlimit"],
+      ),
       ...(dashArray ? { dashArray } : {}),
       dashOffset,
     },
     presentation: effective,
+    provenance,
   };
 }
 
@@ -245,44 +266,94 @@ function resolvedPresentation(
   coordinate: CoordinateContext,
   context: BuildContext,
   isRoot = false,
-): { own: Presentation; effective: Presentation; fontMetrics: FontMetrics; style: ComputedStyle } {
-  const own = ownPresentation(element);
-  const fontMetrics = computedFontMetrics(inherited, own, coordinate, element, context, isRoot);
-  const effective = inheritablePresentation(inherited, own);
+): {
+  effective: Presentation;
+  fontMetrics: FontMetrics;
+  style: ComputedStyle;
+  provenance: StyleResolution["provenance"];
+} {
+  const resolution = context.styleResolver.resolve(element, inherited);
+  const effective = resolution.values;
+  const fontMetrics = computedFontMetrics(
+    inherited,
+    effective,
+    resolution.provenance,
+    coordinate,
+    element,
+    context,
+    isRoot,
+  );
   effective["font-size"] = fontMetrics.fontSize;
   return {
-    own,
     effective,
     fontMetrics,
-    style: computeStyle(inherited, own, coordinate, fontMetrics, element, context),
+    style: computeStyle(
+      effective,
+      resolution.provenance,
+      coordinate,
+      fontMetrics,
+      element,
+      context,
+      element.tagName === "line",
+    ),
+    provenance: resolution.provenance,
   };
 }
 
-function geometry(element: ElementNode, coordinate: CoordinateContext, context: BuildContext): Geometry | undefined {
+function computedTransform(
+  element: ElementNode,
+  resolved: ReturnType<typeof resolvedPresentation>,
+  context: BuildContext,
+) {
+  try {
+    return parseTransform(resolved.effective.transform);
+  } catch (error) {
+    addDiagnostic(
+      context,
+      element,
+      "invalid-transform",
+      error instanceof Error ? error.message : String(error),
+      resolved.provenance.transform,
+    );
+    return IDENTITY_TRANSFORM;
+  }
+}
+
+function geometry(
+  element: ElementNode,
+  resolved: ReturnType<typeof resolvedPresentation>,
+  coordinate: CoordinateContext,
+  context: BuildContext,
+): Geometry | undefined {
   const properties = element.properties ?? {};
+  const value = (name: string) =>
+    resolved.provenance[name] === undefined ? properties[name] : resolved.effective[name];
   const optional = (name: string) => (properties[name] === undefined ? {} : { [name]: String(properties[name]) });
   const horizontal = (name: string, fallback = 0, negative: "allow" | "reject" = "allow") =>
-    lengthValue(properties[name], coordinate, "viewport-width", "horizontal", element, context, {
+    lengthValue(value(name), coordinate, "viewport-width", "horizontal", element, context, {
       fallback,
       negative,
       label: name,
+      css: resolved.provenance[name],
     });
   const vertical = (name: string, fallback = 0, negative: "allow" | "reject" = "allow") =>
-    lengthValue(properties[name], coordinate, "viewport-height", "vertical", element, context, {
+    lengthValue(value(name), coordinate, "viewport-height", "vertical", element, context, {
       fallback,
       negative,
       label: name,
+      css: resolved.provenance[name],
     });
   const other = (name: string, fallback = 0, negative: "allow" | "reject" = "allow") =>
-    lengthValue(properties[name], coordinate, "viewport-diagonal", "other", element, context, {
+    lengthValue(value(name), coordinate, "viewport-diagonal", "other", element, context, {
       fallback,
       negative,
       label: name,
+      css: resolved.provenance[name],
     });
 
   switch (element.tagName) {
     case "path":
-      return { type: "path", d: String(properties.d ?? ""), ...optional("pathLength") };
+      return { type: "path", d: String(value("d") ?? ""), ...optional("pathLength") };
     case "circle": {
       const cx = horizontal("cx");
       const cy = vertical("cy");
@@ -294,8 +365,8 @@ function geometry(element: ElementNode, coordinate: CoordinateContext, context: 
     case "ellipse": {
       const cx = horizontal("cx");
       const cy = vertical("cy");
-      const rxRaw = properties.rx;
-      const ryRaw = properties.ry;
+      const rxRaw = value("rx");
+      const ryRaw = value("ry");
       let rx =
         rxRaw === undefined || String(rxRaw).trim().toLowerCase() === "auto"
           ? undefined
@@ -315,8 +386,8 @@ function geometry(element: ElementNode, coordinate: CoordinateContext, context: 
       const width = horizontal("width", 0, "reject");
       const height = vertical("height", 0, "reject");
       if (x === undefined || y === undefined || width === undefined || height === undefined) return undefined;
-      const rxRaw = properties.rx;
-      const ryRaw = properties.ry;
+      const rxRaw = value("rx");
+      const ryRaw = value("ry");
       let rx =
         rxRaw === undefined || String(rxRaw).trim().toLowerCase() === "auto"
           ? undefined
@@ -429,35 +500,42 @@ function viewportRect(
   coordinate: CoordinateContext,
   context: BuildContext,
   defaults?: { width?: number; height?: number },
+  resolved?: ReturnType<typeof resolvedPresentation>,
 ): ViewBoxData {
   const properties = host.properties ?? {};
+  const value = (name: string) =>
+    resolved?.provenance[name] === undefined ? properties[name] : resolved.effective[name];
   const x =
-    lengthValue(properties.x, coordinate, "viewport-width", "horizontal", host, context, {
+    lengthValue(value("x"), coordinate, "viewport-width", "horizontal", host, context, {
       fallback: 0,
       negative: "allow",
       label: "x",
+      css: resolved?.provenance.x,
     }) ?? 0;
   const y =
-    lengthValue(properties.y, coordinate, "viewport-height", "vertical", host, context, {
+    lengthValue(value("y"), coordinate, "viewport-height", "vertical", host, context, {
       fallback: 0,
       negative: "allow",
       label: "y",
+      css: resolved?.provenance.y,
     }) ?? 0;
   const width =
-    lengthValue(properties.width, coordinate, "viewport-width", "horizontal", host, context, {
+    lengthValue(value("width"), coordinate, "viewport-width", "horizontal", host, context, {
       fallback: defaults?.width ?? coordinate.viewport.width,
       allowAuto: true,
       auto: defaults?.width ?? coordinate.viewport.width,
       negative: "clamp-zero",
       label: "width",
+      css: resolved?.provenance.width,
     }) ?? 0;
   const height =
-    lengthValue(properties.height, coordinate, "viewport-height", "vertical", host, context, {
+    lengthValue(value("height"), coordinate, "viewport-height", "vertical", host, context, {
       fallback: defaults?.height ?? coordinate.viewport.height,
       allowAuto: true,
       auto: defaults?.height ?? coordinate.viewport.height,
       negative: "clamp-zero",
       label: "height",
+      css: resolved?.provenance.height,
     }) ?? 0;
   return { x, y, width, height };
 }
@@ -467,7 +545,7 @@ function buildGroup(
   inherited: Presentation,
   coordinate: CoordinateContext,
   context: BuildContext,
-  transform = parseTransform(getSVGTransform(element)),
+  transform?: AffineTransform,
   children = childElements(element),
   referenceId?: string,
 ): RenderGroup {
@@ -477,7 +555,7 @@ function buildGroup(
     type: "group",
     children: children.flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
     style: resolved.style,
-    transform,
+    transform: transform ?? computedTransform(element, resolved, context),
     source: sourceLocation(element),
     ...(referenceId ? { referenceId } : {}),
   };
@@ -490,10 +568,10 @@ function buildNestedSVG(
   context: BuildContext,
 ): RenderGroup {
   const resolved = resolvedPresentation(element, inherited, coordinate, context);
-  const rect = viewportRect(element, coordinate, context);
+  const rect = viewportRect(element, coordinate, context, undefined, resolved);
   const viewBox = safeViewBox(element, context);
   const preserveAspectRatio = safePreserveAspectRatio(element, context);
-  const outerTransform = parseTransform(getSVGTransform(element));
+  const outerTransform = computedTransform(element, resolved, context);
   const transform = multiplyTransforms(outerTransform, viewBoxTransform(viewBox, rect, preserveAspectRatio));
   const overflow = String(resolved.effective.overflow ?? "hidden").toLowerCase();
   const zeroSized = rect.width === 0 || rect.height === 0 || viewBox?.width === 0 || viewBox?.height === 0;
@@ -532,39 +610,45 @@ function buildViewportUse(
   childContext: BuildContext,
 ): RenderGroup {
   const useResolved = resolvedPresentation(use, inherited, coordinate, context);
-  const referencedOwn = ownPresentation(referenced);
-  const referencedMetrics = computedFontMetrics(
-    useResolved.effective,
-    referencedOwn,
-    { ...coordinate, fontMetrics: useResolved.fontMetrics },
+  const referencedResolved = resolvedPresentation(
     referenced,
+    useResolved.effective,
+    { ...coordinate, fontMetrics: useResolved.fontMetrics },
     context,
   );
-  const effective = inheritablePresentation(useResolved.effective, referencedOwn);
-  effective["font-size"] = referencedMetrics.fontSize;
   const viewBox = safeViewBox(referenced, context);
   const defaults = {
     width: viewBox?.width ?? coordinate.viewport.width,
     height: viewBox?.height ?? coordinate.viewport.height,
   };
-  const rect = viewportRect(use, coordinate, context, defaults);
+  const rect = viewportRect(use, coordinate, context, defaults, useResolved);
   const preserveAspectRatio = safePreserveAspectRatio(referenced, context);
-  const useTransform = parseTransform(getSVGTransform(use));
-  const referencedTransform = parseTransform(getSVGTransform(referenced));
+  const useTransform = computedTransform(use, useResolved, context);
+  const referencedTransform = computedTransform(referenced, referencedResolved, context);
   const outerTransform = multiplyTransforms(useTransform, referencedTransform);
   const transform = multiplyTransforms(outerTransform, viewBoxTransform(viewBox, rect, preserveAspectRatio));
-  const overflow = String(effective.overflow ?? "hidden").toLowerCase();
+  const overflow = String(referencedResolved.effective.overflow ?? "hidden").toLowerCase();
   const zeroSized = rect.width === 0 || rect.height === 0 || viewBox?.width === 0 || viewBox?.height === 0;
   const childCoordinate: CoordinateContext = {
     viewport: viewBox ? { width: viewBox.width, height: viewBox.height } : { width: rect.width, height: rect.height },
     rootViewport: coordinate.rootViewport,
-    fontMetrics: referencedMetrics,
+    fontMetrics: referencedResolved.fontMetrics,
   };
-  return {
+  const referencedGroup: RenderGroup = {
     type: "group",
     children: zeroSized
       ? []
-      : childElements(referenced).flatMap((child) => buildNode(child, effective, childCoordinate, childContext)),
+      : childElements(referenced).flatMap((child) =>
+          buildNode(child, referencedResolved.effective, childCoordinate, childContext),
+        ),
+    style: referencedResolved.style,
+    transform: IDENTITY_TRANSFORM,
+    source: sourceLocation(referenced),
+    referenceId: id,
+  };
+  return {
+    type: "group",
+    children: zeroSized ? [] : [referencedGroup],
     style: useResolved.style,
     transform,
     source: sourceLocation(use),
@@ -600,9 +684,9 @@ function buildUse(
   }
 
   const resolved = resolvedPresentation(element, inherited, coordinate, context);
-  const rect = viewportRect(element, coordinate, context, { width: 0, height: 0 });
+  const rect = viewportRect(element, coordinate, context, { width: 0, height: 0 }, resolved);
   const position = { ...IDENTITY_TRANSFORM, e: rect.x, f: rect.y };
-  const transform = multiplyTransforms(parseTransform(getSVGTransform(element)), position);
+  const transform = multiplyTransforms(computedTransform(element, resolved, context), position);
   return [
     {
       type: "group",
@@ -632,23 +716,14 @@ function buildNode(
   if (tag === "svg") return [buildNestedSVG(element, inherited, coordinate, context)];
   if (tag === "switch") {
     const first = childElements(element)[0];
-    return [
-      buildGroup(
-        element,
-        inherited,
-        coordinate,
-        context,
-        parseTransform(getSVGTransform(element)),
-        first ? [first] : [],
-      ),
-    ];
+    return [buildGroup(element, inherited, coordinate, context, undefined, first ? [first] : [])];
   }
   if (CONTAINER_ELEMENTS.has(tag)) return [buildGroup(element, inherited, coordinate, context)];
 
   const resolved = resolvedPresentation(element, inherited, coordinate, context);
-  const transform = parseTransform(getSVGTransform(element));
+  const transform = computedTransform(element, resolved, context);
   if (GEOMETRY_ELEMENTS.has(tag)) {
-    const resolvedGeometry = geometry(element, { ...coordinate, fontMetrics: resolved.fontMetrics }, context);
+    const resolvedGeometry = geometry(element, resolved, { ...coordinate, fontMetrics: resolved.fontMetrics }, context);
     return resolvedGeometry
       ? [
           {
@@ -705,14 +780,15 @@ export function buildRenderDocument(
 ): RenderDocument {
   const resources = createRegistry(svg);
   const diagnostics = [...initialDiagnostics];
-  const context: BuildContext = { resources, diagnostics, activeReferences: new Set() };
+  const styleResolver = new SVGStyleResolver(svg, diagnostics);
+  const context: BuildContext = { resources, diagnostics, activeReferences: new Set(), styleResolver };
   const coordinate: CoordinateContext = {
     viewport: properties.userViewport,
     rootViewport: { width: properties.width, height: properties.height },
     fontMetrics: defaultFontMetrics(),
   };
   const resolved = resolvedPresentation(svg, {}, coordinate, context, true);
-  const rootTransform = multiplyTransforms(parseTransform(getSVGTransform(svg)), properties.viewBoxTransform);
+  const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
     type: "group",

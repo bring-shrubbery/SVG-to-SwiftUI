@@ -101,7 +101,17 @@ function renderShape(
   options: TranspilerOptions,
   override?: { fill: string; stroke: string },
 ): string[] {
-  return wrapWithTransform(handleElement(shapeElement(shape, override), options), shape.transform, options);
+  const previous = options.resolvedStyle;
+  options.resolvedStyle = override
+    ? {
+        ...shape.style,
+        fill: override.fill === "none" ? { type: "none" } : { type: "solid", value: override.fill },
+        stroke: override.stroke === "none" ? { type: "none" } : { type: "solid", value: override.stroke },
+      }
+    : shape.style;
+  const lines = handleElement(shapeElement(shape, override), options);
+  options.resolvedStyle = previous;
+  return wrapWithTransform(lines, shape.transform, options);
 }
 
 function renderShapeNodes(nodes: RenderNode[], options: TranspilerOptions): string[] {
@@ -123,6 +133,14 @@ function colorForPaint(paint: Paint, opacity: number): string | undefined {
   if (paint.type === "solid") return swiftUIColor(paint.value, opacity);
   if (paint.type === "reference" && paint.fallback) return swiftUIColor(paint.fallback, opacity);
   return undefined;
+}
+
+function paintOrder(value: string | number): ("fill" | "stroke")[] {
+  const defaults = ["fill", "stroke", "markers"] as const;
+  const normalized = String(value).trim().toLowerCase();
+  const specified = normalized === "normal" ? [] : normalized.split(/\s+/);
+  const ordered = [...new Set([...specified, ...defaults])];
+  return ordered.filter((item): item is "fill" | "stroke" => item === "fill" || item === "stroke");
 }
 
 function collectPaintLayers(
@@ -181,11 +199,13 @@ function collectPaintLayers(
       if (lines.length > 0) layers.push({ lines, swiftColor, clips: ancestorClips });
     };
 
-    if (node.style.fill.type !== "none" && opacity * node.style.fillOpacity > 0) {
-      addLayer("fill", node.style.fill, node.style.fillOpacity);
-    }
-    if (node.style.stroke.type !== "none" && opacity * node.style.strokeOpacity > 0) {
-      addLayer("stroke", node.style.stroke, node.style.strokeOpacity);
+    for (const kind of paintOrder(node.style.presentation["paint-order"] ?? "normal")) {
+      if (kind === "fill" && node.style.fill.type !== "none" && opacity * node.style.fillOpacity > 0) {
+        addLayer("fill", node.style.fill, node.style.fillOpacity);
+      }
+      if (kind === "stroke" && node.style.stroke.type !== "none" && opacity * node.style.strokeOpacity > 0) {
+        addLayer("stroke", node.style.stroke, node.style.strokeOpacity);
+      }
     }
   }
   return layers;

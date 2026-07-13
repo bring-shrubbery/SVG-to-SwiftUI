@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
+  <style>
+    * { fill: #ef4444 }
+    g > rect { fill: #f59e0b }
+    .primary { fill: #7c3aed }
+    #current { fill: #0ea5e9 }
+    rect[data-state="selected"] { fill: #111827 }
+  </style>
+  <g>
+    <rect class="primary" width="30" height="40" />
+    <rect id="current" x="30" width="30" height="40" />
+    <rect x="60" width="30" height="40" style="fill: #ec4899" />
+    <rect x="90" width="30" height="40" data-state="selected" />
+  </g>
+</svg>
