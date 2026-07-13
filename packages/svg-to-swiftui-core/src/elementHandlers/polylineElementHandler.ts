@@ -1,7 +1,7 @@
 import type { ElementNode } from "svg-parser";
-
+import { parsePlainNumber } from "../lengths";
 import type { TranspilerOptions } from "../types";
-import { clampNormalisedSizeProduct } from "../utils";
+import { clampNormalisedSizeProduct, formatRoundedNumber } from "../utils";
 
 export default function handlePolylineElement(element: ElementNode, options: TranspilerOptions): string[] {
   const props = element.properties;
@@ -24,13 +24,13 @@ export function parsePointsToSwift(points: string, options: TranspilerOptions, c
     .replace(/,/g, " ")
     .split(/\s+/)
     .filter((s) => s.length > 0)
-    .map(parseFloat);
+    .map((value) => parsePlainNumber(value, "point coordinate"));
 
   if (nums.length < 4 || nums.length % 2 !== 0) {
     throw new Error("Points attribute must contain pairs of coordinates!");
   }
 
-  const toFixed = (v: number) => v.toFixed(options.precision).replace(/0+$/, "");
+  const toFixed = (v: number) => formatRoundedNumber(v, options.precision);
 
   const lines: string[] = [];
 

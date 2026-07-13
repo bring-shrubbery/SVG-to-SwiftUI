@@ -7,7 +7,21 @@
 
 This is the core transpiler code that you can use to convert raw SVG code into native SwiftUI structures for your project.
 
-Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to force the legacy single-shape output, or `preserveColors: true` to retain the original paint for a single-color SVG. Set `strict: true` to fail conversion when visible SVG content is represented but not supported by the current SwiftUI backend.
+Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to request the legacy single-shape output when the SVG does not require view-only features such as viewport clipping, or `preserveColors: true` to retain the original paint for a single-color SVG. Set `strict: true` to fail conversion when visible SVG content is represented but not supported by the current SwiftUI backend.
+
+### Lengths and viewports
+
+Geometry, strokes, nested viewports, and `<symbol>/<use>` share one typed coordinate resolver. Supported lengths are user units/`px`, `%`, `in`, `cm`, `mm`, `q`, `pt`, `pc`, `em`, `ex`, `ch`, `rem`, `vw`, `vh`, `vmin`, and `vmax`. Absolute units use 96 CSS px per inch. Horizontal, vertical, and “other” percentages use viewport width, height, and normalized diagonal respectively.
+
+Root and nested `viewBox` values support negative origins plus every `preserveAspectRatio` alignment with `meet`, `slice`, or `none`. Nested `<svg>` and instantiated `<symbol>` viewports resolve their own percentages and apply overflow clipping. Select a static `<view>` override with `fragment: "#view-id"`.
+
+When root `width` or `height` is percentage/viewport-relative, pass the containing CSS viewport:
+
+```ts
+convert(svg, { outerViewport: { width: 320, height: 180 } });
+```
+
+Without `outerViewport`, permissive mode resolves against the valid `viewBox`, or the deterministic 300×150 fallback when no viewBox exists, and records a diagnostic. `strict: true` rejects that fallback. Missing root dimensions are inferred from a valid viewBox. Zero-sized viewports render nothing. Until deterministic font loading lands with text rendering, `ex` and `ch` use the resolver’s documented 0.5em fallback metrics.
 
 ## Before we start
 
@@ -75,6 +89,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG `<g>` and `<a>` containers
 - [x] SVG `<switch>` fallbacks
 - [x] SVG `<defs>`, `<symbol>`, and local `<use>` references
+- [x] SVG lengths, nested viewports, `<view>` fragments, and `preserveAspectRatio`
 - [x] SVG transforms (`matrix`, `translate`, `scale`, `rotate`, `skewX`, `skewY`)
 - [x] Solid fill/stroke styling with colours
 - [ ] SVG `<text>` element

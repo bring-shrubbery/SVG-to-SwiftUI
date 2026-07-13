@@ -7,6 +7,10 @@ export interface SwiftUIGeneratorConfig {
   preserveColors?: boolean;
   /** Fail when the semantic render tree contains unsupported visible content. */
   strict?: boolean;
+  /** Outer CSS viewport used to resolve percentage-based root width/height and viewport units. */
+  outerViewport?: { width: number; height: number };
+  /** Select a static <view id="…"> fragment, with or without a leading #. */
+  fragment?: string;
 }
 
 export interface TranspilerOptions {
@@ -47,4 +51,8 @@ export interface SVGElementProperties {
   width: number;
   height: number;
   viewBox: ViewBoxData;
+  userViewport: { width: number; height: number };
+  preserveAspectRatio: import("./viewports").PreserveAspectRatio;
+  viewBoxTransform: import("./transformUtils").AffineTransform;
+  zeroSized: boolean;
 }

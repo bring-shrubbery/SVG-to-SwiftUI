@@ -3,6 +3,7 @@ import type { ElementNode } from "svg-parser";
 import type { SVGCircleAttributes } from "../svgTypes";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct, normaliseRectValues, stringifyRectValues } from "../utils";
+import { resolvedGeometryNumber } from "./resolvedGeometry";
 
 export default function handleCircleElement(element: ElementNode, options: TranspilerOptions): string[] {
   // TODO: Add styles support
@@ -17,14 +18,10 @@ export default function handleCircleElement(element: ElementNode, options: Trans
     const circleProps = props as unknown as SVGCircleAttributes;
 
     // Check if required properties are provided.
-    if (!circleProps.cx || !circleProps.cy || !circleProps.r) {
-      throw new Error("Circle element has to contain cx, cy, and r properties!");
-    }
-
     // Parse numbers from the strings, expanding by stroke if fill+stroke.
-    const cx = parseFloat(circleProps.cx);
-    const cy = parseFloat(circleProps.cy);
-    const r = parseFloat(circleProps.r) + (options.strokeExpansion || 0);
+    const cx = resolvedGeometryNumber(circleProps.cx, 0);
+    const cy = resolvedGeometryNumber(circleProps.cy, 0);
+    const r = resolvedGeometryNumber(circleProps.r, 0) + (options.strokeExpansion || 0);
 
     // Convert center-radius to bounding box.
     const x = cx - r;

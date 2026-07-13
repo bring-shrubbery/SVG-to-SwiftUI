@@ -35,6 +35,12 @@ function containsGeneralViewContent(nodes: RenderNode[]): boolean {
   );
 }
 
+function containsViewportClip(nodes: RenderNode[]): boolean {
+  return nodes.some(
+    (node) => node.type === "group" && (node.viewport?.clip === true || containsViewportClip(node.children)),
+  );
+}
+
 function solidColor(paint: Paint, opacity: number): string | undefined {
   if (paint.type !== "solid") return undefined;
   return swiftUIColor(paint.value, opacity);
@@ -44,8 +50,9 @@ function solidColor(paint: Paint, opacity: number): string | undefined {
 export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGeneratorConfig = {}): CapabilityDecision {
   const paints = collectVisiblePaints(document.children);
   const reasons: string[] = [];
+  const needsViewportClip = containsViewportClip(document.children);
 
-  if (config.preserveColors === false) {
+  if (config.preserveColors === false && !needsViewportClip && !containsGeneralViewContent(document.children)) {
     return {
       mode: "shape",
       reasons: ["preserveColors is false; using the tintable Shape fast path"],
@@ -54,6 +61,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   }
 
   if (containsGeneralViewContent(document.children)) reasons.push("document contains non-geometry view content");
+  if (needsViewportClip) reasons.push("document contains a clipped nested viewport");
 
   const colors = paints.map(({ paint, opacity }) => solidColor(paint, opacity));
   const allColorsSupported = colors.every((color) => color !== undefined);

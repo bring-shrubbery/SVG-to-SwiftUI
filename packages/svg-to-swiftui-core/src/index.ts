@@ -6,19 +6,22 @@ import { analyzeCapabilities } from "./renderTree/capabilities";
 import { generateShape, generateView } from "./renderTree/generateSwiftUI";
 import { createUsageCommentTemplate } from "./templates";
 import type { SwiftUIGeneratorConfig } from "./types";
-import { extractSVGProperties, getSVGElement } from "./utils";
+import { getSVGElement, resolveSVGProperties } from "./utils";
 
+export * from "./lengths";
 export * from "./types";
+export * from "./viewports";
 
 /**
  * Test and integration hooks for inspecting the semantic pipeline without
  * parsing generated Swift source. They are grouped to keep the main API small.
  */
-function parseRenderDocument(rawSVGString: string) {
+function parseRenderDocument(rawSVGString: string, config: SwiftUIGeneratorConfig = {}) {
   const ast = parse(rawSVGString);
   const svgElement = getSVGElement(ast);
   if (!svgElement) throw new Error("Could not find SVG element, please provide full SVG source!");
-  return buildRenderDocument(svgElement, extractSVGProperties(svgElement));
+  const resolution = resolveSVGProperties(svgElement, config);
+  return buildRenderDocument(svgElement, resolution.properties, resolution.diagnostics);
 }
 
 export const __testing = { parseRenderDocument, analyzeCapabilities };
@@ -32,9 +35,10 @@ export function convert(rawSVGString: string, config?: SwiftUIGeneratorConfig): 
 }
 
 function swiftUIGenerator(svgElement: ElementNode, config: SwiftUIGeneratorConfig = {}): string {
-  const svgProperties = extractSVGProperties(svgElement);
   const configWithDefaults: SwiftUIGeneratorConfig = { ...DEFAULT_CONFIG, ...config };
-  const document = buildRenderDocument(svgElement, svgProperties);
+  const resolution = resolveSVGProperties(svgElement, configWithDefaults);
+  const svgProperties = resolution.properties;
+  const document = buildRenderDocument(svgElement, svgProperties, resolution.diagnostics);
   const decision = analyzeCapabilities(document, config);
 
   if (config.strict && document.diagnostics.length > 0) {

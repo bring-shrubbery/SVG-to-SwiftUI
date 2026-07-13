@@ -3,6 +3,7 @@ import type { ElementNode } from "svg-parser";
 import type { SVGEllipseAttributes } from "../svgTypes";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct, normaliseRectValues, stringifyRectValues } from "../utils";
+import { resolvedGeometryNumber } from "./resolvedGeometry";
 
 export default function handleEllipseElement(element: ElementNode, options: TranspilerOptions): string[] {
   // TODO: style
@@ -11,15 +12,11 @@ export default function handleEllipseElement(element: ElementNode, options: Tran
     const ellipseProps = props as unknown as SVGEllipseAttributes;
 
     // Ellipse properties requirement check
-    if (!ellipseProps.cx || !ellipseProps.cy || !ellipseProps.rx || !ellipseProps.ry) {
-      throw new Error("Ellipse element has to contain cx, cy, rx and ry properties!");
-    }
-
     // Parse string
-    const cx = parseFloat(ellipseProps.cx);
-    const cy = parseFloat(ellipseProps.cy);
-    const rx = parseFloat(ellipseProps.rx) + (options.strokeExpansion || 0);
-    const ry = parseFloat(ellipseProps.ry) + (options.strokeExpansion || 0);
+    const cx = resolvedGeometryNumber(ellipseProps.cx, 0);
+    const cy = resolvedGeometryNumber(ellipseProps.cy, 0);
+    const rx = resolvedGeometryNumber(ellipseProps.rx, 0) + (options.strokeExpansion || 0);
+    const ry = resolvedGeometryNumber(ellipseProps.ry, 0) + (options.strokeExpansion || 0);
 
     // Get size variables
     const x = cx - rx;

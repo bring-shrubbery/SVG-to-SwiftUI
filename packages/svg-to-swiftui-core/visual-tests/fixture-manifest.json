@@ -166,7 +166,7 @@
       "width": 128,
       "height": 85,
       "expectedMode": "view",
-      "tags": ["circle", "geometry", "path", "view"]
+      "tags": ["circle", "geometry", "path", "units", "view"]
     },
     "icon-gear": {
       "width": 128,
@@ -226,7 +226,7 @@
       "width": 128,
       "height": 192,
       "expectedMode": "view",
-      "tags": ["circle", "geometry", "path", "stroke", "view"]
+      "tags": ["circle", "geometry", "path", "stroke", "units", "view"]
     },
     "icon-scissors": {
       "width": 128,
@@ -10522,7 +10522,7 @@
       "width": 128,
       "height": 128,
       "expectedMode": "shape",
-      "tags": ["geometry", "path", "shape", "stroke"]
+      "tags": ["geometry", "path", "shape", "stroke", "units"]
     },
     "polygon-diamond": {
       "width": 128,
@@ -10649,6 +10649,128 @@
       "height": 64,
       "expectedMode": "shape",
       "tags": ["circle", "geometry", "shape"]
+    },
+    "viewport-nested-percent": {
+      "width": 240,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "nested-svg",
+        "overflow",
+        "preserve-aspect-ratio",
+        "rect",
+        "units",
+        "view",
+        "viewport"
+      ]
+    },
+    "viewport-nested-transforms": {
+      "width": 180,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "nested-svg",
+        "overflow",
+        "preserve-aspect-ratio",
+        "rect",
+        "transform",
+        "view",
+        "viewport"
+      ]
+    },
+    "viewport-nonzero-origin": {
+      "width": 180,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-overflow": {
+      "width": 240,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "nested-svg", "overflow", "rect", "view", "viewport"]
+    },
+    "viewport-realistic-lucide-symbol": {
+      "width": 240,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "path", "realistic", "stroke", "symbol", "use", "view", "viewport"]
+    },
+    "viewport-root-meet-nonsquare": {
+      "width": 180,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": ["geometry", "path", "preserve-aspect-ratio", "rect", "stroke", "view", "viewport"]
+    },
+    "viewport-root-meet-tall": {
+      "width": 100,
+      "height": 200,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-root-meet-wide": {
+      "width": 200,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-root-none-nonsquare": {
+      "width": 180,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": ["geometry", "path", "preserve-aspect-ratio", "rect", "stroke", "view", "viewport"]
+    },
+    "viewport-root-none-tall": {
+      "width": 100,
+      "height": 200,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-root-none-wide": {
+      "width": 200,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-root-slice-nonsquare": {
+      "width": 180,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": ["geometry", "path", "preserve-aspect-ratio", "rect", "stroke", "view", "viewport"]
+    },
+    "viewport-root-slice-tall": {
+      "width": 100,
+      "height": 200,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-root-slice-wide": {
+      "width": 200,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "view", "viewport"]
+    },
+    "viewport-symbol-use": {
+      "width": 240,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "preserve-aspect-ratio", "rect", "symbol", "use", "view", "viewport"]
+    },
+    "viewport-units": {
+      "width": 192,
+      "height": 95.99999999999999,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "rect", "stroke", "units", "view", "viewport"]
+    },
+    "viewport-zero-invalid": {
+      "width": 160,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": ["circle", "geometry", "rect", "view", "viewport"]
     },
     "wave": {
       "width": 128,
