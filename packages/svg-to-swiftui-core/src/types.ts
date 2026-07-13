@@ -5,6 +5,8 @@ export interface SwiftUIGeneratorConfig {
   usageCommentPrefix?: boolean;
   /** Preserve SVG paints in a layered View. Defaults to automatic detection for multicolor SVGs. */
   preserveColors?: boolean;
+  /** Fail when the semantic render tree contains unsupported visible content. */
+  strict?: boolean;
 }
 
 export interface TranspilerOptions {

@@ -7,7 +7,7 @@
 
 This is the core transpiler code that you can use to convert raw SVG code into native SwiftUI structures for your project.
 
-Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to force the legacy single-shape output, or `preserveColors: true` to retain the original paint for a single-color SVG.
+Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to force the legacy single-shape output, or `preserveColors: true` to retain the original paint for a single-color SVG. Set `strict: true` to fail conversion when visible SVG content is represented but not supported by the current SwiftUI backend.
 
 ## Before we start
 
