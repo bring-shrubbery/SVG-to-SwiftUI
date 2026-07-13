@@ -29,7 +29,7 @@ The converter computes one deterministic style for every rendered node. It suppo
 
 Static selectors include universal, type, class, ID, attribute, selector lists, compound selectors, child/descendant/adjacent/general-sibling combinators, `:root`, `:first-child`, `:last-child`, `:nth-child()`, `:not()`, `:is()`, and `:where()`. Dynamic selectors and media-dependent styles are skipped with structured diagnostics because conversion has no browser interaction or media environment.
 
-SVG presentation defaults include SVG 2 properties such as `paint-order`, `mix-blend-mode`, and `isolation`. The SwiftUI backend currently consumes supported paint, geometry, visibility, opacity, stroke, transform, and paint-order values; other computed properties remain inspectable for later rendering features.
+SVG presentation defaults include SVG 2 properties such as `paint-order`, `mask`, `mask-type`, `mix-blend-mode`, and `isolation`. The SwiftUI backend consumes those properties together with supported paint, geometry, visibility, opacity, stroke, and transform values; other computed properties remain inspectable for later rendering features.
 
 ### Painter order and compositing
 
@@ -38,6 +38,14 @@ Rendered children keep SVG document order. `display: none` removes a subtree, wh
 Element and group `opacity` are applied once after their children have been painted into an isolated SwiftUI compositing group. Fill and stroke opacity remain independent. The generator intentionally keeps zero-opacity content in its semantic render tree and uses `.compositingGroup()` instead of rasterizing with `.drawingGroup()`.
 
 The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms and stroke extents, exclude `display: none`, retain zero-opacity geometry, and intersect nested viewport clips. Future marker and filter tickets can extend the same query.
+
+### Masks, blend modes, and isolation
+
+`mask` definitions are typed resources with the SVG defaults for `maskUnits`, `maskContentUnits`, the expanded `-10%/-10%/120%/120%` region, and luminance interpretation. Generated SwiftUI supports alpha and luminance masks, object-bounding-box and user-space coordinates, region clipping, transforms, nested masks, groups, `use`, gradients, patterns, opacity, empty masks, and structured diagnostics for missing, wrong-type, malformed, or cyclic references.
+
+Luminance masks use an offscreen `Canvas` color matrix with the SVG luminance coefficients and a separate source-alpha pass. This preserves primary-color weights and translucent content instead of approximating the mask with grayscale paint. Effects are emitted in SVG order: viewport/clip effects, mask, post-group opacity, then blend/composite.
+
+All Compositing Level 1 `mix-blend-mode` values map to native SwiftUI blend modes: `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `color-dodge`, `color-burn`, `hard-light`, `soft-light`, `difference`, `exclusion`, `hue`, `saturation`, `color`, and `luminosity`. `isolation: isolate`, masks, non-normal blending, and group opacity create explicit compositing boundaries. The generated backend requires SwiftUI `Canvas` support (iOS 15, macOS 12, tvOS 15, and watchOS 8 or newer); no older-platform fallback is emitted.
 
 ### Linear and radial gradients
 
@@ -79,7 +87,7 @@ You can run the tests by running following command:
 
 ### Visual regression tests
 
-The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against resvg. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
+The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against the original SVG. It uses resvg for the general corpus and WebKit for blend/isolation fixtures because resvg does not implement CSS blend modes. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
 
 ```sh
 bun run visual-test                              # full macOS corpus
@@ -124,6 +132,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] Solid fill/stroke styling with colours
 - [x] Linear/radial gradient fills and strokes, stops, inheritance, transforms, and spread methods
 - [x] Pattern fills and strokes, inheritance, coordinate systems, transforms, viewBox behavior, and vector tiling
+- [x] SVG masks, Level 1 blend modes, group compositing, and isolation
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [ ] SVG `<text>` element
 - [ ] Automatic animation support

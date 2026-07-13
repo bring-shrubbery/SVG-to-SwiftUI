@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80">
+  <defs>
+    <mask id="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="160" height="35" mask-type="alpha">
+      <rect width="40" height="35" fill="red"/>
+      <rect x="40" width="40" height="35" fill="green"/>
+      <rect x="80" width="40" height="35" fill="blue"/>
+      <rect x="120" width="40" height="35" fill="white" fill-opacity=".35"/>
+    </mask>
+    <mask id="luminance" maskUnits="userSpaceOnUse" x="0" y="45" width="160" height="35">
+      <rect y="45" width="40" height="35" fill="red"/>
+      <rect x="40" y="45" width="40" height="35" fill="green"/>
+      <rect x="80" y="45" width="40" height="35" fill="blue"/>
+      <rect x="120" y="45" width="40" height="35" fill="white" fill-opacity=".35"/>
+    </mask>
+  </defs>
+  <rect width="160" height="35" fill="#ef476f" mask="url(#alpha)"/>
+  <rect y="45" width="160" height="35" fill="#118ab2" mask="url(#luminance)"/>
+</svg>

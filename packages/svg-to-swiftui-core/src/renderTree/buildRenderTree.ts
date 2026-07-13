@@ -15,6 +15,7 @@ import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTran
 import type { SVGElementProperties, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { resolvePaintServers } from "./gradients";
+import { resolveMaskInstance, resolveMaskResources } from "./masks";
 import { resolvePatternPaintServers } from "./patterns";
 import type {
   ComputedStyle,
@@ -30,6 +31,7 @@ import type {
   RenderShape,
   ResourceRegistry,
   SourceLocation,
+  SVGBlendMode,
 } from "./types";
 
 interface CoordinateContext {
@@ -242,6 +244,54 @@ function computedOpacity(
   return parseOpacity(normalized);
 }
 
+const BLEND_MODES = new Set<SVGBlendMode>([
+  "normal",
+  "multiply",
+  "screen",
+  "overlay",
+  "darken",
+  "lighten",
+  "color-dodge",
+  "color-burn",
+  "hard-light",
+  "soft-light",
+  "difference",
+  "exclusion",
+  "hue",
+  "saturation",
+  "color",
+  "luminosity",
+]);
+
+function computedBlendMode(
+  value: unknown,
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): SVGBlendMode {
+  const normalized = String(value ?? "normal")
+    .trim()
+    .toLowerCase() as SVGBlendMode;
+  if (BLEND_MODES.has(normalized)) return normalized;
+  addDiagnostic(context, element, "invalid-mix-blend-mode", `Invalid mix-blend-mode '${normalized}'.`, css);
+  return "normal";
+}
+
+function computedMask(value: unknown, element: ElementNode, context: BuildContext, css?: CSSDiagnosticContext) {
+  const normalized = String(value ?? "none").trim();
+  if (normalized.toLowerCase() === "none") return undefined;
+  const local = /^url\(\s*["']?#([^\s)"']+)["']?\s*\)$/i.exec(normalized);
+  if (local) return { id: local[1]!, invalid: false };
+  addDiagnostic(
+    context,
+    element,
+    /^url\(/i.test(normalized) ? "external-mask-reference" : "invalid-mask-reference",
+    `Only one local mask reference of the form url(#id) is supported; received '${normalized}'.`,
+    css,
+  );
+  return { invalid: true };
+}
+
 function computeStyle(
   effective: Presentation,
   provenance: StyleResolution["provenance"],
@@ -256,6 +306,17 @@ function computeStyle(
   const color = String(effective.color ?? "black");
   const fillRule = String(effective["fill-rule"] ?? effective.fillRule ?? "nonzero").toLowerCase();
   const clipRule = String(effective["clip-rule"] ?? "nonzero").toLowerCase();
+  const isolationValue = String(effective.isolation ?? "auto")
+    .trim()
+    .toLowerCase();
+  if (isolationValue !== "auto" && isolationValue !== "isolate")
+    addDiagnostic(
+      context,
+      element,
+      "invalid-isolation",
+      `Invalid isolation '${isolationValue}'.`,
+      provenance.isolation,
+    );
   const width =
     lengthValue(effective["stroke-width"], styleCoordinate, "viewport-diagonal", "other", element, context, {
       fallback: 1,
@@ -287,6 +348,7 @@ function computeStyle(
     );
     if (resolved.length > 0 && resolved.every((value): value is number => value !== undefined)) dashArray = resolved;
   }
+  const mask = computedMask(effective.mask, element, context, provenance.mask);
 
   return {
     fill: parsePaint(isLine ? "none" : (effective.fill ?? "black"), color),
@@ -316,6 +378,9 @@ function computeStyle(
     visibility: String(effective.visibility ?? "visible")
       .trim()
       .toLowerCase(),
+    ...(mask ? { mask } : {}),
+    blendMode: computedBlendMode(effective["mix-blend-mode"], element, context, provenance["mix-blend-mode"]),
+    isolation: isolationValue === "isolate" ? "isolate" : "auto",
     strokeStyle: {
       width,
       lineCap: String(effective["stroke-linecap"] ?? "butt"),
@@ -511,6 +576,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
     paintElements: new Map(),
     clips: new Map(),
     masks: new Map(),
+    maskElements: new Map(),
     markers: new Map(),
     filters: new Map(),
     views: new Map(),
@@ -525,7 +591,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
       if (["linearGradient", "radialGradient", "pattern"].includes(element.tagName ?? ""))
         registry.paintElements.set(id, element);
       if (element.tagName === "clipPath") registry.clips.set(id, element);
-      if (element.tagName === "mask") registry.masks.set(id, element);
+      if (element.tagName === "mask") registry.maskElements.set(id, element);
       if (element.tagName === "marker") registry.markers.set(id, element);
       if (element.tagName === "filter") registry.filters.set(id, element);
     }
@@ -634,6 +700,11 @@ function buildGroup(
     style: resolved.style,
     transform: transform ?? computedTransform(element, resolved, context),
     source: sourceLocation(element),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...resolved.fontMetrics },
+    },
     ...(referenceId ? { referenceId } : {}),
   };
 }
@@ -665,6 +736,11 @@ function buildNestedSVG(
     style: resolved.style,
     transform,
     source: sourceLocation(element),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...resolved.fontMetrics },
+    },
     viewport: {
       rect,
       ...(viewBox ? { viewBox } : {}),
@@ -721,6 +797,11 @@ function buildViewportUse(
     style: referencedResolved.style,
     transform: IDENTITY_TRANSFORM,
     source: sourceLocation(referenced),
+    paintContext: {
+      viewport: { ...childCoordinate.viewport },
+      rootViewport: { ...childCoordinate.rootViewport },
+      fontMetrics: { ...referencedResolved.fontMetrics },
+    },
     referenceId: id,
   };
   return {
@@ -729,6 +810,11 @@ function buildViewportUse(
     style: useResolved.style,
     transform,
     source: sourceLocation(use),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...useResolved.fontMetrics },
+    },
     referenceId: id,
     viewport: {
       rect,
@@ -776,6 +862,11 @@ function buildUse(
       style: resolved.style,
       transform,
       source: sourceLocation(element),
+      paintContext: {
+        viewport: { ...coordinate.viewport },
+        rootViewport: { ...coordinate.rootViewport },
+        fontMetrics: { ...resolved.fontMetrics },
+      },
       referenceId: id,
     },
   ];
@@ -833,6 +924,11 @@ function buildNode(
         style: resolved.style,
         transform,
         source: sourceLocation(element),
+        paintContext: {
+          viewport: { ...coordinate.viewport },
+          rootViewport: { ...coordinate.rootViewport },
+          fontMetrics: { ...resolved.fontMetrics },
+        },
       },
     ];
   }
@@ -847,6 +943,11 @@ function buildNode(
         style: resolved.style,
         transform,
         source: sourceLocation(element),
+        paintContext: {
+          viewport: { ...coordinate.viewport },
+          rootViewport: { ...coordinate.rootViewport },
+          fontMetrics: { ...resolved.fontMetrics },
+        },
       },
     ];
   }
@@ -888,6 +989,7 @@ export function buildRenderDocument(
   )) {
     resources.paints.set(id, paint);
   }
+  resources.masks = resolveMaskResources(svg, resources.maskElements, styleResolver, resolved.effective, diagnostics);
   const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
@@ -898,6 +1000,11 @@ export function buildRenderDocument(
     style: resolved.style,
     transform: rootTransform,
     source: sourceLocation(svg),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...resolved.fontMetrics },
+    },
   };
   const children: RenderNode[] = [root];
 
@@ -991,6 +1098,84 @@ export function buildRenderDocument(
     }
   }
   materializeReferencedPatterns(children);
+
+  function diagnoseMaskOnce(node: RenderNode, code: string, message: string): void {
+    if (diagnostics.some((item) => item.code === code && item.source === node.source && item.message === message))
+      return;
+    diagnostics.push({ code, message, severity: "warning", source: node.source });
+  }
+
+  function transparentMask() {
+    return {
+      maskType: "alpha" as const,
+      children: [],
+      region: { x: 0, y: 0, width: 0, height: 0 },
+      contentTransform: IDENTITY_TRANSFORM,
+      invalid: true,
+    };
+  }
+
+  function materializeMasks(nodes: RenderNode[], stack: string[] = []): void {
+    for (const node of nodes) {
+      if (node.type === "group") materializeMasks(node.children, stack);
+      const reference = node.style.mask;
+      if (!reference || reference.invalid || !reference.id) continue;
+      const id = reference.id;
+      const resource = resources.masks.get(id);
+      if (!resource) {
+        const target = resources.definitions.get(id);
+        diagnoseMaskOnce(
+          node,
+          target ? "wrong-mask-resource-type" : "missing-mask-resource",
+          target
+            ? `Mask reference #${id} targets <${target.tagName}> instead of a mask.`
+            : `Mask reference #${id} does not resolve to a local mask resource.`,
+        );
+        node.mask = transparentMask();
+        continue;
+      }
+      if (stack.includes(id)) {
+        const cycle = [...stack.slice(stack.indexOf(id)), id];
+        diagnoseMaskOnce(
+          node,
+          "cyclic-mask-reference",
+          `Mask cycle detected: ${cycle.map((item) => `#${item}`).join(" -> ")}.`,
+        );
+        node.mask = transparentMask();
+        continue;
+      }
+      const viewport =
+        resource.contentUnits === "objectBoundingBox" ? { width: 1, height: 1 } : { ...node.paintContext.viewport };
+      const maskCoordinate: CoordinateContext = {
+        viewport,
+        rootViewport: { ...node.paintContext.rootViewport },
+        fontMetrics: { ...node.paintContext.fontMetrics },
+      };
+      const maskContext: BuildContext = {
+        ...context,
+        activeReferences: new Set(context.activeReferences).add(resource.id),
+      };
+      const built: RenderNode[] = [];
+      for (const content of resource.contentElements) {
+        try {
+          built.push(...buildNode(content, resource.presentation as Presentation, maskCoordinate, maskContext));
+        } catch (error) {
+          diagnoseMaskOnce(
+            node,
+            "invalid-mask-content-reference",
+            `Mask #${id} content could not be resolved: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+      materializeReferencedPatterns(built);
+      materializeMasks(built, [...stack, id]);
+      const instance = resolveMaskInstance(resource, node, built);
+      resource.instances.set(node, instance);
+      if (resource.children.length === 0) resource.children = built;
+      node.mask = instance;
+    }
+  }
+  materializeMasks(children);
 
   function diagnosePaintReferences(nodes: RenderNode[]): void {
     for (const node of nodes) {

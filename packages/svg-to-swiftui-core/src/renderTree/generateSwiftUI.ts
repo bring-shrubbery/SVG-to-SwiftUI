@@ -7,7 +7,17 @@ import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, V
 import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
-import type { ComputedStyle, Geometry, GradientStop, Paint, RenderDocument, RenderNode, RenderShape } from "./types";
+import type {
+  ComputedStyle,
+  Geometry,
+  GradientStop,
+  MaskInstance,
+  Paint,
+  RenderDocument,
+  RenderNode,
+  RenderShape,
+  SVGBlendMode,
+} from "./types";
 
 export interface GeneratedSwiftUI {
   lines: string[];
@@ -49,9 +59,17 @@ type GeneratedViewNode =
       children: GeneratedViewNode[];
       opacity: number;
       isolated: boolean;
+      blendMode: SVGBlendMode;
       clip?: string;
+      mask?: GeneratedMask;
       tileContained?: boolean;
     };
+
+interface GeneratedMask {
+  children: GeneratedViewNode[];
+  clip: string;
+  luminance: boolean;
+}
 
 interface ViewBuildContext {
   options: TranspilerOptions;
@@ -246,6 +264,30 @@ function buildViewNodes(
   ancestorTransforms: RenderNode["transform"][] = [],
 ): GeneratedViewNode[] {
   const generated: GeneratedViewNode[] = [];
+
+  const buildMask = (
+    mask: MaskInstance | undefined,
+    targetTransforms: RenderNode["transform"][],
+  ): GeneratedMask | undefined => {
+    if (!mask) return undefined;
+    let clipLines = handleElement(
+      {
+        type: "element",
+        tagName: "rect",
+        properties: { ...mask.region, fill: "black", stroke: "none" },
+        children: [],
+      },
+      context.options,
+    );
+    for (let index = targetTransforms.length - 1; index >= 0; index--)
+      clipLines = wrapWithTransform(clipLines, targetTransforms[index]!, context.options);
+    const clip = addHelper(context, `MaskClip${context.nextClip++}`, clipLines);
+    const children = mask.invalid
+      ? []
+      : buildViewNodes(mask.children, context, [...targetTransforms, mask.contentTransform]);
+    return { children, clip, luminance: mask.maskType === "luminance" };
+  };
+
   for (const node of nodes) {
     if (node.style.display === "none") continue;
     if (node.type === "group") {
@@ -274,14 +316,22 @@ function buildViewNodes(
         }
         clip = addHelper(context, `Clip${context.nextClip++}`, clipLines);
       }
-      const children = buildViewNodes(node.children, context, [...ancestorTransforms, node.transform]);
+      const targetTransforms = [...ancestorTransforms, node.transform];
+      const children = buildViewNodes(node.children, context, targetTransforms);
       if (children.length > 0) {
+        const mask = buildMask(node.mask, targetTransforms);
         generated.push({
           type: "group",
           children,
           opacity: node.style.opacity,
-          isolated: node.style.opacity !== 1 || String(node.style.presentation.isolation).toLowerCase() === "isolate",
+          isolated:
+            node.style.opacity !== 1 ||
+            node.style.isolation === "isolate" ||
+            node.style.blendMode !== "normal" ||
+            !!mask,
+          blendMode: node.style.blendMode,
           ...(clip ? { clip } : {}),
+          ...(mask ? { mask } : {}),
         });
       }
       continue;
@@ -401,11 +451,15 @@ function buildViewNodes(
       }
     }
     if (paints.length > 0) {
+      const mask = buildMask(node.mask, [...ancestorTransforms, node.transform]);
       generated.push({
         type: "group",
         children: paints,
         opacity: node.style.opacity,
-        isolated: node.style.opacity !== 1 || String(node.style.presentation.isolation).toLowerCase() === "isolate",
+        isolated:
+          node.style.opacity !== 1 || node.style.isolation === "isolate" || node.style.blendMode !== "normal" || !!mask,
+        blendMode: node.style.blendMode,
+        ...(mask ? { mask } : {}),
       });
     }
   }
@@ -564,7 +618,7 @@ function renderGeneratedCommands(
       lines.push(...renderPatternCommands(node, graphicsName, level, indentation));
       continue;
     }
-    const needsLayer = node.isolated || node.clip !== undefined;
+    const needsLayer = node.isolated || node.clip !== undefined || node.blendMode !== "normal";
     if (!needsLayer) {
       lines.push(...renderGeneratedCommands(node.children, graphicsName, level, indentation));
       continue;
@@ -575,6 +629,8 @@ function renderGeneratedCommands(
         `${inner}${graphicsName}.addPath(${node.clip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
         `${inner}${graphicsName}.clip()`,
       );
+    if (node.blendMode !== "normal")
+      lines.push(`${inner}${graphicsName}.setBlendMode(.${swiftBlendMode(node.blendMode)})`);
     if (node.isolated) {
       if (node.opacity !== 1) lines.push(`${inner}${graphicsName}.setAlpha(${formatNumber(node.opacity)})`);
       lines.push(`${inner}${graphicsName}.beginTransparencyLayer(auxiliaryInfo: nil)`);
@@ -610,6 +666,8 @@ function canBatchPatternNode(node: GeneratedViewNode): boolean {
     node.tileContained === true &&
     !node.isolated &&
     !node.clip &&
+    !node.mask &&
+    node.blendMode === "normal" &&
     node.children.every(canBatchPatternNode)
   );
 }
@@ -739,16 +797,72 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
   lines.push(`${prefix}}`);
   if (node.clip) lines.push(`${prefix}.clipShape(${node.clip}())`);
+  if (node.mask) {
+    if (node.mask.luminance) {
+      lines.push(
+        `${prefix}.mask {`,
+        `${prefix}${indentation}GeometryReader { proxy in`,
+        `${prefix}${indentation}${indentation}Canvas { context, size in`,
+        `${prefix}${indentation}${indentation}${indentation}var matrix = ColorMatrix()`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.r1 = 0`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.g2 = 0`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.b3 = 0`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.a1 = 0.2125`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.a2 = 0.7154`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.a3 = 0.0721`,
+        `${prefix}${indentation}${indentation}${indentation}matrix.a4 = 0`,
+        `${prefix}${indentation}${indentation}${indentation}context.addFilter(.colorMatrix(matrix))`,
+        `${prefix}${indentation}${indentation}${indentation}if let symbol = context.resolveSymbol(id: 0) {`,
+        `${prefix}${indentation}${indentation}${indentation}${indentation}context.draw(symbol, at: .zero, anchor: .topLeading)`,
+        `${prefix}${indentation}${indentation}${indentation}}`,
+        `${prefix}${indentation}${indentation}} symbols: {`,
+        `${prefix}${indentation}${indentation}${indentation}ZStack {`,
+      );
+      if (node.mask.children.length === 0)
+        lines.push(`${prefix}${indentation}${indentation}${indentation}${indentation}Color.clear`);
+      else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 4, indentation));
+      lines.push(
+        `${prefix}${indentation}${indentation}${indentation}}`,
+        `${prefix}${indentation}${indentation}${indentation}.clipShape(${node.mask.clip}())`,
+        `${prefix}${indentation}${indentation}${indentation}.frame(width: proxy.size.width, height: proxy.size.height)`,
+        `${prefix}${indentation}${indentation}${indentation}.tag(0)`,
+        `${prefix}${indentation}${indentation}}`,
+        `${prefix}${indentation}${indentation}.mask {`,
+        `${prefix}${indentation}${indentation}${indentation}ZStack {`,
+      );
+      if (node.mask.children.length === 0)
+        lines.push(`${prefix}${indentation}${indentation}${indentation}${indentation}Color.clear`);
+      else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 4, indentation));
+      lines.push(
+        `${prefix}${indentation}${indentation}${indentation}}`,
+        `${prefix}${indentation}${indentation}${indentation}.clipShape(${node.mask.clip}())`,
+        `${prefix}${indentation}${indentation}}`,
+        `${prefix}${indentation}}`,
+        `${prefix}}`,
+      );
+    } else {
+      lines.push(`${prefix}.mask {`, `${prefix}${indentation}ZStack {`);
+      if (node.mask.children.length === 0) lines.push(`${prefix}${indentation}${indentation}Color.clear`);
+      else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 2, indentation));
+      lines.push(`${prefix}${indentation}}`, `${prefix}${indentation}.clipShape(${node.mask.clip}())`, `${prefix}}`);
+    }
+  }
   if (node.isolated) lines.push(`${prefix}.compositingGroup()`);
   if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
+  if (node.blendMode !== "normal") lines.push(`${prefix}.blendMode(.${swiftBlendMode(node.blendMode)})`);
   return lines;
+}
+
+function swiftBlendMode(mode: SVGBlendMode): string {
+  return mode.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
 }
 
 function containsGradientNode(nodes: GeneratedViewNode[]): boolean {
   return nodes.some(
     (node) =>
       node.type === "gradient" ||
-      (node.type === "group" && containsGradientNode(node.children)) ||
+      (node.type === "group" &&
+        (containsGradientNode(node.children) || (node.mask ? containsGradientNode(node.mask.children) : false))) ||
       (node.type === "pattern" && containsGradientNode(node.contentNodes)),
   );
 }

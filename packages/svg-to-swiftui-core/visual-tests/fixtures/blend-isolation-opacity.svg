@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <rect width="180" height="90" fill="#ffd166"/>
+  <g opacity=".8">
+    <rect x="10" y="10" width="70" height="70" fill="#118ab2"/>
+    <circle cx="60" cy="45" r="30" fill="#ef476f" style="mix-blend-mode:multiply"/>
+  </g>
+  <g transform="translate(90)" style="isolation:isolate" opacity=".8">
+    <rect x="10" y="10" width="70" height="70" fill="#118ab2"/>
+    <circle cx="60" cy="45" r="30" fill="#ef476f" style="mix-blend-mode:multiply"/>
+  </g>
+</svg>

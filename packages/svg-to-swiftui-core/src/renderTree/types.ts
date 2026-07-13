@@ -76,6 +76,62 @@ export interface RadialGradientPaint extends GradientPaintBase {
 }
 
 export type PatternUnits = "objectBoundingBox" | "userSpaceOnUse";
+export type MaskUnits = "objectBoundingBox" | "userSpaceOnUse";
+export type MaskType = "alpha" | "luminance";
+export type SVGBlendMode =
+  | "normal"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "hard-light"
+  | "soft-light"
+  | "difference"
+  | "exclusion"
+  | "hue"
+  | "saturation"
+  | "color"
+  | "luminosity";
+
+export interface NodeCoordinateContext {
+  viewport: { width: number; height: number };
+  rootViewport: { width: number; height: number };
+  fontMetrics: FontMetrics;
+}
+
+export interface MaskResource {
+  id: string;
+  x: ParsedSVGLength;
+  y: ParsedSVGLength;
+  width: ParsedSVGLength;
+  height: ParsedSVGLength;
+  units: MaskUnits;
+  contentUnits: MaskUnits;
+  maskType: MaskType;
+  source: SourceLocation;
+  element: ElementNode;
+  contentElements: ElementNode[];
+  children: RenderNode[];
+  instances: Map<RenderNode, MaskInstance>;
+  presentation: Readonly<Record<string, string | number>>;
+}
+
+export interface MaskInstance {
+  resource?: MaskResource;
+  maskType: MaskType;
+  children: RenderNode[];
+  region: RenderBounds;
+  contentTransform: AffineTransform;
+  invalid: boolean;
+}
+
+export interface MaskReference {
+  id?: string;
+  invalid: boolean;
+}
 
 export interface PatternContentInstance {
   /** Children resolved in the coordinate context of one referencing shape. */
@@ -144,6 +200,9 @@ export interface ComputedStyle {
   clipRule: "nonzero" | "evenodd";
   display: string;
   visibility: string;
+  mask?: MaskReference;
+  blendMode: SVGBlendMode;
+  isolation: "auto" | "isolate";
   strokeStyle: StrokeStyle;
   /** Typed values not yet consumed by issue #51, retained for later rendering tickets. */
   presentation: Readonly<Record<string, string | number>>;
@@ -167,11 +226,8 @@ export interface RenderShape {
   transform: AffineTransform;
   source: SourceLocation;
   /** Coordinate context at the referencing element, retained for user-space paint percentages. */
-  paintContext: {
-    viewport: { width: number; height: number };
-    rootViewport: { width: number; height: number };
-    fontMetrics: FontMetrics;
-  };
+  paintContext: NodeCoordinateContext;
+  mask?: MaskInstance;
 }
 
 export interface RenderGroup {
@@ -180,6 +236,8 @@ export interface RenderGroup {
   style: ComputedStyle;
   transform: AffineTransform;
   source: SourceLocation;
+  paintContext: NodeCoordinateContext;
+  mask?: MaskInstance;
   /** True when this group came from a referenced definition. */
   referenceId?: string;
   /** Semantic viewport data retained for clipping and later coordinate-space consumers. */
@@ -202,6 +260,8 @@ export interface RenderText {
   style: ComputedStyle;
   transform: AffineTransform;
   source: SourceLocation;
+  paintContext: NodeCoordinateContext;
+  mask?: MaskInstance;
 }
 
 export interface RenderImage {
@@ -211,6 +271,8 @@ export interface RenderImage {
   style: ComputedStyle;
   transform: AffineTransform;
   source: SourceLocation;
+  paintContext: NodeCoordinateContext;
+  mask?: MaskInstance;
 }
 
 /** The union is intentionally extensible for clip, mask, filter, marker, and foreign-object nodes. */
@@ -224,7 +286,8 @@ export interface ResourceRegistry {
   /** Original paint elements retained for future pattern/resource resolvers. */
   paintElements: Map<string, ElementNode>;
   clips: Map<string, ElementNode>;
-  masks: Map<string, ElementNode>;
+  masks: Map<string, MaskResource>;
+  maskElements: Map<string, ElementNode>;
   markers: Map<string, ElementNode>;
   filters: Map<string, ElementNode>;
   views: Map<string, ElementNode>;

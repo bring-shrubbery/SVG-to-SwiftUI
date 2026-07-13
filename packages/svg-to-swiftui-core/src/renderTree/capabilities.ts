@@ -51,7 +51,9 @@ function containsIndependentCompositing(nodes: RenderNode[]): boolean {
       node.style.opacity !== 1 ||
       node.style.fillOpacity !== 1 ||
       node.style.strokeOpacity !== 1 ||
-      String(node.style.presentation.isolation).trim().toLowerCase() === "isolate"
+      node.style.isolation === "isolate" ||
+      node.style.mask !== undefined ||
+      node.style.blendMode !== "normal"
     )
       return true;
     return node.type === "group" && containsIndependentCompositing(node.children);

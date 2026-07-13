@@ -6,6 +6,19 @@ import { findSvgFiles, fixtureKey, MANIFEST_PATH, outputMode } from "./manifest"
 
 const LOGICAL_WIDTH = 128;
 
+interface ExistingFixture {
+  scale?: number;
+  background?: string | null;
+  fonts?: string[];
+  tolerance?: Record<string, number>;
+  toleranceReason?: string;
+}
+
+let existingFixtures: Record<string, ExistingFixture> = {};
+try {
+  existingFixtures = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).fixtures ?? {};
+} catch {}
+
 function needsPreservedPaint(source: string): boolean {
   const paintPattern = /\b(?:fill|stroke)\s*(?:=\s*["']([^"']+)["']|:\s*([^;"']+))/gi;
   for (const match of source.matchAll(paintPattern)) {
@@ -44,6 +57,8 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (name.startsWith("compositing-")) tags.add("compositing");
   if (name.startsWith("gradient-")) tags.add("gradient");
   if (name.startsWith("pattern-")) tags.add("pattern");
+  if (name.startsWith("mask-")) tags.add("mask");
+  if (name.startsWith("blend-")) tags.add("blend-mode");
   if (name.startsWith("viewport-")) tags.add("viewport");
   if (name.startsWith("viewport-realistic-")) tags.add("realistic");
   for (const element of [
@@ -59,6 +74,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     "radialGradient",
     "stop",
     "pattern",
+    "mask",
     "use",
     "symbol",
     "switch",
@@ -83,6 +99,11 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/\bpatternUnits\s*=/.test(source)) tags.add("pattern-units");
   if (/\bpatternContentUnits\s*=/.test(source)) tags.add("pattern-content-units");
   if (/\bpatternTransform\s*=/.test(source)) tags.add("pattern-transform");
+  if (/\bmaskUnits\s*=/.test(source)) tags.add("mask-units");
+  if (/\bmaskContentUnits\s*=/.test(source)) tags.add("mask-content-units");
+  if (/\bmask-type\s*(?:=|:)/.test(source)) tags.add("mask-type");
+  if (/\bmix-blend-mode\s*(?:=|:)/.test(source)) tags.add("blend-mode");
+  if (/\bisolation\s*(?:=|:)/.test(source)) tags.add("isolation");
   if (/<pattern\b[^>]*(?:href|xlink:href)\s*=/.test(source)) tags.add("pattern-href");
   if (/var\(\s*--|--[\w-]+\s*:/.test(source)) tags.add("css-variables");
   return [...tags].sort();
@@ -96,11 +117,17 @@ for (const sourcePath of findSvgFiles()) {
   const automaticMode = outputMode(convert(source, { structName: "ManifestFixture" }));
   if (!automaticMode) throw new Error(`Could not determine generated output mode for ${name}.`);
   const expectedMode = needsPreservedPaint(source) || automaticMode === "view" ? "view" : "shape";
+  const existing = existingFixtures[name];
   fixtures[name] = {
     width: size.width,
     height: size.height,
     expectedMode,
     tags: tagsFor(basename(name), source, expectedMode),
+    ...(existing?.scale === undefined ? {} : { scale: existing.scale }),
+    ...(existing?.background === undefined ? {} : { background: existing.background }),
+    ...(existing?.fonts === undefined ? {} : { fonts: existing.fonts }),
+    ...(existing?.tolerance === undefined ? {} : { tolerance: existing.tolerance }),
+    ...(existing?.toleranceReason === undefined ? {} : { toleranceReason: existing.toleranceReason }),
   };
 }
 

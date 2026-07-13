@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 90">
+  <defs>
+    <mask id="defaultBox" maskContentUnits="objectBoundingBox" mask-type="alpha">
+      <circle cx=".5" cy=".5" r=".65" fill="white"/>
+    </mask>
+    <mask id="clippedBox" x="25%" y="25%" width="50%" height="50%" mask-type="alpha">
+      <rect width="180" height="90" fill="white"/>
+    </mask>
+    <mask id="userPercent" maskUnits="userSpaceOnUse" x="10%" y="10%" width="80%" height="80%" mask-type="alpha">
+      <path d="M0 90L90 0h90v90z" fill="white"/>
+    </mask>
+  </defs>
+  <rect x="5" y="5" width="50" height="80" rx="8" fill="#ff9f1c" mask="url(#defaultBox)"/>
+  <rect x="65" y="5" width="50" height="80" rx="8" fill="#2ec4b6" mask="url(#clippedBox)"/>
+  <rect x="125" y="5" width="50" height="80" rx="8" fill="#e71d36" mask="url(#userPercent)"/>
+</svg>
