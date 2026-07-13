@@ -1,191 +1,275 @@
 #!/usr/bin/env bun
-
-/**
- * Visual regression tests — compares SVG renders (resvg) against Swift renders
- * (CoreGraphics) to verify the SVG→SwiftUI conversion produces correct shapes.
- *
- * Uses batch compilation: all shapes compile into ONE Swift binary, then render
- * all PNGs in a single execution.
- *
- * Caching makes subsequent runs fast:
- *   - SVG PNGs are cached by fixture file mtime (skip resvg if unchanged)
- *   - Swift binary is cached by converter output hash (skip compile if unchanged)
- *   - Swift PNGs are cached when binary is unchanged (skip render)
- *
- * Usage:
- *   bun run visual-tests/run-visual-tests.ts          # all fixtures
- *   bun run visual-tests/run-visual-tests.ts star      # filter by name
- *   bun run visual-tests/run-visual-tests.ts --fresh   # ignore caches
- */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+/** Full-color SVG-to-SwiftUI visual regression runner. */
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
-
 import { convert } from "../src/index";
-import {
-  type BatchTestItem,
-  type BatchTestResult,
-  detectFillRule,
-  extractDominantFillColor,
-  runBatchVisualTest,
-} from "./batch-render";
+import { type BatchTestItem, type BatchTestResult, runBatchVisualTest } from "./batch-render";
+import { FIXTURES_DIR, loadFixtures, outputMode, validateManifest, withPixelViewport } from "./manifest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FIXTURES_DIR = resolve(__dirname, "fixtures");
 const RENDERS_DIR = resolve(__dirname, "renders");
-const SVG_CACHE_PATH = resolve(RENDERS_DIR, ".svg-cache.json");
+const REFERENCE_CACHE_PATH = resolve(RENDERS_DIR, ".reference-cache.json");
+const REFERENCE_RENDERER_VERSION = "rgba-resvg-v1";
 
-const RENDER_WIDTH = 512;
-const PASS_THRESHOLD = 98;
+interface ReferenceCacheEntry {
+  hash: string;
+}
 
-interface SvgCacheEntry {
-  w: number;
-  h: number;
-  mt: number;
+function hash(...values: (string | Buffer)[]): string {
+  const digest = createHash("sha256");
+  for (const value of values) digest.update(value);
+  return digest.digest("hex");
+}
+
+function optionValue(name: string): string | undefined {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function changedFixtureNames(): Set<string> {
+  const paths = new Set<string>();
+  const commands = [
+    ["diff", "--name-only", "origin/main...HEAD"],
+    ["diff", "--name-only", "HEAD"],
+    ["ls-files", "--others", "--exclude-standard"],
+  ];
+  for (const args of commands) {
+    try {
+      const output = execFileSync("git", args, { cwd: resolve(__dirname, "../../.."), encoding: "utf8" });
+      for (const line of output.split("\n")) if (line.trim()) paths.add(line.trim());
+    } catch {}
+  }
+  const fixturePrefix = relative(resolve(__dirname, "../../.."), FIXTURES_DIR).replaceAll("\\", "/");
+  return new Set(
+    [...paths]
+      .map((path) => path.replaceAll("\\", "/"))
+      .filter((path) => path.startsWith(`${fixturePrefix}/`) && path.endsWith(".svg"))
+      .map((path) => path.slice(fixturePrefix.length + 1, -4)),
+  );
+}
+
+function formatMetrics(result: BatchTestResult): string {
+  const metrics = result.metrics;
+  if (!metrics) return result.error ?? "unknown error";
+  const bounds = metrics.bounds
+    ? `${metrics.bounds.x},${metrics.bounds.y} ${metrics.bounds.width}x${metrics.bounds.height}`
+    : "none";
+  return [
+    `outside=${metrics.outsidePercent.toFixed(3)}% (${metrics.pixelsOutsideTolerance}/${metrics.totalPixels})`,
+    `meanRGB=${metrics.meanRgbError.toFixed(3)}`,
+    `meanA=${metrics.meanAlphaError.toFixed(3)}`,
+    `meanRGBA=${metrics.meanAbsoluteError.toFixed(3)}`,
+    `max=${metrics.maxChannelError}`,
+    `bounds=${bounds}`,
+  ].join(" ");
 }
 
 async function main() {
-  if (process.platform !== "darwin") {
-    console.error("Visual tests require macOS (swiftc + CoreGraphics). Skipping.");
-    process.exit(0);
-  }
-
-  mkdirSync(RENDERS_DIR, { recursive: true });
-
-  const fresh = process.argv.includes("--fresh");
-  const filter = process.argv.find((a) => a !== "--fresh" && !a.endsWith(".ts") && !a.includes("/"));
-
-  const svgFiles = readdirSync(FIXTURES_DIR)
-    .filter((f) => f.endsWith(".svg"))
-    .filter((f) => !filter || f.includes(filter))
-    .sort()
-    .map((f) => resolve(FIXTURES_DIR, f));
-
-  if (svgFiles.length === 0) {
-    console.error(
-      filter ? `No SVG fixtures matching "${filter}" in ${FIXTURES_DIR}` : `No SVG fixtures found in ${FIXTURES_DIR}`,
-    );
+  const manifestErrors = validateManifest();
+  if (manifestErrors.length > 0) {
+    console.error(`Fixture manifest failed with ${manifestErrors.length} error(s):`);
+    for (const error of manifestErrors) console.error(`  - ${error}`);
     process.exit(1);
   }
 
-  // Load SVG dimension cache
-  let svgCache: Record<string, SvgCacheEntry> = {};
+  const fresh = process.argv.includes("--fresh");
+  const requestedFixture = optionValue("--fixture");
+  const requestedTag = optionValue("--tag");
+  const useChanged = process.argv.includes("--changed");
+  const legacyFilter = process.argv.find(
+    (argument, index) =>
+      index > 1 &&
+      !argument.startsWith("--") &&
+      process.argv[index - 1] !== "--fixture" &&
+      process.argv[index - 1] !== "--tag",
+  );
+  const nameFilter = requestedFixture ?? legacyFilter;
+  const changed = useChanged ? changedFixtureNames() : undefined;
+
+  const fixtures = loadFixtures().filter(
+    (fixture) =>
+      (!nameFilter || fixture.name.includes(nameFilter)) &&
+      (!requestedTag || fixture.tags.includes(requestedTag)) &&
+      (!changed || changed.has(fixture.name)),
+  );
+  if (fixtures.length === 0) {
+    console.error("No visual fixtures matched the requested fixture/tag/changed filters.");
+    process.exit(1);
+  }
+
+  if (process.platform !== "darwin") {
+    console.log(
+      `Fixture manifest valid (${fixtures.length} selected). RGBA rendering requires macOS; skipping render.`,
+    );
+    return;
+  }
+
+  mkdirSync(RENDERS_DIR, { recursive: true });
+  let referenceCache: Record<string, ReferenceCacheEntry> = {};
   if (!fresh) {
     try {
-      svgCache = JSON.parse(readFileSync(SVG_CACHE_PATH, "utf-8"));
+      referenceCache = JSON.parse(readFileSync(REFERENCE_CACHE_PATH, "utf8"));
     } catch {}
   }
 
-  console.log(`Processing ${svgFiles.length} fixtures...\n`);
-
+  console.log(`Processing ${fixtures.length} deterministic RGBA fixture(s)...\n`);
   const items: BatchTestItem[] = [];
   const conversionErrors: BatchTestResult[] = [];
-  const t0 = Date.now();
-  let svgCacheHits = 0;
+  let referenceCacheHits = 0;
+  const started = Date.now();
 
-  for (const file of svgFiles) {
-    const name = basename(file, ".svg");
-    const svgString = readFileSync(file, "utf-8");
-    const svgPngPath = resolve(RENDERS_DIR, `${name}-svg.png`);
-
+  for (const fixture of fixtures) {
+    const referencePath = resolve(RENDERS_DIR, `${fixture.name}-svg.png`);
     try {
-      let width: number;
-      let height: number;
+      mkdirSync(dirname(referencePath), { recursive: true });
+      const source = readFileSync(fixture.sourcePath, "utf8");
+      const pixelWidth = Math.round(fixture.width * fixture.scale);
+      const pixelHeight = Math.round(fixture.height * fixture.scale);
+      const resourceBytes = fixture.fonts.map((font) => readFileSync(resolve(__dirname, font)));
+      for (const match of source.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
+        const href = match[1]!;
+        if (!/^(?:data:|#)/i.test(href)) resourceBytes.push(readFileSync(resolve(dirname(fixture.sourcePath), href)));
+      }
+      const referenceHash = hash(
+        source,
+        JSON.stringify({
+          renderer: REFERENCE_RENDERER_VERSION,
+          pixelWidth,
+          pixelHeight,
+          background: fixture.background,
+        }),
+        ...resourceBytes,
+      );
 
-      // Check SVG PNG cache
-      const svgMtime = statSync(file).mtimeMs;
-      const cached = svgCache[name];
-
-      if (!fresh && cached && cached.mt === svgMtime && existsSync(svgPngPath)) {
-        width = cached.w;
-        height = cached.h;
-        svgCacheHits++;
+      if (!fresh && referenceCache[fixture.name]?.hash === referenceHash && existsSync(referencePath)) {
+        referenceCacheHits++;
       } else {
-        const resvg = new Resvg(svgString, {
-          background: "#ffffff",
-          fitTo: { mode: "width" as const, value: RENDER_WIDTH },
+        const sizedSource = withPixelViewport(source, pixelWidth, pixelHeight);
+        const resvg = new Resvg(sizedSource, {
+          ...(fixture.background ? { background: fixture.background } : {}),
+          font: {
+            loadSystemFonts: false,
+            fontFiles: fixture.fonts.map((font) => resolve(__dirname, font)),
+          },
         });
+        for (const href of resvg.imagesToResolve()) {
+          const resourcePath = resolve(dirname(fixture.sourcePath), href);
+          resvg.resolveImage(href, readFileSync(resourcePath));
+        }
         const rendered = resvg.render();
-        writeFileSync(svgPngPath, Buffer.from(rendered.asPng()));
-        width = rendered.width;
-        height = rendered.height;
-        svgCache[name] = { w: width, h: height, mt: svgMtime };
+        if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
+          throw new Error(`resvg rendered ${rendered.width}x${rendered.height}; expected ${pixelWidth}x${pixelHeight}`);
+        }
+        writeFileSync(referencePath, Buffer.from(rendered.asPng()));
+        referenceCache[fixture.name] = { hash: referenceHash };
       }
 
-      const swiftCode = convert(svgString, {
-        structName: `S${items.length}`,
+      const swiftTypeName = `VisualFixture${items.length}`;
+      const swiftCode = convert(source, {
+        structName: swiftTypeName,
         precision: 5,
-        // This CoreGraphics harness tests shared silhouette geometry. Multicolor
-        // View output is covered separately because it has no single path(in:).
-        preserveColors: false,
+        preserveColors: fixture.expectedMode === "view",
       });
-
+      const actualMode = outputMode(swiftCode);
+      if (actualMode !== fixture.expectedMode) {
+        throw new Error(`Manifest expects ${fixture.expectedMode}; converter generated ${actualMode ?? "unknown"}`);
+      }
       items.push({
-        name,
-        svgPngPath,
+        name: fixture.name,
+        svgPngPath: referencePath,
         swiftCode,
-        width,
-        height,
-        fillColor: extractDominantFillColor(svgString),
-        fillRule: detectFillRule(svgString),
+        swiftTypeName,
+        width: fixture.width,
+        height: fixture.height,
+        scale: fixture.scale,
+        background: fixture.background,
+        fonts: fixture.fonts,
+        expectedMode: fixture.expectedMode,
+        tags: fixture.tags,
+        tolerance: fixture.tolerance,
       });
-    } catch (err) {
+    } catch (error) {
       conversionErrors.push({
-        name,
+        name: fixture.name,
         score: 0,
         status: "error",
-        error: err instanceof Error ? err.message : String(err),
+        error: error instanceof Error ? error.message : String(error),
+        referencePath,
       });
     }
   }
+  writeFileSync(REFERENCE_CACHE_PATH, JSON.stringify(referenceCache, null, 2));
+  console.log(
+    `  Prepared ${items.length} generated declarations in ${((Date.now() - started) / 1000).toFixed(1)}s ` +
+      `(${referenceCacheHits} reference cache hits)`,
+  );
 
-  // Save SVG cache
-  writeFileSync(SVG_CACHE_PATH, JSON.stringify(svgCache));
-
-  const prepTime = ((Date.now() - t0) / 1000).toFixed(1);
-  console.log(`  Prepared ${items.length} shapes in ${prepTime}s (${svgCacheHits} SVG cache hits)`);
-  if (conversionErrors.length > 0) {
-    console.log(`  ${conversionErrors.length} conversion error(s)`);
+  const renderedResults = await runBatchVisualTest(items, RENDERS_DIR, fresh);
+  const results = [...renderedResults, ...conversionErrors].sort((left, right) => left.name.localeCompare(right.name));
+  const failedResults = results.filter((result) => result.status !== "pass");
+  if (failedResults.length > 0) {
+    console.log("\nFailures:");
+    for (const result of failedResults) {
+      console.log(`  [${result.status === "fail" ? "FAIL" : "ERR "}] ${result.name}: ${formatMetrics(result)}`);
+      if (result.referencePath) console.log(`         reference: ${result.referencePath}`);
+      if (result.swiftPath) console.log(`         SwiftUI:   ${result.swiftPath}`);
+      if (result.diffPath) console.log(`         diff:      ${result.diffPath}`);
+    }
   }
 
-  // Batch compile, render, compare
-  const batchResults = await runBatchVisualTest(items, RENDERS_DIR, PASS_THRESHOLD);
-  const results = [...batchResults, ...conversionErrors];
-
-  // Report
-  console.log("");
-  for (const r of results) {
-    const tag = r.status === "pass" ? "PASS" : r.status === "fail" ? "FAIL" : "ERR ";
-    const scoreStr = r.status === "error" ? "error" : `${r.score.toFixed(2)}%`;
-    const errStr = r.error ? ` (${r.error.substring(0, 100)})` : "";
-    console.log(`  [${tag}] ${r.name.padEnd(25)} ${scoreStr}${errStr}`);
+  const selectedByName = new Map(fixtures.map((fixture) => [fixture.name, fixture]));
+  const allTags = [...new Set(fixtures.flatMap((fixture) => fixture.tags))].sort();
+  console.log("\nFeature coverage:");
+  const featureSummary: Record<string, { total: number; passed: number; failed: number; errors: number }> = {};
+  for (const tag of allTags) {
+    const tagged = results.filter((result) => selectedByName.get(result.name)?.tags.includes(tag));
+    const summary = {
+      total: tagged.length,
+      passed: tagged.filter((result) => result.status === "pass").length,
+      failed: tagged.filter((result) => result.status === "fail").length,
+      errors: tagged.filter((result) => result.status === "error").length,
+    };
+    featureSummary[tag] = summary;
+    console.log(
+      `  ${tag.padEnd(16)} ${String(summary.passed).padStart(4)}/${String(summary.total).padEnd(4)} pass` +
+        (summary.failed || summary.errors ? ` (${summary.failed} fail, ${summary.errors} error)` : ""),
+    );
   }
 
-  const passed = results.filter((r) => r.status === "pass").length;
-  const failed = results.filter((r) => r.status === "fail").length;
-  const errors = results.filter((r) => r.status === "error").length;
-  const avg = results.reduce((s, r) => s + r.score, 0) / results.length;
-
+  const passed = results.filter((result) => result.status === "pass").length;
+  const failed = results.filter((result) => result.status === "fail").length;
+  const errors = results.filter((result) => result.status === "error").length;
   console.log("\n---");
   console.log(`Results: ${passed} passed, ${failed} failed, ${errors} errors`);
-  console.log(`Average score: ${avg.toFixed(2)}%`);
-  console.log(`Threshold: ${PASS_THRESHOLD}%`);
-  console.log(`Renders: ${RENDERS_DIR}`);
+  console.log("Comparison: premultiplied sRGB RGBA with per-fixture channel and mean-error thresholds");
+  console.log(`Artifacts: ${RENDERS_DIR}`);
 
-  const summary = {
-    timestamp: new Date().toISOString(),
-    threshold: PASS_THRESHOLD,
-    averageScore: Math.round(avg * 100) / 100,
-    results: results.map((r) => ({
-      name: r.name,
-      score: r.score,
-      status: r.status,
-      ...(r.error ? { error: r.error } : {}),
-    })),
-  };
-  writeFileSync(resolve(RENDERS_DIR, "summary.json"), JSON.stringify(summary, null, 2));
-
+  writeFileSync(
+    resolve(RENDERS_DIR, "summary.json"),
+    JSON.stringify(
+      {
+        timestamp: new Date().toISOString(),
+        comparison: "premultiplied-srgb-rgba",
+        features: featureSummary,
+        results: results.map((result) => ({
+          name: result.name,
+          score: result.score,
+          status: result.status,
+          ...(result.metrics ? { metrics: result.metrics } : {}),
+          ...(result.error ? { error: result.error } : {}),
+          referencePath: result.referencePath,
+          swiftPath: result.swiftPath,
+          diffPath: result.diffPath,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
   if (failed > 0 || errors > 0) process.exit(1);
 }
 
