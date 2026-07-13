@@ -14,6 +14,7 @@ export interface GeneratedSwiftUI {
 interface PaintLayer {
   lines: string[];
   swiftColor: string;
+  clips: string[][];
 }
 
 function createOptions(
@@ -24,6 +25,7 @@ function createOptions(
 ): TranspilerOptions {
   return {
     ...svgProperties,
+    viewBox: document.viewport.coordinateSpace,
     precision: config.precision ?? 10,
     lastPathId: 0,
     indentationSize: config.indentationSize ?? 4,
@@ -63,9 +65,9 @@ function paintValue(paint: Paint): string {
   return paint.fallback ?? `url(#${paint.id})`;
 }
 
-function geometryProperties(geometry: Geometry): Record<string, string> {
+function geometryProperties(geometry: Geometry): Record<string, string | number> {
   const { type: _type, ...properties } = geometry;
-  return properties as Record<string, string>;
+  return properties as Record<string, string | number>;
 }
 
 function styleProperties(style: ComputedStyle): Record<string, string | number> {
@@ -128,13 +130,39 @@ function collectPaintLayers(
   options: TranspilerOptions,
   inheritedOpacity = 1,
   ancestorTransforms: RenderNode["transform"][] = [],
+  ancestorClips: string[][] = [],
   layers: PaintLayer[] = [],
 ): PaintLayer[] {
   for (const node of nodes) {
     if (node.style.display === "none" || node.style.visibility === "hidden") continue;
     const opacity = inheritedOpacity * node.style.opacity;
     if (node.type === "group") {
-      collectPaintLayers(node.children, options, opacity, [...ancestorTransforms, node.transform], layers);
+      let clips = ancestorClips;
+      if (node.viewport?.clip) {
+        const { rect, clipTransform } = node.viewport;
+        let clipLines = handleElement(
+          {
+            type: "element",
+            tagName: "rect",
+            properties: {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+              fill: "black",
+              stroke: "none",
+            },
+            children: [],
+          },
+          options,
+        );
+        clipLines = wrapWithTransform(clipLines, clipTransform, options);
+        for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
+          clipLines = wrapWithTransform(clipLines, ancestorTransforms[index]!, options);
+        }
+        clips = [...ancestorClips, clipLines];
+      }
+      collectPaintLayers(node.children, options, opacity, [...ancestorTransforms, node.transform], clips, layers);
       continue;
     }
     if (node.type !== "shape") continue;
@@ -150,7 +178,7 @@ function collectPaintLayers(
       for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
         lines = wrapWithTransform(lines, ancestorTransforms[index]!, options);
       }
-      if (lines.length > 0) layers.push({ lines, swiftColor });
+      if (lines.length > 0) layers.push({ lines, swiftColor, clips: ancestorClips });
     };
 
     if (node.style.fill.type !== "none" && opacity * node.style.fillOpacity > 0) {
@@ -169,10 +197,17 @@ function createPathBody(lines: string[]): string[] {
 
 function createView(name: string, layers: PaintLayer[], indentationSize: number): string[] {
   const indentation = " ".repeat(indentationSize);
+  const layerExpression = (layer: PaintLayer, index: number) => {
+    let expression = `Layer${index}().fill(${layer.swiftColor})`;
+    for (let clipIndex = 0; clipIndex < layer.clips.length; clipIndex++) {
+      expression += `.clipShape(Layer${index}Clip${clipIndex}())`;
+    }
+    return expression;
+  };
   const body: string[] = [
     "var body: some View {",
     `${indentation}ZStack {`,
-    ...layers.map((layer, index) => `${indentation}${indentation}Layer${index}().fill(${layer.swiftColor})`),
+    ...layers.map((layer, index) => `${indentation}${indentation}${layerExpression(layer, index)}`),
     `${indentation}}`,
     "}",
   ];
@@ -192,6 +227,23 @@ function createView(name: string, layers: PaintLayer[], indentationSize: number)
     });
     layerStruct[0] = `private ${layerStruct[0]}`;
     body.push("", ...layerStruct);
+    for (const [clipIndex, clip] of layer.clips.entries()) {
+      const clipFunction = createFunctionTemplate({
+        name: "path",
+        parameters: [["in rect", "CGRect"]],
+        returnType: "Path",
+        indent: indentationSize,
+        body: createPathBody(clip),
+      });
+      const clipStruct = createStructTemplate({
+        name: `Layer${index}Clip${clipIndex}`,
+        indent: indentationSize,
+        returnType: "Shape",
+        body: clipFunction,
+      });
+      clipStruct[0] = `private ${clipStruct[0]}`;
+      body.push("", ...clipStruct);
+    }
   }
   return createStructTemplate({ name, indent: indentationSize, returnType: "View", body });
 }

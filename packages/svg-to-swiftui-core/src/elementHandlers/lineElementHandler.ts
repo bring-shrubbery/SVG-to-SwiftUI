@@ -1,7 +1,8 @@
 import type { ElementNode } from "svg-parser";
 
 import type { TranspilerOptions } from "../types";
-import { clampNormalisedSizeProduct } from "../utils";
+import { clampNormalisedSizeProduct, formatRoundedNumber } from "../utils";
+import { resolvedGeometryNumber } from "./resolvedGeometry";
 
 interface SVGLineAttributes {
   x1?: string;
@@ -19,12 +20,12 @@ export default function handleLineElement(element: ElementNode, options: Transpi
 
   const lineProps = props as unknown as SVGLineAttributes;
 
-  const x1 = parseFloat(lineProps.x1 || "0");
-  const y1 = parseFloat(lineProps.y1 || "0");
-  const x2 = parseFloat(lineProps.x2 || "0");
-  const y2 = parseFloat(lineProps.y2 || "0");
+  const x1 = resolvedGeometryNumber(lineProps.x1, 0);
+  const y1 = resolvedGeometryNumber(lineProps.y1, 0);
+  const x2 = resolvedGeometryNumber(lineProps.x2, 0);
+  const y2 = resolvedGeometryNumber(lineProps.y2, 0);
 
-  const toFixed = (v: number) => v.toFixed(options.precision).replace(/0+$/, "");
+  const toFixed = (v: number) => formatRoundedNumber(v, options.precision);
 
   const nx1 = (x1 - options.viewBox.x) / options.viewBox.width;
   const ny1 = (y1 - options.viewBox.y) / options.viewBox.height;

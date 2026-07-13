@@ -1,6 +1,7 @@
 import type { ElementNode } from "svg-parser";
 import type { AffineTransform } from "../transformUtils";
 import type { ViewBoxData } from "../types";
+import type { PreserveAspectRatio } from "../viewports";
 
 /** Identifies the SVG source that produced a render-tree node or diagnostic. */
 export interface SourceLocation {
@@ -52,10 +53,10 @@ export interface ComputedStyle {
 
 export type Geometry =
   | { type: "path"; d: string; pathLength?: string }
-  | { type: "circle"; cx: string; cy: string; r: string; pathLength?: string }
-  | { type: "ellipse"; cx: string; cy: string; rx: string; ry: string; pathLength?: string }
-  | { type: "rect"; x: string; y: string; width: string; height: string; rx?: string; ry?: string; pathLength?: string }
-  | { type: "line"; x1: string; y1: string; x2: string; y2: string; pathLength?: string }
+  | { type: "circle"; cx: number; cy: number; r: number; pathLength?: string }
+  | { type: "ellipse"; cx: number; cy: number; rx: number; ry: number; pathLength?: string }
+  | { type: "rect"; x: number; y: number; width: number; height: number; rx?: number; ry?: number; pathLength?: string }
+  | { type: "line"; x1: number; y1: number; x2: number; y2: number; pathLength?: string }
   | { type: "polyline"; points: string; pathLength?: string }
   | { type: "polygon"; points: string; pathLength?: string };
 
@@ -75,6 +76,17 @@ export interface RenderGroup {
   source: SourceLocation;
   /** True when this group came from a referenced definition. */
   referenceId?: string;
+  /** Semantic viewport data retained for clipping and later coordinate-space consumers. */
+  viewport?: {
+    rect: ViewBoxData;
+    viewBox?: ViewBoxData;
+    preserveAspectRatio: PreserveAspectRatio;
+    overflow: string;
+    clip: boolean;
+    zeroSized: boolean;
+    /** Transform applied outside the viewport rectangle; excludes the viewBox mapping. */
+    clipTransform: AffineTransform;
+  };
 }
 
 export interface RenderText {
@@ -106,6 +118,7 @@ export interface ResourceRegistry {
   masks: Map<string, ElementNode>;
   markers: Map<string, ElementNode>;
   filters: Map<string, ElementNode>;
+  views: Map<string, ElementNode>;
 }
 
 export interface RenderDocument {
@@ -113,6 +126,10 @@ export interface RenderDocument {
     width: number;
     height: number;
     viewBox: ViewBoxData;
+    userViewport: { width: number; height: number };
+    preserveAspectRatio: PreserveAspectRatio;
+    coordinateSpace: ViewBoxData;
+    zeroSized: boolean;
   };
   resources: ResourceRegistry;
   children: RenderNode[];

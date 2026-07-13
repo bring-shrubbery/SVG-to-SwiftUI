@@ -1,91 +1,172 @@
 import type { ElementNode, RootNode, TextNode } from "svg-parser";
 
-import type { SVGElementProperties, ViewBoxData } from "./types";
+import { defaultFontMetrics, lengthContext, parseSVGLength, resolveSVGLength, SVGLengthError } from "./lengths";
+import type { RenderDiagnostic } from "./renderTree/types";
+import type { SVGElementProperties, SwiftUIGeneratorConfig, ViewBoxData } from "./types";
+import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "./viewports";
 
-/**
- * Converts number with unit suffix to pixels.
- * @param number Number with the unit as a string.
- */
-export function convertToPixels(num: string | number) {
-  // If number is provided, just return that number.
-  if (typeof num === "number") return num;
+export interface SVGPropertyResolution {
+  properties: SVGElementProperties;
+  diagnostics: RenderDiagnostic[];
+}
 
-  // If the value is a string, handle the conversion.
-  const unit = String(num).substr(-2, 2);
-  if (unit.search(/^[a-z]{2}$/i) !== -1) {
-    switch (unit) {
-      case "em":
-        // TODO: Convert correctly from em.
-        return parseFloat(num);
-      case "ex":
-        // TODO: Convert correctly from ex.
-        return parseFloat(num);
-      case "px":
-        return parseFloat(num);
-      case "pt":
-        // TODO: Convert correctly from pt.
-        return parseFloat(num);
-      case "pc":
-        // TODO: Convert correctly from pc.
-        return parseFloat(num);
-      case "cm":
-        // TODO: Convert correctly from cm.
-        return parseFloat(num);
-      case "mm":
-        // TODO: Convert correctly from mm.
-        return parseFloat(num);
-      case "in":
-        // TODO: Convert correctly from in.
-        return parseFloat(num);
-      default:
-        return parseFloat(num);
-    }
-  } else {
-    return parseFloat(num);
+function findElementById(root: ElementNode, id: string): ElementNode | undefined {
+  if (String(root.properties?.id ?? "") === id) return root;
+  for (const child of root.children) {
+    if (typeof child === "string" || child.type !== "element") continue;
+    const found = findElementById(child, id);
+    if (found) return found;
   }
+  return undefined;
+}
+
+function diagnostic(code: string, message: string): RenderDiagnostic {
+  return { code, message, severity: "warning", source: { element: "svg" } };
+}
+
+function validOuterViewport(config: SwiftUIGeneratorConfig): { width: number; height: number } | undefined {
+  const viewport = config.outerViewport;
+  if (!viewport) return undefined;
+  if (
+    !Number.isFinite(viewport.width) ||
+    !Number.isFinite(viewport.height) ||
+    viewport.width < 0 ||
+    viewport.height < 0
+  ) {
+    throw new SVGLengthError("invalid-outer-viewport", "outerViewport must contain finite, non-negative dimensions.");
+  }
+  return viewport;
+}
+
+function rootDimension(
+  raw: unknown,
+  axis: "horizontal" | "vertical",
+  viewBoxDimension: number | undefined,
+  outerViewport: { width: number; height: number } | undefined,
+  fallbackViewport: { width: number; height: number },
+  diagnostics: RenderDiagnostic[],
+): number {
+  const parsed = parseSVGLength(raw, { allowAuto: true });
+  if (parsed.kind === "missing" || parsed.kind === "auto") {
+    if (viewBoxDimension !== undefined && viewBoxDimension >= 0) return viewBoxDimension;
+    if (outerViewport) return axis === "horizontal" ? outerViewport.width : outerViewport.height;
+    return axis === "horizontal" ? 300 : 150;
+  }
+
+  if (!outerViewport && ["%", "vw", "vh", "vmin", "vmax"].includes(parsed.unit)) {
+    diagnostics.push(
+      diagnostic(
+        "root-relative-viewport-fallback",
+        `Root ${axis === "horizontal" ? "width" : "height"} uses ${parsed.unit || "a relative unit"} without outerViewport; ` +
+          "permissive mode resolves it against the viewBox (or the deterministic 300×150 fallback).",
+      ),
+    );
+  }
+
+  const resolved = resolveSVGLength(
+    parsed,
+    lengthContext(
+      fallbackViewport,
+      outerViewport ?? fallbackViewport,
+      axis === "horizontal" ? "viewport-width" : "viewport-height",
+      axis,
+      defaultFontMetrics(),
+    ),
+  );
+  if (typeof resolved !== "number")
+    throw new SVGLengthError("invalid-root-size", "Root size did not resolve to a number.");
+  if (resolved < 0) {
+    diagnostics.push(
+      diagnostic("negative-root-size", "Root width and height cannot be negative; permissive mode renders nothing."),
+    );
+    return 0;
+  }
+  return resolved;
 }
 
 /**
  * Extracts properties of the <svg> node.
  * @param svgJsonTree
  */
-export function extractSVGProperties(svg: ElementNode): SVGElementProperties {
-  // Extract needed properties.
-  const viewBox = svg.properties?.viewBox;
-  const width = svg.properties?.width;
-  const height = svg.properties?.height;
+export function resolveSVGProperties(svg: ElementNode, config: SwiftUIGeneratorConfig = {}): SVGPropertyResolution {
+  const diagnostics: RenderDiagnostic[] = [];
+  const fragmentId = config.fragment?.replace(/^#/, "");
+  const fragment = fragmentId ? findElementById(svg, fragmentId) : undefined;
+  if (fragmentId && fragment?.tagName !== "view") {
+    diagnostics.push(
+      diagnostic("invalid-view-fragment", `Static fragment #${fragmentId} does not reference a <view> element.`),
+    );
+  }
+  const activeView = fragment?.tagName === "view" ? fragment : undefined;
 
-  // Throw if required properties are not provided.
-  const sizeProvided = width && height;
-  const viewBoxProvided = !!viewBox;
-  if (!sizeProvided && !viewBoxProvided) {
-    throw new Error("Width and height or viewBox must be provided on <svg> element!");
+  let parsedViewBox: ViewBoxData | undefined;
+  const rawViewBox = activeView?.properties?.viewBox ?? svg.properties?.viewBox;
+  try {
+    parsedViewBox = parseViewBox(rawViewBox);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    diagnostics.push(diagnostic(error instanceof SVGLengthError ? error.code : "invalid-viewbox", message));
   }
 
-  // Validate and parse viewBox comma-wsp separators defined by the SVG spec.
-  const viewBoxElements = String(viewBox)
-    .trim()
-    .split(/[\s,]+/)
-    .map((n) => parseFloat(n));
-  const [vbx, vby, vbWidth, vbHeight] = viewBoxElements;
-  const viewBoxValid = viewBoxElements.length === 4 && viewBoxElements.every((value) => Number.isFinite(value));
-
-  // Parse width and height with units.
-  const widthUnit = convertToPixels(width ?? vbWidth ?? "100");
-  const heightUnit = convertToPixels(height ?? vbHeight ?? "100");
-
-  return {
-    width: widthUnit,
-    height: heightUnit,
-    viewBox: viewBoxValid
-      ? {
-          x: vbx ?? 0,
-          y: vby ?? 0,
-          width: vbWidth ?? 100,
-          height: vbHeight ?? 100,
-        } // If view box is provided, use this.
-      : { x: 0, y: 0, width: widthUnit, height: heightUnit }, // Otherwise use width and height.
+  const outerViewport = validOuterViewport(config);
+  const fallbackViewport = outerViewport ?? {
+    width: parsedViewBox?.width || 300,
+    height: parsedViewBox?.height || 150,
   };
+  let width = 0;
+  let height = 0;
+  try {
+    width = rootDimension(
+      svg.properties?.width,
+      "horizontal",
+      parsedViewBox?.width,
+      outerViewport,
+      fallbackViewport,
+      diagnostics,
+    );
+  } catch (error) {
+    diagnostics.push(diagnostic(error instanceof SVGLengthError ? error.code : "invalid-root-width", String(error)));
+  }
+  try {
+    height = rootDimension(
+      svg.properties?.height,
+      "vertical",
+      parsedViewBox?.height,
+      outerViewport,
+      fallbackViewport,
+      diagnostics,
+    );
+  } catch (error) {
+    diagnostics.push(diagnostic(error instanceof SVGLengthError ? error.code : "invalid-root-height", String(error)));
+  }
+
+  let preserveAspectRatio = DEFAULT_PRESERVE_ASPECT_RATIO;
+  try {
+    preserveAspectRatio = parsePreserveAspectRatio(
+      activeView?.properties?.preserveAspectRatio ?? svg.properties?.preserveAspectRatio,
+    );
+  } catch (error) {
+    diagnostics.push(
+      diagnostic(error instanceof SVGLengthError ? error.code : "invalid-preserve-aspect-ratio", String(error)),
+    );
+  }
+
+  const viewBox = parsedViewBox ?? { x: 0, y: 0, width, height };
+  const zeroSized = width === 0 || height === 0 || viewBox.width === 0 || viewBox.height === 0;
+  const properties: SVGElementProperties = {
+    width,
+    height,
+    viewBox,
+    userViewport: { width: viewBox.width, height: viewBox.height },
+    preserveAspectRatio,
+    viewBoxTransform: viewBoxTransform(parsedViewBox, { x: 0, y: 0, width, height }, preserveAspectRatio),
+    zeroSized,
+  };
+  return { properties, diagnostics };
+}
+
+export function extractSVGProperties(svg: ElementNode, config: SwiftUIGeneratorConfig = {}): SVGElementProperties {
+  return resolveSVGProperties(svg, config).properties;
 }
 
 /**
@@ -131,13 +212,18 @@ export function getSVGElement(rootNode: RootNode): ElementNode | undefined {
  * height, etc.)
  */
 export function clampNormalisedSizeProduct(value: string, suffix: string): string {
-  if (parseFloat(value) === 1) {
+  if (Number(value) === 1) {
     return suffix;
-  } else if (parseFloat(value) === 0) {
+  } else if (Number(value) === 0) {
     return "0";
   } else {
     return `${value}*${suffix}`;
   }
+}
+
+/** Formats a rounded number without leaving an invalid trailing decimal point. */
+export function formatRoundedNumber(value: number, precision: number): string {
+  return String(Number(value.toFixed(precision)));
 }
 
 interface RectOrPosition {
@@ -156,7 +242,7 @@ interface RectOrPosition {
  * @param viewBox View box of the SVG Element.
  */
 export function normaliseRectValues(rect: RectOrPosition, viewBox: ViewBoxData): RectOrPosition {
-  if (rect.width && rect.height) {
+  if (rect.width !== undefined && rect.height !== undefined) {
     return {
       x: (rect.x - viewBox.x) / viewBox.width,
       y: (rect.y - viewBox.y) / viewBox.height,
@@ -180,11 +266,9 @@ interface RectOrPositionString {
 
 export function stringifyRectValues(rect: RectOrPosition, precision: number): RectOrPositionString {
   // Function to convert all numbers the same way.
-  const toFixed = (value: number) => {
-    return value.toFixed(precision).replace(/0+$/, "");
-  };
+  const toFixed = (value: number) => formatRoundedNumber(value, precision);
 
-  if (!rect.width || !rect.height) {
+  if (rect.width === undefined || rect.height === undefined) {
     return {
       x: toFixed(rect.x),
       y: toFixed(rect.y),

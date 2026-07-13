@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
 import { readFileSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
-import { findSvgFiles, fixtureKey, MANIFEST_PATH } from "./manifest";
+import { __testing, convert } from "../src";
+import { findSvgFiles, fixtureKey, MANIFEST_PATH, outputMode } from "./manifest";
 
 const LOGICAL_WIDTH = 128;
 
-function needsView(source: string): boolean {
+function needsPreservedPaint(source: string): boolean {
   const paintPattern = /\b(?:fill|stroke)\s*(?:=\s*["']([^"']+)["']|:\s*([^;"']+))/gi;
   for (const match of source.matchAll(paintPattern)) {
     const paint = (match[1] ?? match[2] ?? "").trim().toLowerCase();
@@ -19,19 +20,12 @@ function needsView(source: string): boolean {
   return false;
 }
 
-function logicalSize(source: string): { width: number; height: number } {
-  const opening = /<svg\b([^>]*)>/i.exec(source)?.[1] ?? "";
-  const viewBox = /\bviewBox\s*=\s*["']([^"']+)["']/i
-    .exec(opening)?.[1]
-    ?.trim()
-    .split(/[\s,]+/)
-    .map(Number);
-  let aspect = viewBox?.length === 4 ? viewBox[3]! / viewBox[2]! : Number.NaN;
-  if (!Number.isFinite(aspect) || aspect <= 0) {
-    const width = Number(/\bwidth\s*=\s*["']([\d.]+)/i.exec(opening)?.[1]);
-    const height = Number(/\bheight\s*=\s*["']([\d.]+)/i.exec(opening)?.[1]);
-    aspect = Number.isFinite(width) && Number.isFinite(height) && width > 0 ? height / width : 1;
+function logicalSize(name: string, source: string): { width: number; height: number } {
+  const document = __testing.parseRenderDocument(source);
+  if (name.startsWith("viewport-")) {
+    return { width: document.viewport.width, height: document.viewport.height };
   }
+  const aspect = document.viewport.height / document.viewport.width;
   return { width: LOGICAL_WIDTH, height: Math.max(1, Math.round(LOGICAL_WIDTH * aspect)) };
 }
 
@@ -46,6 +40,8 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     tags.add("rgba");
   }
   if (name.startsWith("structure-")) tags.add("structure");
+  if (name.startsWith("viewport-")) tags.add("viewport");
+  if (name.startsWith("viewport-realistic-")) tags.add("realistic");
   for (const element of [
     "path",
     "circle",
@@ -61,6 +57,11 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     if (new RegExp(`<${element}\\b`, "i").test(source)) tags.add(element);
   }
   if (/\btransform\s*=/.test(source)) tags.add("transform");
+  if (/\bpreserveAspectRatio\s*=/.test(source)) tags.add("preserve-aspect-ratio");
+  if (/(?:\d|\.)\s*%|(?:\d|\.)\s*(?:px|in|cm|mm|q|pt|pc|em|ex|ch|rem|vw|vh|vmin|vmax)\b/i.test(source))
+    tags.add("units");
+  if (/<svg\b[\s\S]*<svg\b/i.test(source)) tags.add("nested-svg");
+  if (/\boverflow\s*=/.test(source) || /<svg\b[\s\S]*<svg\b/i.test(source)) tags.add("overflow");
   if (/\bstroke\s*(?:=|:)/.test(source)) tags.add("stroke");
   if (/\bopacity\s*(?:=|:)/.test(source)) tags.add("opacity");
   return [...tags].sort();
@@ -70,8 +71,10 @@ const fixtures: Record<string, object> = {};
 for (const sourcePath of findSvgFiles()) {
   const source = readFileSync(sourcePath, "utf8");
   const name = fixtureKey(sourcePath);
-  const size = logicalSize(source);
-  const expectedMode = needsView(source) ? "view" : "shape";
+  const size = logicalSize(name, source);
+  const automaticMode = outputMode(convert(source, { structName: "ManifestFixture" }));
+  if (!automaticMode) throw new Error(`Could not determine generated output mode for ${name}.`);
+  const expectedMode = needsPreservedPaint(source) || automaticMode === "view" ? "view" : "shape";
   fixtures[name] = {
     width: size.width,
     height: size.height,

@@ -2,7 +2,7 @@ import type { ElementNode } from "svg-parser";
 import { extractStyle } from "../styleUtils";
 import { getSVGTransform, wrapWithSVGTransform } from "../transformUtils";
 import type { TranspilerOptions } from "../types";
-import { clampNormalisedSizeProduct } from "../utils";
+import { clampNormalisedSizeProduct, formatRoundedNumber } from "../utils";
 import handleCircleElement from "./circleElementHandler";
 import handleEllipseElement from "./ellipseElementHandler";
 import handleGroupElement from "./groupElementHandler";
@@ -11,6 +11,7 @@ import handlePathElement from "./pathElementHandler";
 import handlePolygonElement from "./polygonElementHandler";
 import handlePolylineElement from "./polylineElementHandler";
 import handleRectElement from "./rectElementHandler";
+import { resolvedGeometryNumber } from "./resolvedGeometry";
 import handleSwitchElement from "./switchElementHandler";
 import handleUseElement from "./useElementHandler";
 
@@ -57,10 +58,10 @@ function extractPresentationStyle(
       hasFill: fill !== "none",
       hasStroke: !!stroke && stroke !== "none",
       strokeColor: (stroke ?? "").toLowerCase().trim(),
-      strokeWidth: style["stroke-width"] ? parseFloat(String(style["stroke-width"])) : 1,
+      strokeWidth: resolvedGeometryNumber(style["stroke-width"], 1),
       strokeLinecap: (style["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (style["stroke-linejoin"] as string) || "miter",
-      strokeMiterlimit: style["stroke-miterlimit"] ? parseFloat(String(style["stroke-miterlimit"])) : 4, // SVG default is 4
+      strokeMiterlimit: resolvedGeometryNumber(style["stroke-miterlimit"], 4), // SVG default is 4
       fillRule: (style["fill-rule"] as string) || (style.fillRule as string) || "nonzero",
     };
   } catch {
@@ -72,10 +73,10 @@ function extractPresentationStyle(
       hasFill: fill !== "none" && fill !== undefined,
       hasStroke: !!stroke && stroke !== "none",
       strokeColor: (stroke ?? "").toLowerCase().trim(),
-      strokeWidth: parentStyle["stroke-width"] ? parseFloat(String(parentStyle["stroke-width"])) : 1,
+      strokeWidth: resolvedGeometryNumber(parentStyle["stroke-width"], 1),
       strokeLinecap: (parentStyle["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (parentStyle["stroke-linejoin"] as string) || "miter",
-      strokeMiterlimit: parentStyle["stroke-miterlimit"] ? parseFloat(String(parentStyle["stroke-miterlimit"])) : 4,
+      strokeMiterlimit: resolvedGeometryNumber(parentStyle["stroke-miterlimit"], 4),
       fillRule: (parentStyle["fill-rule"] as string) || (parentStyle.fillRule as string) || "nonzero",
     };
   }
@@ -95,10 +96,7 @@ const LINE_JOIN_MAP: Record<string, string> = {
 
 function buildStrokeLines(lines: string[], style: PresentationStyle, options: TranspilerOptions): string[] {
   const normalizedWidth = style.strokeWidth / options.viewBox.width;
-  const strokeWidthStr = clampNormalisedSizeProduct(
-    normalizedWidth.toFixed(options.precision).replace(/0+$/, ""),
-    "width",
-  );
+  const strokeWidthStr = clampNormalisedSizeProduct(formatRoundedNumber(normalizedWidth, options.precision), "width");
 
   const lineCap = LINE_CAP_MAP[style.strokeLinecap] || ".butt";
   const lineJoin = LINE_JOIN_MAP[style.strokeLinejoin] || ".miter";

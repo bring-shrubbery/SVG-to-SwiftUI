@@ -10,26 +10,26 @@ export interface SVGPathAttributes extends SVGBaseAttributes {
 }
 
 export interface SVGCircleAttributes extends SVGBaseAttributes {
-  cx?: string;
-  cy?: string;
-  r?: string;
+  cx?: string | number;
+  cy?: string | number;
+  r?: string | number;
   pathLength?: string;
 }
 
 export interface SVGEllipseAttributes extends SVGBaseAttributes {
-  cx?: string;
-  cy?: string;
-  rx?: string;
-  ry?: string;
+  cx?: string | number;
+  cy?: string | number;
+  rx?: string | number;
+  ry?: string | number;
   pathLength?: string;
 }
 
 export interface SVGRectAttributes extends SVGBaseAttributes {
-  x: string;
-  y: string;
-  width: string;
-  height: string;
-  rx: string;
-  ry: string;
+  x: string | number;
+  y: string | number;
+  width: string | number;
+  height: string | number;
+  rx: string | number;
+  ry: string | number;
   pathLength: string;
 }

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120" viewBox="0 0 240 120">
+  <!-- Adapted from the Lucide compass icon (ISC license). -->
+  <defs>
+    <symbol id="compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+    </symbol>
+  </defs>
+  <use href="#compass" x="10" y="10" width="100" height="100" color="#0369a1" />
+  <use href="#compass" x="130" y="25" width="100" height="70" color="#be123c" />
+</svg>
