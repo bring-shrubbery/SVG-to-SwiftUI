@@ -7,20 +7,23 @@ interface VisiblePaint {
   opacity: number;
 }
 
-function collectVisiblePaints(nodes: RenderNode[], inheritedOpacity = 1, paints: VisiblePaint[] = []): VisiblePaint[] {
+function isHidden(visibility: string): boolean {
+  return visibility === "hidden" || visibility === "collapse";
+}
+
+function collectVisiblePaints(nodes: RenderNode[], paints: VisiblePaint[] = []): VisiblePaint[] {
   for (const node of nodes) {
-    if (node.style.display === "none" || node.style.visibility === "hidden") continue;
-    const opacity = inheritedOpacity * node.style.opacity;
+    if (node.style.display === "none") continue;
     if (node.type === "group") {
-      collectVisiblePaints(node.children, opacity, paints);
+      collectVisiblePaints(node.children, paints);
       continue;
     }
-    if (node.type !== "shape") continue;
-    if (node.style.fill.type !== "none" && opacity * node.style.fillOpacity > 0) {
-      paints.push({ paint: node.style.fill, opacity: opacity * node.style.fillOpacity });
+    if (node.type !== "shape" || isHidden(node.style.visibility)) continue;
+    if (node.style.fill.type !== "none") {
+      paints.push({ paint: node.style.fill, opacity: node.style.fillOpacity });
     }
-    if (node.style.stroke.type !== "none" && opacity * node.style.strokeOpacity > 0) {
-      paints.push({ paint: node.style.stroke, opacity: opacity * node.style.strokeOpacity });
+    if (node.style.stroke.type !== "none") {
+      paints.push({ paint: node.style.stroke, opacity: node.style.strokeOpacity });
     }
   }
   return paints;
@@ -41,9 +44,28 @@ function containsViewportClip(nodes: RenderNode[]): boolean {
   );
 }
 
+function containsIndependentCompositing(nodes: RenderNode[]): boolean {
+  return nodes.some((node) => {
+    if (node.style.display === "none") return false;
+    if (
+      node.style.opacity !== 1 ||
+      node.style.fillOpacity !== 1 ||
+      node.style.strokeOpacity !== 1 ||
+      String(node.style.presentation.isolation).trim().toLowerCase() === "isolate"
+    )
+      return true;
+    return node.type === "group" && containsIndependentCompositing(node.children);
+  });
+}
+
 function solidColor(paint: Paint, opacity: number): string | undefined {
   if (paint.type !== "solid") return undefined;
   return swiftUIColor(paint.value, opacity);
+}
+
+function hasIntrinsicAlpha(paint: Paint): boolean {
+  const color = solidColor(paint, 1);
+  return color?.includes("opacity:") === true || color?.includes(".opacity(") === true;
 }
 
 /** Explain, deterministically, why this document uses the Shape fast path or the general View backend. */
@@ -51,8 +73,15 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   const paints = collectVisiblePaints(document.children);
   const reasons: string[] = [];
   const needsViewportClip = containsViewportClip(document.children);
+  const needsIndependentCompositing =
+    containsIndependentCompositing(document.children) || paints.some(({ paint }) => hasIntrinsicAlpha(paint));
 
-  if (config.preserveColors === false && !needsViewportClip && !containsGeneralViewContent(document.children)) {
+  if (
+    config.preserveColors === false &&
+    !needsViewportClip &&
+    !needsIndependentCompositing &&
+    !containsGeneralViewContent(document.children)
+  ) {
     return {
       mode: "shape",
       reasons: ["preserveColors is false; using the tintable Shape fast path"],
@@ -62,6 +91,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
 
   if (containsGeneralViewContent(document.children)) reasons.push("document contains non-geometry view content");
   if (needsViewportClip) reasons.push("document contains a clipped nested viewport");
+  if (needsIndependentCompositing) reasons.push("document uses independent paint or group opacity");
 
   const colors = paints.map(({ paint, opacity }) => solidColor(paint, opacity));
   const allColorsSupported = colors.every((color) => color !== undefined);
@@ -75,7 +105,6 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
 
   if (config.preserveColors === true && paints.length > 0)
     reasons.push("preserveColors explicitly requests source paints");
-  if (paints.some(({ opacity }) => opacity !== 1)) reasons.push("document uses independent paint or group opacity");
   if (config.preserveColors === undefined && allColorsSupported && new Set(colors).size > 1) {
     reasons.push("document contains multiple distinct source paints");
   }

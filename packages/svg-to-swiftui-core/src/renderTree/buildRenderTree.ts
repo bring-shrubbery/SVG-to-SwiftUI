@@ -19,6 +19,7 @@ import type {
   CSSDiagnosticContext,
   Geometry,
   Paint,
+  PaintOrderPhase,
   RenderDiagnostic,
   RenderDocument,
   RenderGroup,
@@ -183,6 +184,55 @@ function plainNumber(
   }
 }
 
+const DEFAULT_PAINT_ORDER: readonly PaintOrderPhase[] = ["fill", "stroke", "markers"];
+
+function computedPaintOrder(
+  value: unknown,
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): readonly PaintOrderPhase[] {
+  const normalized = String(value ?? "normal")
+    .trim()
+    .toLowerCase();
+  if (normalized === "normal") return DEFAULT_PAINT_ORDER;
+  const tokens = normalized.split(/\s+/);
+  const valid = tokens.length > 0 && tokens.every((token) => DEFAULT_PAINT_ORDER.includes(token as PaintOrderPhase));
+  if (!valid || new Set(tokens).size !== tokens.length) {
+    addDiagnostic(
+      context,
+      element,
+      "invalid-paint-order",
+      `paint-order must contain distinct fill, stroke, and markers phases; received '${normalized}'.`,
+      css,
+    );
+    return DEFAULT_PAINT_ORDER;
+  }
+  return [...(tokens as PaintOrderPhase[]), ...DEFAULT_PAINT_ORDER.filter((phase) => !tokens.includes(phase))];
+}
+
+function computedOpacity(
+  value: unknown,
+  property: "opacity" | "fill-opacity" | "stroke-opacity",
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): number {
+  const normalized = String(value ?? 1).trim();
+  const numeric = normalized.endsWith("%") ? normalized.slice(0, -1).trim() : normalized;
+  if (numeric === "" || !Number.isFinite(Number(numeric))) {
+    addDiagnostic(
+      context,
+      element,
+      `invalid-${property}`,
+      `${property} must be a number or percentage; received '${normalized}'.`,
+      css,
+    );
+    return 1;
+  }
+  return parseOpacity(normalized);
+}
+
 function computeStyle(
   effective: Presentation,
   provenance: StyleResolution["provenance"],
@@ -233,13 +283,30 @@ function computeStyle(
     fill: parsePaint(isLine ? "none" : (effective.fill ?? "black"), color),
     stroke: parsePaint(effective.stroke ?? "none", color),
     color,
-    opacity: parseOpacity(effective.opacity),
-    fillOpacity: parseOpacity(effective["fill-opacity"]),
-    strokeOpacity: parseOpacity(effective["stroke-opacity"]),
+    opacity: computedOpacity(effective.opacity, "opacity", element, context, provenance.opacity),
+    fillOpacity: computedOpacity(
+      effective["fill-opacity"],
+      "fill-opacity",
+      element,
+      context,
+      provenance["fill-opacity"],
+    ),
+    strokeOpacity: computedOpacity(
+      effective["stroke-opacity"],
+      "stroke-opacity",
+      element,
+      context,
+      provenance["stroke-opacity"],
+    ),
+    paintOrder: computedPaintOrder(effective["paint-order"], element, context, provenance["paint-order"]),
     fillRule: fillRule === "evenodd" ? "evenodd" : "nonzero",
     clipRule: clipRule === "evenodd" ? "evenodd" : "nonzero",
-    display: String(effective.display ?? "inline"),
-    visibility: String(effective.visibility ?? "visible"),
+    display: String(effective.display ?? "inline")
+      .trim()
+      .toLowerCase(),
+    visibility: String(effective.visibility ?? "visible")
+      .trim()
+      .toLowerCase(),
     strokeStyle: {
       width,
       lineCap: String(effective["stroke-linecap"] ?? "butt"),

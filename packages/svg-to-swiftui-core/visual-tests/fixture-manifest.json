@@ -60,6 +60,64 @@
       "expectedMode": "shape",
       "tags": ["circle", "geometry", "shape"]
     },
+    "compositing-display-none": {
+      "width": 128,
+      "height": 75,
+      "expectedMode": "view",
+      "tags": ["circle", "compositing", "display", "g", "geometry", "path", "rect", "use", "view"]
+    },
+    "compositing-group-opacity-overlap": {
+      "width": 128,
+      "height": 107,
+      "expectedMode": "view",
+      "tags": ["compositing", "g", "geometry", "opacity", "rect", "view"]
+    },
+    "compositing-nested-opacity": {
+      "width": 128,
+      "height": 85,
+      "expectedMode": "view",
+      "tags": ["circle", "compositing", "g", "geometry", "opacity", "stroke", "view"]
+    },
+    "compositing-paint-order-permutations": {
+      "width": 128,
+      "height": 43,
+      "expectedMode": "view",
+      "tags": ["compositing", "g", "geometry", "paint-order", "rect", "stroke", "view"]
+    },
+    "compositing-realistic-export": {
+      "width": 128,
+      "height": 51,
+      "expectedMode": "view",
+      "tags": ["circle", "compositing", "g", "geometry", "opacity", "path", "rect", "stroke", "transform", "view"]
+    },
+    "compositing-transformed-nonsquare": {
+      "width": 128,
+      "height": 58,
+      "expectedMode": "view",
+      "tags": [
+        "compositing",
+        "ellipse",
+        "g",
+        "geometry",
+        "opacity",
+        "preserve-aspect-ratio",
+        "rect",
+        "transform",
+        "view"
+      ]
+    },
+    "compositing-transparent-zero": {
+      "width": 128,
+      "height": 75,
+      "expectedMode": "view",
+      "tags": ["circle", "compositing", "geometry", "opacity", "rect", "stroke", "view"]
+    },
+    "compositing-visibility-override": {
+      "width": 128,
+      "height": 75,
+      "expectedMode": "view",
+      "tags": ["circle", "compositing", "g", "geometry", "rect", "view", "visibility"]
+    },
     "cross": {
       "width": 128,
       "height": 128,
@@ -70,7 +128,7 @@
       "width": 128,
       "height": 43,
       "expectedMode": "view",
-      "tags": ["css", "geometry", "rect", "view"]
+      "tags": ["css", "g", "geometry", "rect", "view"]
     },
     "css-geometry": {
       "width": 128,
@@ -94,7 +152,7 @@
       "width": 128,
       "height": 43,
       "expectedMode": "view",
-      "tags": ["css", "geometry", "opacity", "rect", "view"]
+      "tags": ["css", "display", "g", "geometry", "opacity", "rect", "view", "visibility"]
     },
     "ellipse": {
       "width": 128,
@@ -112,7 +170,7 @@
       "width": 128,
       "height": 85,
       "expectedMode": "view",
-      "tags": ["circle", "geometry", "rect", "transform", "view"]
+      "tags": ["circle", "g", "geometry", "rect", "transform", "view"]
     },
     "harness-multicolor-view": {
       "width": 128,
@@ -304,7 +362,7 @@
       "width": 128,
       "height": 128,
       "expectedMode": "view",
-      "tags": ["geometry", "path", "rect", "view"]
+      "tags": ["g", "geometry", "path", "rect", "view"]
     },
     "lucide-a-arrow-down": {
       "width": 128,
@@ -10540,7 +10598,7 @@
       "width": 128,
       "height": 128,
       "expectedMode": "shape",
-      "tags": ["circle", "ellipse", "geometry", "rect", "shape"]
+      "tags": ["circle", "ellipse", "g", "geometry", "rect", "shape"]
     },
     "path-stroke-zigzag": {
       "width": 128,
@@ -10552,7 +10610,7 @@
       "width": 128,
       "height": 128,
       "expectedMode": "shape",
-      "tags": ["geometry", "path", "shape", "stroke", "units"]
+      "tags": ["g", "geometry", "path", "shape", "stroke", "units"]
     },
     "polygon-diamond": {
       "width": 128,
@@ -10636,7 +10694,7 @@
       "width": 128,
       "height": 64,
       "expectedMode": "view",
-      "tags": ["circle", "geometry", "path", "structure", "use", "view"]
+      "tags": ["circle", "g", "geometry", "path", "structure", "use", "view"]
     },
     "structure-switch-link": {
       "width": 128,
@@ -10654,7 +10712,7 @@
       "width": 128,
       "height": 85,
       "expectedMode": "view",
-      "tags": ["circle", "geometry", "polygon", "rect", "structure", "transform", "view"]
+      "tags": ["circle", "g", "geometry", "polygon", "rect", "structure", "transform", "view"]
     },
     "structure-viewbox-origin": {
       "width": 128,
@@ -10702,6 +10760,7 @@
       "expectedMode": "view",
       "tags": [
         "circle",
+        "g",
         "geometry",
         "nested-svg",
         "overflow",

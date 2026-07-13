@@ -115,6 +115,78 @@ describe("output capability analysis", () => {
       mode: "view",
       reasons: ["document uses independent paint or group opacity"],
     });
+    expect(__testing.analyzeCapabilities(document, { preserveColors: false }).mode).toBe("view");
+  });
+
+  test("emits an explicit compositing boundary for isolation", () => {
+    const source = `<svg viewBox="0 0 10 10"><g style="isolation: isolate"><rect width="10" height="10" fill="red"/></g></svg>`;
+    const document = __testing.parseRenderDocument(source);
+    expect(__testing.analyzeCapabilities(document, { preserveColors: false }).mode).toBe("view");
+    expect(convert(source)).toContain(".compositingGroup()");
+    expect(convert(source)).not.toContain(".drawingGroup()");
+  });
+
+  test("keeps intrinsic transparent paint on the View backend", () => {
+    const document = __testing.parseRenderDocument(
+      `<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="rgba(255, 0, 0, 0.4)"/></svg>`,
+    );
+    expect(__testing.analyzeCapabilities(document).mode).toBe("view");
+    expect(__testing.analyzeCapabilities(document, { preserveColors: false }).mode).toBe("view");
+  });
+
+  test("keeps visible descendants of hidden groups and zero-opacity paints semantic", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 20 20"><g visibility="hidden">
+        <rect width="20" height="20" fill="red" />
+        <circle cx="10" cy="10" r="5" fill="blue" visibility="visible" opacity="0" />
+      </g></svg>
+    `);
+    expect(__testing.analyzeCapabilities(document)).toMatchObject({ mode: "view", paintCount: 1 });
+    const result = convert(`
+      <svg viewBox="0 0 20 20"><g visibility="hidden">
+        <rect width="20" height="20" fill="red" />
+        <circle cx="10" cy="10" r="5" fill="blue" visibility="visible" opacity="0" />
+      </g></svg>
+    `);
+    expect(result).toContain("Color(red: 0, green: 0, blue: 1)");
+    expect(result).not.toContain("Color(red: 1, green: 0, blue: 0)");
+    expect(result).toContain(".opacity(0)");
+  });
+
+  test("generates fill and stroke in computed paint order", () => {
+    const source = `<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="red" stroke="blue" paint-order="stroke"/></svg>`;
+    const document = __testing.parseRenderDocument(source);
+    const shape = flatten(document.children).find((node) => node.type === "shape");
+    expect(shape?.style.paintOrder).toEqual(["stroke", "fill", "markers"]);
+    const result = convert(source);
+    expect(result.indexOf("Layer0().fill(Color(red: 0, green: 0, blue: 1))")).toBeLessThan(
+      result.indexOf("Layer1().fill(Color(red: 1, green: 0, blue: 0))"),
+    );
+  });
+
+  test("reports invalid paint order and opacity with CSS provenance", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 10 10"><style>#target { paint-order: fill fill; opacity: nope }</style>
+        <rect id="target" width="10" height="10" />
+      </svg>
+    `);
+    expect(document.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "invalid-paint-order", css: expect.objectContaining({ selector: "#target" }) }),
+        expect.objectContaining({ code: "invalid-opacity", css: expect.objectContaining({ selector: "#target" }) }),
+      ]),
+    );
+  });
+
+  test("computes transformed painted bounds, skipping display but retaining zero opacity", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 100 100">
+        <g transform="translate(5 7)"><rect x="10" y="20" width="30" height="10" fill="red" stroke="blue" stroke-width="4"/></g>
+        <rect x="90" y="90" width="5" height="5" display="none"/>
+        <rect x="50" y="50" width="10" height="10" opacity="0"/>
+      </svg>
+    `);
+    expect(__testing.renderDocumentBounds(document)).toEqual({ x: 13, y: 25, width: 47, height: 35 });
   });
 
   test("reports future content and strict mode refuses to drop it", () => {
