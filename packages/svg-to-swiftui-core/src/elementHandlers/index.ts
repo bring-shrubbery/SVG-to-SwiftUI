@@ -1,5 +1,6 @@
 import type { ElementNode } from "svg-parser";
 import { extractStyle } from "../styleUtils";
+import { getSVGTransform, wrapWithSVGTransform } from "../transformUtils";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct } from "../utils";
 import handleCircleElement from "./circleElementHandler";
@@ -245,5 +246,5 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
     ];
   }
 
-  return resultLines;
+  return wrapWithSVGTransform(resultLines, getSVGTransform(element), options);
 }
