@@ -33,6 +33,24 @@ You can run the tests by running following command:
 
 `npm test`
 
+### Visual regression tests
+
+The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against resvg. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
+
+```sh
+bun run visual-test                              # full macOS corpus
+bun run visual-test -- --fixture harness-shape  # one fixture/name substring
+bun run visual-test -- --tag opacity            # one feature family
+bun run visual-test -- --changed                # changed fixture SVGs
+bun run visual-test -- --fresh                  # ignore render caches
+bun run visual-test:verify                       # manifest + codegen integrity (all platforms)
+bun run --filter svg-to-swiftui-core visual-test:update-manifest
+```
+
+Reference caches are content-addressed from SVG bytes and render options. Swift caches include generated code and renderer options, so stale images cannot produce a false pass. Failures print reference, SwiftUI, and diff PNG paths plus RGB/alpha metrics.
+
+The default antialiasing allowance is 24/255 per channel, at most 3% pixels outside that allowance, and mean premultiplied RGB/alpha error no greater than 3/255. These limits accommodate resvg/CoreGraphics edge rasterization differences while still rejecting solid-color, layer-order, and opacity errors. Fixture-specific overrides must keep every channel enabled and include a reason in the manifest.
+
 ## Roadmap
 
 - [x] SVG `<path>` element

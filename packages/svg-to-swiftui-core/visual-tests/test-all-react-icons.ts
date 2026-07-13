@@ -14,21 +14,16 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { convert } from "../src/index";
-import {
-  type BatchTestItem,
-  type BatchTestResult,
-  detectFillRule,
-  extractDominantFillColor,
-  runBatchVisualTest,
-} from "./batch-render";
+import { type BatchTestItem, type BatchTestResult, runBatchVisualTest } from "./batch-render";
+import { outputMode } from "./manifest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ICONS_DATA_DIR = resolve(__dirname, "../../../apps/nextjs/public/data/icons");
 const RENDERS_DIR = resolve(__dirname, "renders");
 
 const RENDER_WIDTH = 512;
-const PASS_THRESHOLD = 98;
 const STRUCT_NAME = "TestShape";
+const RGBA_TOLERANCE = { channel: 24, maxOutsidePercent: 3, maxMeanRgbError: 3, maxMeanAlphaError: 3 };
 
 // ---------------------------------------------------------------------------
 // SVG reconstruction from react-icons data
@@ -157,12 +152,11 @@ async function main() {
           const swiftCode = convert(svg, {
             structName: `S${visualItems.length}`,
             precision: 5,
-            preserveColors: false,
+            preserveColors: true,
           });
 
           const testName = `${id}-${iconName}`.replace(/[^a-z0-9-]/g, "-");
           const resvg = new Resvg(svg, {
-            background: "#ffffff",
             fitTo: { mode: "width" as const, value: RENDER_WIDTH },
           });
           const rendered = resvg.render();
@@ -173,10 +167,15 @@ async function main() {
             name: testName,
             svgPngPath,
             swiftCode,
+            swiftTypeName: `S${visualItems.length}`,
             width: rendered.width,
             height: rendered.height,
-            fillColor: extractDominantFillColor(svg),
-            fillRule: detectFillRule(svg),
+            scale: 1,
+            background: null,
+            fonts: [],
+            expectedMode: outputMode(swiftCode) ?? "view",
+            tags: ["react-icons", id],
+            tolerance: RGBA_TOLERANCE,
             setId: id,
           });
         } catch {
@@ -198,7 +197,7 @@ async function main() {
     console.log(`\nPreparing ${visualItems.length} visual tests...\n`);
 
     // Batch visual test
-    const batchResults = await runBatchVisualTest(visualItems, RENDERS_DIR, PASS_THRESHOLD);
+    const batchResults = await runBatchVisualTest(visualItems, RENDERS_DIR);
 
     // Per-set visual results
     const setVisualResults = new Map<string, BatchTestResult[]>();
@@ -239,7 +238,7 @@ async function main() {
       `Total: ${totalIcons} icons, ${totalConvertErrors} convert errors, ${totalSkipped} multi-color skipped`,
     );
     console.log(`Visual: ${totalVisualPass} pass, ${totalVisualFail} fail, ${totalVisualError} errors`);
-    console.log(`Threshold: ${PASS_THRESHOLD}%`);
+    console.log("Comparison: full premultiplied RGBA");
 
     if (totalConvertErrors > 0 || totalVisualFail > 0) process.exit(1);
   } else {

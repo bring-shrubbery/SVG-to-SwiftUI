@@ -36,3 +36,45 @@ jobs:
 
       - name: Test
         run: bun run test
+
+      - name: Verify visual fixture manifest
+        run: bun run visual-test:verify
+
+  visual:
+    name: Full RGBA visual tests on macOS
+    needs: build
+    runs-on: macos-14
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Restore content-validated visual cache
+        uses: actions/cache@v4
+        with:
+          path: packages/svg-to-swiftui-core/visual-tests/renders
+          key: rgba-visual-${{ runner.os }}-${{ hashFiles('bun.lock', 'packages/svg-to-swiftui-core/src/**', 'packages/svg-to-swiftui-core/visual-tests/**') }}
+          restore-keys: |
+            rgba-visual-${{ runner.os }}-
+
+      - name: Run SwiftUI RGBA visual tests
+        run: bun run visual-test
+
+      - name: Retain failed visual artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rgba-visual-failures
+          path: |
+            packages/svg-to-swiftui-core/visual-tests/renders/summary.json
+            packages/svg-to-swiftui-core/visual-tests/renders/**/*-svg.png
+            packages/svg-to-swiftui-core/visual-tests/renders/**/*-swift.png
+            packages/svg-to-swiftui-core/visual-tests/renders/**/*-diff.png
+          if-no-files-found: warn
+          retention-days: 7
