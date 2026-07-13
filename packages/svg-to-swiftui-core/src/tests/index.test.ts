@@ -71,6 +71,19 @@ test("convert-ln", () => {
   expect(result).toBe(expectedResult);
 });
 
+test("convert-comma-separated-viewbox", () => {
+  const rawSVG = `
+    <svg width="400" height="564.2679900744417" viewBox="0, 0, 400,564.2679900744417">
+      <path d="M259.712 14.780" />
+    </svg>
+  `;
+
+  const result = convert(rawSVG, { precision: 5 });
+
+  expect(result).toContain("path.move(to: CGPoint(x: 0.64928*width, y: 0.02619*height))");
+  expect(result).not.toContain("NaN");
+});
+
 // evenodd → nonzero conversion: SwiftUI's Path uses non-zero winding by default,
 // so paths with fill-rule="evenodd" need nested subpaths reversed at odd depths
 // to preserve the original hole semantics.

@@ -62,12 +62,13 @@ export function extractSVGProperties(svg: ElementNode): SVGElementProperties {
     throw new Error("Width and height or viewBox must be provided on <svg> element!");
   }
 
-  // Validiate and parse view box.
+  // Validate and parse viewBox comma-wsp separators defined by the SVG spec.
   const viewBoxElements = String(viewBox)
-    .split(" ")
+    .trim()
+    .split(/[\s,]+/)
     .map((n) => parseFloat(n));
   const [vbx, vby, vbWidth, vbHeight] = viewBoxElements;
-  const viewBoxValid = viewBoxElements.every((value) => !Number.isNaN(value));
+  const viewBoxValid = viewBoxElements.length === 4 && viewBoxElements.every((value) => Number.isFinite(value));
 
   // Parse width and height with units.
   const widthUnit = convertToPixels(width ?? vbWidth ?? "100");
