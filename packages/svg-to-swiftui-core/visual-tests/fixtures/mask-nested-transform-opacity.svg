@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <defs>
+    <mask id="inner" maskUnits="userSpaceOnUse" x="0" y="0" width="160" height="100" mask-type="alpha">
+      <path d="M20 50L80 10l60 40-60 40z" fill="white"/>
+    </mask>
+    <mask id="outer" maskUnits="userSpaceOnUse" x="0" y="0" width="160" height="100" mask-type="alpha">
+      <g mask="url(#inner)" transform="rotate(-8 80 50)">
+        <rect x="10" y="10" width="140" height="80" fill="white"/>
+        <circle cx="80" cy="50" r="26" fill="#ff0000"/>
+      </g>
+    </mask>
+  </defs>
+  <g transform="translate(8 4) rotate(5 72 46)" mask="url(#outer)" opacity=".85">
+    <rect x="8" y="8" width="128" height="76" rx="14" fill="#06d6a0"/>
+    <circle cx="72" cy="46" r="30" fill="#118ab2" fill-opacity=".75"/>
+  </g>
+</svg>

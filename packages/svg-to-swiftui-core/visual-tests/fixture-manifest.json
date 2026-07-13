@@ -42,6 +42,18 @@
       "expectedMode": "shape",
       "tags": ["geometry", "path", "shape"]
     },
+    "blend-isolation-opacity": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["blend-mode", "circle", "g", "geometry", "isolation", "opacity", "rect", "transform", "view"]
+    },
+    "blend-level1-modes": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["blend-mode", "circle", "g", "geometry", "opacity", "path", "rect", "view"]
+    },
     "chevron-double": {
       "width": 128,
       "height": 128,
@@ -10712,6 +10724,79 @@
       "expectedMode": "shape",
       "tags": ["circle", "geometry", "line", "lucide", "realistic", "shape", "stroke"]
     },
+    "mask-alpha-luminance-primary": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["geometry", "mask", "mask-type", "mask-units", "opacity", "rect", "view"]
+    },
+    "mask-color-interpolation": {
+      "width": 128,
+      "height": 48,
+      "expectedMode": "view",
+      "tags": ["geometry", "mask", "mask-units", "rect", "view"]
+    },
+    "mask-coordinate-units-regions": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "mask",
+        "mask-content-units",
+        "mask-type",
+        "mask-units",
+        "path",
+        "rect",
+        "units",
+        "view"
+      ]
+    },
+    "mask-gradient-translucent": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "gradient-units",
+        "linearGradient",
+        "mask",
+        "mask-type",
+        "mask-units",
+        "opacity",
+        "pattern",
+        "pattern-units",
+        "rect",
+        "stop",
+        "view"
+      ]
+    },
+    "mask-invalid-empty-cycle": {
+      "width": 128,
+      "height": 32,
+      "expectedMode": "view",
+      "tags": ["geometry", "mask", "rect", "view"]
+    },
+    "mask-nested-transform-opacity": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "g",
+        "geometry",
+        "mask",
+        "mask-type",
+        "mask-units",
+        "opacity",
+        "path",
+        "rect",
+        "transform",
+        "view"
+      ]
+    },
     "mixed-elements": {
       "width": 128,
       "height": 64,
@@ -10773,28 +10858,38 @@
     "pattern-fractional-1x": {
       "width": 128,
       "height": 64,
-      "scale": 1,
       "expectedMode": "view",
       "tags": ["geometry", "opacity", "pattern", "pattern-units", "rect", "view"],
-      "tolerance": { "maxOutsidePercent": 19, "maxMeanRgbError": 12, "maxMeanAlphaError": 9 },
+      "scale": 1,
+      "tolerance": {
+        "maxOutsidePercent": 19,
+        "maxMeanRgbError": 12,
+        "maxMeanAlphaError": 9
+      },
       "toleranceReason": "Resvg rasterizes fractional pattern cells at 1x while generated SwiftUI keeps vector edges."
     },
     "pattern-fractional-2x": {
       "width": 128,
       "height": 64,
-      "scale": 2,
       "expectedMode": "view",
       "tags": ["geometry", "opacity", "pattern", "pattern-units", "rect", "view"],
-      "tolerance": { "maxOutsidePercent": 6, "maxMeanRgbError": 4 },
+      "scale": 2,
+      "tolerance": {
+        "maxOutsidePercent": 6,
+        "maxMeanRgbError": 4
+      },
       "toleranceReason": "Resvg and CoreGraphics quantize fractional pattern-cell edges differently."
     },
     "pattern-fractional-3x": {
       "width": 128,
       "height": 64,
-      "scale": 3,
       "expectedMode": "view",
       "tags": ["geometry", "opacity", "pattern", "pattern-units", "rect", "view"],
-      "tolerance": { "maxOutsidePercent": 6, "maxMeanRgbError": 4 },
+      "scale": 3,
+      "tolerance": {
+        "maxOutsidePercent": 6,
+        "maxMeanRgbError": 4
+      },
       "toleranceReason": "Resvg and CoreGraphics quantize fractional pattern-cell edges differently."
     },
     "pattern-href-inheritance": {
@@ -10855,7 +10950,10 @@
       "height": 57,
       "expectedMode": "view",
       "tags": ["g", "geometry", "path", "pattern", "pattern-content-units", "rect", "transform", "units", "view"],
-      "tolerance": { "maxOutsidePercent": 10, "maxMeanRgbError": 8 },
+      "tolerance": {
+        "maxOutsidePercent": 10,
+        "maxMeanRgbError": 8
+      },
       "toleranceReason": "Resvg and CoreGraphics use different antialias coverage for transformed repeated edges."
     },
     "pattern-transforms": {
@@ -10863,7 +10961,11 @@
       "height": 78,
       "expectedMode": "view",
       "tags": ["circle", "geometry", "path", "pattern", "pattern-transform", "pattern-units", "rect", "view"],
-      "tolerance": { "maxOutsidePercent": 16, "maxMeanRgbError": 10, "maxMeanAlphaError": 5 },
+      "tolerance": {
+        "maxOutsidePercent": 16,
+        "maxMeanRgbError": 10,
+        "maxMeanAlphaError": 5
+      },
       "toleranceReason": "Resvg and CoreGraphics use different antialias coverage after pattern rotation and skew."
     },
     "pattern-viewbox-aspect": {
@@ -10871,7 +10973,11 @@
       "height": 77,
       "expectedMode": "view",
       "tags": ["circle", "g", "geometry", "pattern", "pattern-units", "preserve-aspect-ratio", "rect", "use", "view"],
-      "tolerance": { "maxOutsidePercent": 10, "maxMeanRgbError": 7, "maxMeanAlphaError": 5 },
+      "tolerance": {
+        "maxOutsidePercent": 10,
+        "maxMeanRgbError": 7,
+        "maxMeanAlphaError": 5
+      },
       "toleranceReason": "Resvg and CoreGraphics use different antialias coverage for repeated viewBox-scaled circles."
     },
     "plusRounded": {

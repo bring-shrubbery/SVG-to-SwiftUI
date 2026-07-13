@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 60">
+  <defs>
+    <mask id="srgb" x="0" y="0" width="80" height="60" maskUnits="userSpaceOnUse" color-interpolation="sRGB">
+      <rect width="80" height="60" fill="#808080"/>
+    </mask>
+    <mask id="linear" x="80" y="0" width="80" height="60" maskUnits="userSpaceOnUse" color-interpolation="linearRGB">
+      <rect x="80" width="80" height="60" fill="#808080"/>
+    </mask>
+  </defs>
+  <rect width="80" height="60" fill="#ff006e" mask="url(#srgb)"/>
+  <rect x="80" width="80" height="60" fill="#3a86ff" mask="url(#linear)"/>
+</svg>

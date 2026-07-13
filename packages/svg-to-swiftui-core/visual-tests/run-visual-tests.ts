@@ -14,6 +14,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RENDERS_DIR = resolve(__dirname, "renders");
 const REFERENCE_CACHE_PATH = resolve(RENDERS_DIR, ".reference-cache.json");
 const REFERENCE_RENDERER_VERSION = "rgba-resvg-v1";
+const WEBKIT_RENDERER_SOURCE = resolve(__dirname, "webkit-reference-render.swift");
+const WEBKIT_RENDERER_BINARY = resolve(RENDERS_DIR, ".cache", "webkit-reference-render");
+let webKitRendererReady = false;
+
+function ensureWebKitRenderer(): void {
+  if (webKitRendererReady) return;
+  mkdirSync(dirname(WEBKIT_RENDERER_BINARY), { recursive: true });
+  execFileSync(
+    "xcrun",
+    ["swiftc", WEBKIT_RENDERER_SOURCE, "-framework", "WebKit", "-framework", "AppKit", "-o", WEBKIT_RENDERER_BINARY],
+    { stdio: "pipe" },
+  );
+  webKitRendererReady = true;
+}
+
+function renderWebKitReference(source: string, name: string, outputPath: string, width: number, height: number): void {
+  ensureWebKitRenderer();
+  const inputPath = resolve(RENDERS_DIR, ".cache", `${name}-webkit-source.svg`);
+  writeFileSync(inputPath, withPixelViewport(source, width, height));
+  execFileSync(WEBKIT_RENDERER_BINARY, [inputPath, outputPath, String(width), String(height)], { stdio: "pipe" });
+}
 
 interface ReferenceCacheEntry {
   hash: string;
@@ -130,6 +151,8 @@ async function main() {
       const pixelWidth = Math.round(fixture.width * fixture.scale);
       const pixelHeight = Math.round(fixture.height * fixture.scale);
       const resourceBytes = fixture.fonts.map((font) => readFileSync(resolve(__dirname, font)));
+      const usesWebKitReference = fixture.tags.includes("blend-mode");
+      if (usesWebKitReference) resourceBytes.push(readFileSync(WEBKIT_RENDERER_SOURCE));
       for (const match of source.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
         const href = match[1]!;
         if (!/^(?:data:|#)/i.test(href)) resourceBytes.push(readFileSync(resolve(dirname(fixture.sourcePath), href)));
@@ -137,7 +160,7 @@ async function main() {
       const referenceHash = hash(
         source,
         JSON.stringify({
-          renderer: REFERENCE_RENDERER_VERSION,
+          renderer: usesWebKitReference ? "rgba-webkit-v1" : REFERENCE_RENDERER_VERSION,
           pixelWidth,
           pixelHeight,
           background: fixture.background,
@@ -148,23 +171,29 @@ async function main() {
       if (!fresh && referenceCache[fixture.name]?.hash === referenceHash && existsSync(referencePath)) {
         referenceCacheHits++;
       } else {
-        const sizedSource = withPixelViewport(source, pixelWidth, pixelHeight);
-        const resvg = new Resvg(sizedSource, {
-          ...(fixture.background ? { background: fixture.background } : {}),
-          font: {
-            loadSystemFonts: false,
-            fontFiles: fixture.fonts.map((font) => resolve(__dirname, font)),
-          },
-        });
-        for (const href of resvg.imagesToResolve()) {
-          const resourcePath = resolve(dirname(fixture.sourcePath), href);
-          resvg.resolveImage(href, readFileSync(resourcePath));
+        if (usesWebKitReference) {
+          renderWebKitReference(source, fixture.name, referencePath, fixture.width, fixture.height);
+        } else {
+          const sizedSource = withPixelViewport(source, pixelWidth, pixelHeight);
+          const resvg = new Resvg(sizedSource, {
+            ...(fixture.background ? { background: fixture.background } : {}),
+            font: {
+              loadSystemFonts: false,
+              fontFiles: fixture.fonts.map((font) => resolve(__dirname, font)),
+            },
+          });
+          for (const href of resvg.imagesToResolve()) {
+            const resourcePath = resolve(dirname(fixture.sourcePath), href);
+            resvg.resolveImage(href, readFileSync(resourcePath));
+          }
+          const rendered = resvg.render();
+          if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
+            throw new Error(
+              `resvg rendered ${rendered.width}x${rendered.height}; expected ${pixelWidth}x${pixelHeight}`,
+            );
+          }
+          writeFileSync(referencePath, Buffer.from(rendered.asPng()));
         }
-        const rendered = resvg.render();
-        if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
-          throw new Error(`resvg rendered ${rendered.width}x${rendered.height}; expected ${pixelWidth}x${pixelHeight}`);
-        }
-        writeFileSync(referencePath, Buffer.from(rendered.asPng()));
         referenceCache[fixture.name] = { hash: referenceHash };
       }
 

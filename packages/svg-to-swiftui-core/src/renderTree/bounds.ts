@@ -117,6 +117,32 @@ function localShapeBounds(shape: RenderShape): RenderBounds | undefined {
   return bounds ? expandForStroke(bounds, shape) : undefined;
 }
 
+/** Object bounding box before the target node's own transform. */
+export function objectBoundingBox(node: RenderNode): RenderBounds | undefined {
+  if (node.type === "shape") return geometryBounds(node.geometry);
+  if (node.type === "group") {
+    const geometricBounds = (candidate: RenderNode, parent = IDENTITY_TRANSFORM): RenderBounds | undefined => {
+      if (candidate.style.display === "none") return undefined;
+      const transform = multiplyTransforms(parent, candidate.transform);
+      if (candidate.type === "shape") {
+        const bounds = geometryBounds(candidate.geometry);
+        return bounds ? transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform) : undefined;
+      }
+      if (candidate.type === "group")
+        return candidate.children.reduce<RenderBounds | undefined>(
+          (bounds, child) => union(bounds, geometricBounds(child, transform)),
+          undefined,
+        );
+      return undefined;
+    };
+    return node.children.reduce<RenderBounds | undefined>(
+      (bounds, child) => union(bounds, geometricBounds(child)),
+      undefined,
+    );
+  }
+  return undefined;
+}
+
 /** Local bounds for one paint phase, including stroke expansion when requested. */
 export function shapePaintBounds(shape: RenderShape, kind: "fill" | "stroke"): RenderBounds | undefined {
   const bounds = geometryBounds(shape.geometry);

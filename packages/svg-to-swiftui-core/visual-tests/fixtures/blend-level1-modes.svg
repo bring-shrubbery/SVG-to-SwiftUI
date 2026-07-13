@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 128">
+  <rect width="256" height="128" fill="#f2e9e4"/>
+  <g fill="#277da1">
+    <rect x="4" y="4" width="56" height="56"/><rect x="68" y="4" width="56" height="56"/>
+    <rect x="132" y="4" width="56" height="56"/><rect x="196" y="4" width="56" height="56"/>
+    <rect x="4" y="68" width="56" height="56"/><rect x="68" y="68" width="56" height="56"/>
+    <rect x="132" y="68" width="56" height="56"/><rect x="196" y="68" width="56" height="56"/>
+  </g>
+  <g fill="#f94144" fill-opacity=".82">
+    <circle cx="44" cy="32" r="24" style="mix-blend-mode:normal"/>
+    <circle cx="108" cy="32" r="24" style="mix-blend-mode:multiply"/>
+    <circle cx="172" cy="32" r="24" style="mix-blend-mode:screen"/>
+    <circle cx="236" cy="32" r="24" style="mix-blend-mode:overlay"/>
+    <circle cx="44" cy="96" r="24" style="mix-blend-mode:darken"/>
+    <circle cx="108" cy="96" r="24" style="mix-blend-mode:lighten"/>
+    <circle cx="172" cy="96" r="24" style="mix-blend-mode:color-dodge"/>
+    <circle cx="236" cy="96" r="24" style="mix-blend-mode:color-burn"/>
+  </g>
+  <g fill="#f8961e" fill-opacity=".78">
+    <path d="M4 32h56v28H4z" style="mix-blend-mode:hard-light"/>
+    <path d="M68 32h56v28H68z" style="mix-blend-mode:soft-light"/>
+    <path d="M132 32h56v28h-56z" style="mix-blend-mode:difference"/>
+    <path d="M196 32h56v28h-56z" style="mix-blend-mode:exclusion"/>
+    <path d="M4 96h56v28H4z" style="mix-blend-mode:hue"/>
+    <path d="M68 96h56v28H68z" style="mix-blend-mode:saturation"/>
+    <path d="M132 96h56v28h-56z" style="mix-blend-mode:color"/>
+    <path d="M196 96h56v28h-56z" style="mix-blend-mode:luminosity"/>
+  </g>
+</svg>
