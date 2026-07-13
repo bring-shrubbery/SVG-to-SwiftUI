@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 90">
+  <defs>
+    <radialGradient id="ellipse" gradientTransform="rotate(22 .5 .5) translate(.08 -.05)" fx=".3" fy=".25">
+      <stop stop-color="#fff"/><stop offset=".3" stop-color="#fb7185"/><stop offset="1" stop-color="#881337"/>
+    </radialGradient>
+  </defs>
+  <rect x="12" y="12" width="176" height="66" rx="12" fill="url(#ellipse)" transform="skewX(-5)"/>
+</svg>

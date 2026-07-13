@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 90">
+  <defs>
+    <linearGradient id="bbox" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ec4899"/><stop offset="1" stop-color="#4f46e5"/></linearGradient>
+    <linearGradient id="user" gradientUnits="userSpaceOnUse" x1="50%" y1="10%" x2="50%" y2="90%"><stop stop-color="#ec4899"/><stop offset="1" stop-color="#4f46e5"/></linearGradient>
+  </defs>
+  <rect x="8" y="12" width="78" height="66" fill="url(#bbox)"/>
+  <rect x="114" y="12" width="78" height="66" fill="url(#user)"/>
+</svg>

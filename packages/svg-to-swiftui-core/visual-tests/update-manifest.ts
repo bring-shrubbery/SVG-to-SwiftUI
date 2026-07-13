@@ -42,6 +42,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (name.startsWith("structure-")) tags.add("structure");
   if (name.startsWith("css-")) tags.add("css");
   if (name.startsWith("compositing-")) tags.add("compositing");
+  if (name.startsWith("gradient-")) tags.add("gradient");
   if (name.startsWith("viewport-")) tags.add("viewport");
   if (name.startsWith("viewport-realistic-")) tags.add("realistic");
   for (const element of [
@@ -53,6 +54,9 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     "polyline",
     "polygon",
     "g",
+    "linearGradient",
+    "radialGradient",
+    "stop",
     "use",
     "symbol",
     "switch",
@@ -70,6 +74,10 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/\bvisibility\s*(?:=|:)/.test(source)) tags.add("visibility");
   if (/\bdisplay\s*(?:=|:)/.test(source)) tags.add("display");
   if (/\bpaint-order\s*(?:=|:)/.test(source)) tags.add("paint-order");
+  if (/\bgradientUnits\s*=/.test(source)) tags.add("gradient-units");
+  if (/\bgradientTransform\s*=/.test(source)) tags.add("gradient-transform");
+  if (/\bspreadMethod\s*=/.test(source)) tags.add("gradient-spread");
+  if (/<(?:linearGradient|radialGradient)\b[^>]*(?:href|xlink:href)\s*=/.test(source)) tags.add("gradient-href");
   if (/var\(\s*--|--[\w-]+\s*:/.test(source)) tags.add("css-variables");
   return [...tags].sort();
 }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 90">
+  <style>
+    .alpha-start { stop-color: currentColor; stop-opacity: .2 }
+    .alpha-middle { stop-color: #8b5cf6; stop-opacity: 70% }
+    .alpha-end { stop-color: rgba(239, 68, 68, .35) }
+  </style>
+  <defs>
+    <linearGradient id="alpha" color="#0ea5e9" x2="1" y2="1">
+      <stop class="alpha-start" offset="0"/><stop class="alpha-middle" offset=".5"/><stop class="alpha-end" offset="1"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="45" r="38" fill="url(#alpha)"/>
+  <circle cx="92" cy="45" r="38" fill="url(#alpha)" opacity=".7"/>
+</svg>

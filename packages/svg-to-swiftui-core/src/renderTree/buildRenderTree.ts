@@ -14,6 +14,7 @@ import { type Presentation, type StyleResolution, SVGStyleResolver } from "../st
 import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTransform } from "../transformUtils";
 import type { SVGElementProperties, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
+import { resolvePaintServers } from "./gradients";
 import type {
   ComputedStyle,
   CSSDiagnosticContext,
@@ -89,7 +90,12 @@ function parsePaint(value: unknown, currentColor: string): Paint {
   if (normalized.toLowerCase() === "currentcolor") return { type: "solid", value: currentColor };
   const reference = /^url\(\s*#([^\s)]+)\s*\)(?:\s+(.+))?$/i.exec(normalized);
   if (reference) {
-    return { type: "reference", id: reference[1]!, ...(reference[2] ? { fallback: reference[2].trim() } : {}) };
+    const fallback = reference[2]?.trim();
+    return {
+      type: "reference",
+      id: reference[1]!,
+      ...(fallback ? { fallback: fallback.toLowerCase() === "currentcolor" ? currentColor : fallback } : {}),
+    };
   }
   return { type: "solid", value: normalized };
 }
@@ -499,6 +505,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
     definitions: new Map(),
     symbols: new Map(),
     paints: new Map(),
+    paintElements: new Map(),
     clips: new Map(),
     masks: new Map(),
     markers: new Map(),
@@ -513,7 +520,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
       if (element.tagName === "symbol") registry.symbols.set(id, element);
       if (element.tagName === "view") registry.views.set(id, element);
       if (["linearGradient", "radialGradient", "pattern"].includes(element.tagName ?? ""))
-        registry.paints.set(id, element);
+        registry.paintElements.set(id, element);
       if (element.tagName === "clipPath") registry.clips.set(id, element);
       if (element.tagName === "mask") registry.masks.set(id, element);
       if (element.tagName === "marker") registry.markers.set(id, element);
@@ -799,6 +806,11 @@ function buildNode(
             style: resolved.style,
             transform,
             source: sourceLocation(element),
+            paintContext: {
+              viewport: { ...coordinate.viewport },
+              rootViewport: { ...coordinate.rootViewport },
+              fontMetrics: { ...resolved.fontMetrics },
+            },
           },
         ]
       : [];
@@ -855,6 +867,14 @@ export function buildRenderDocument(
     fontMetrics: defaultFontMetrics(),
   };
   const resolved = resolvedPresentation(svg, {}, coordinate, context, true);
+  resources.paints = resolvePaintServers(
+    svg,
+    resources.paintElements,
+    resources.definitions,
+    styleResolver,
+    resolved.effective,
+    diagnostics,
+  );
   const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
@@ -877,9 +897,14 @@ export function buildRenderDocument(
       if (node.type !== "shape") continue;
       for (const paint of [node.style.fill, node.style.stroke]) {
         if (paint.type !== "reference") continue;
+        const server = resources.paints.get(paint.id);
+        if (server?.type === "linearGradient" || server?.type === "radialGradient") continue;
+        const exists = resources.definitions.get(paint.id);
         diagnostics.push({
-          code: "unsupported-paint-reference",
-          message: `Paint server #${paint.id} is represented but is not implemented by the SwiftUI backend yet.`,
+          code: exists ? "wrong-paint-server-type" : "missing-paint-server",
+          message: exists
+            ? `Paint reference #${paint.id} targets <${exists.tagName}> instead of a supported gradient.`
+            : `Paint reference #${paint.id} does not resolve to a local resource.`,
           severity: "warning",
           source: node.source,
         });

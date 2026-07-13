@@ -4,7 +4,8 @@ import { handleElement } from "../elementHandlers";
 import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions } from "../types";
-import type { ComputedStyle, Geometry, Paint, RenderDocument, RenderNode, RenderShape } from "./types";
+import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
+import type { ComputedStyle, Geometry, GradientStop, Paint, RenderDocument, RenderNode, RenderShape } from "./types";
 
 export interface GeneratedSwiftUI {
   lines: string[];
@@ -19,6 +20,14 @@ interface ShapeHelper {
 type GeneratedViewNode =
   | { type: "paint"; helper: string; swiftColor: string }
   | {
+      type: "gradient";
+      helper: string;
+      gradient: ResolvedGradient;
+      paintOpacity: number;
+      coordinateWidth: number;
+      coordinateHeight: number;
+    }
+  | {
       type: "group";
       children: GeneratedViewNode[];
       opacity: number;
@@ -31,6 +40,8 @@ interface ViewBuildContext {
   helpers: ShapeHelper[];
   nextLayer: number;
   nextClip: number;
+  document: RenderDocument;
+  precision: number;
 }
 
 function createOptions(
@@ -152,6 +163,20 @@ function colorForPaint(paint: Paint, opacity: number): string | undefined {
   return undefined;
 }
 
+function formatNumber(value: number, precision = 10): string {
+  const rounded = Number(value.toFixed(precision));
+  return String(Object.is(rounded, -0) ? 0 : rounded);
+}
+
+function colorForStop(stop: GradientStop, opacity: number, precision: number): string {
+  const { red, green, blue, alpha } = stop.color;
+  const channels = `red: ${formatNumber(red, precision)}, green: ${formatNumber(green, precision)}, blue: ${formatNumber(blue, precision)}`;
+  const effectiveAlpha = alpha * opacity;
+  return effectiveAlpha === 1
+    ? `Color(${channels})`
+    : `Color(${channels}, opacity: ${formatNumber(effectiveAlpha, precision)})`;
+}
+
 function addHelper(context: ViewBuildContext, name: string, lines: string[]): string {
   context.helpers.push({ name, lines });
   return name;
@@ -208,8 +233,6 @@ function buildViewNodes(
     const paints: GeneratedViewNode[] = [];
 
     const addLayer = (kind: "fill" | "stroke", paint: Paint, paintOpacity: number) => {
-      const swiftColor = colorForPaint(paint, paintOpacity);
-      if (!swiftColor) return;
       let lines = renderShape(
         node,
         context.options,
@@ -218,10 +241,43 @@ function buildViewNodes(
       for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
         lines = wrapWithTransform(lines, ancestorTransforms[index]!, context.options);
       }
-      if (lines.length > 0) {
-        const helper = addHelper(context, `Layer${context.nextLayer++}`, lines);
-        paints.push({ type: "paint", helper, swiftColor });
+      if (lines.length === 0) return;
+      const helper = addHelper(context, `Layer${context.nextLayer++}`, lines);
+      if (paint.type === "reference") {
+        const server = context.document.resources.paints.get(paint.id);
+        if (server?.type === "linearGradient" || server?.type === "radialGradient") {
+          if (server.stops.length === 0) return;
+          if (server.stops.length === 1) {
+            paints.push({
+              type: "paint",
+              helper,
+              swiftColor: colorForStop(server.stops[0]!, paintOpacity, context.precision),
+            });
+            return;
+          }
+          const gradient = resolveGradientForShape(server, node, ancestorTransforms);
+          if (gradient.type === "solid") {
+            paints.push({
+              type: "paint",
+              helper,
+              swiftColor: colorForStop(gradient.stop, paintOpacity, context.precision),
+            });
+            return;
+          }
+          if (gradient.type === "none") return;
+          paints.push({
+            type: "gradient",
+            helper,
+            gradient,
+            paintOpacity,
+            coordinateWidth: context.document.viewport.coordinateSpace.width,
+            coordinateHeight: context.document.viewport.coordinateSpace.height,
+          });
+          return;
+        }
       }
+      const swiftColor = colorForPaint(paint, paintOpacity);
+      if (swiftColor) paints.push({ type: "paint", helper, swiftColor });
     };
 
     for (const kind of node.style.paintOrder) {
@@ -252,9 +308,60 @@ function swiftNumber(value: number): string {
   return String(Object.is(value, -0) ? 0 : value);
 }
 
+function gradientStopLiteral(stop: GradientStop, opacity: number): string {
+  return `SVGGradientStop(offset: ${formatNumber(stop.offset)}, red: ${formatNumber(stop.color.red)}, green: ${formatNumber(stop.color.green)}, blue: ${formatNumber(stop.color.blue)}, alpha: ${formatNumber(stop.color.alpha * opacity)})`;
+}
+
+function renderGradientNode(
+  node: Extract<GeneratedViewNode, { type: "gradient" }>,
+  level: number,
+  indentation: string,
+): string[] {
+  const prefix = indentation.repeat(level);
+  const inner = indentation.repeat(level + 1);
+  const nested = indentation.repeat(level + 2);
+  const deep = indentation.repeat(level + 3);
+  const gradient = node.gradient;
+  const matrix = gradient.matrix;
+  const stops = gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ");
+  const transform = `CGAffineTransform(a: ${formatNumber(matrix.a)} * size.width / ${formatNumber(node.coordinateWidth)}, b: ${formatNumber(matrix.b)} * size.height / ${formatNumber(node.coordinateHeight)}, c: ${formatNumber(matrix.c)} * size.width / ${formatNumber(node.coordinateWidth)}, d: ${formatNumber(matrix.d)} * size.height / ${formatNumber(node.coordinateHeight)}, tx: ${formatNumber(matrix.e)} * size.width / ${formatNumber(node.coordinateWidth)}, ty: ${formatNumber(matrix.f)} * size.height / ${formatNumber(node.coordinateHeight)})`;
+  const lines = [
+    `${prefix}Canvas { context, size in`,
+    `${inner}let clipPath = ${node.helper}().path(in: CGRect(origin: .zero, size: size))`,
+    `${inner}let stops = [${stops}]`,
+    `${inner}if let gradient = svgGradient(stops: stops, spread: .${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${gradient.colorInterpolation === "linearRGB"}) {`,
+    `${nested}context.withCGContext { graphics in`,
+    `${deep}graphics.saveGState()`,
+    `${deep}graphics.addPath(clipPath.cgPath)`,
+    `${deep}graphics.clip()`,
+    `${deep}graphics.concatenate(${transform})`,
+  ];
+  if (gradient.type === "linearGradient") {
+    const dx = gradient.x2 - gradient.x1;
+    const dy = gradient.y2 - gradient.y1;
+    const startX = gradient.x1 + dx * gradient.startT;
+    const startY = gradient.y1 + dy * gradient.startT;
+    const endX = gradient.x1 + dx * gradient.endT;
+    const endY = gradient.y1 + dy * gradient.endT;
+    lines.push(
+      `${deep}graphics.drawLinearGradient(gradient, start: CGPoint(x: ${formatNumber(startX)}, y: ${formatNumber(startY)}), end: CGPoint(x: ${formatNumber(endX)}, y: ${formatNumber(endY)}), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+    );
+  } else {
+    const dx = gradient.cx - gradient.fx;
+    const dy = gradient.cy - gradient.fy;
+    const dr = gradient.r - gradient.fr;
+    lines.push(
+      `${deep}graphics.drawRadialGradient(gradient, startCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.startT)}, y: ${formatNumber(gradient.fy + dy * gradient.startT)}), startRadius: ${formatNumber(gradient.fr + dr * gradient.startT)}, endCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.endT)}, y: ${formatNumber(gradient.fy + dy * gradient.endT)}), endRadius: ${formatNumber(gradient.fr + dr * gradient.endT)}, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+    );
+  }
+  lines.push(`${deep}graphics.restoreGState()`, `${nested}}`, `${inner}}`, `${prefix}}`);
+  return lines;
+}
+
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
   if (node.type === "paint") return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
+  if (node.type === "gradient") return renderGradientNode(node, level, indentation);
   const lines = [`${prefix}ZStack {`];
   for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
   lines.push(`${prefix}}`);
@@ -262,6 +369,92 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   if (node.isolated) lines.push(`${prefix}.compositingGroup()`);
   if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
   return lines;
+}
+
+function containsGradientNode(nodes: GeneratedViewNode[]): boolean {
+  return nodes.some(
+    (node) => node.type === "gradient" || (node.type === "group" && containsGradientNode(node.children)),
+  );
+}
+
+function gradientSupport(indentationSize: number): string[] {
+  const indentation = " ".repeat(indentationSize);
+  return [
+    "private struct SVGGradientStop {",
+    `${indentation}let offset: CGFloat`,
+    `${indentation}let red: CGFloat`,
+    `${indentation}let green: CGFloat`,
+    `${indentation}let blue: CGFloat`,
+    `${indentation}let alpha: CGFloat`,
+    "}",
+    "",
+    "private enum SVGGradientSpread {",
+    `${indentation}case pad, reflect, repeating`,
+    "}",
+    "",
+    "private func svgLinearComponent(_ value: CGFloat) -> CGFloat {",
+    `${indentation}value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)`,
+    "}",
+    "",
+    "private func svgEncodedComponent(_ value: CGFloat) -> CGFloat {",
+    `${indentation}value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1 / 2.4) - 0.055`,
+    "}",
+    "",
+    "private func svgGradientPosition(_ value: CGFloat, spread: SVGGradientSpread) -> CGFloat {",
+    `${indentation}switch spread {`,
+    `${indentation}case .pad:`,
+    `${indentation}${indentation}return min(1, max(0, value))`,
+    `${indentation}case .repeating:`,
+    `${indentation}${indentation}return value - floor(value)`,
+    `${indentation}case .reflect:`,
+    `${indentation}${indentation}let period = value - floor(value / 2) * 2`,
+    `${indentation}${indentation}return period <= 1 ? period : 2 - period`,
+    `${indentation}}`,
+    "}",
+    "",
+    "private func svgGradient(stops: [SVGGradientStop], spread: SVGGradientSpread, startT: CGFloat, endT: CGFloat, linearRGB: Bool) -> CGGradient? {",
+    `${indentation}guard stops.count >= 2, endT > startT else { return nil }`,
+    `${indentation}let sampleCount = max(256, Int(ceil(abs(endT - startT) * 256)))`,
+    `${indentation}var components: [CGFloat] = []`,
+    `${indentation}var locations: [CGFloat] = []`,
+    `${indentation}components.reserveCapacity((sampleCount + 1) * 4)`,
+    `${indentation}locations.reserveCapacity(sampleCount + 1)`,
+    `${indentation}for index in 0...sampleCount {`,
+    `${indentation}${indentation}let location = CGFloat(index) / CGFloat(sampleCount)`,
+    `${indentation}${indentation}let source = startT + (endT - startT) * location`,
+    `${indentation}${indentation}let position = svgGradientPosition(source, spread: spread)`,
+    `${indentation}${indentation}var lower = stops[0]`,
+    `${indentation}${indentation}var upper = stops[stops.count - 1]`,
+    `${indentation}${indentation}for stop in stops {`,
+    `${indentation}${indentation}${indentation}if stop.offset <= position { lower = stop } else { upper = stop; break }`,
+    `${indentation}${indentation}}`,
+    `${indentation}${indentation}let distance = upper.offset - lower.offset`,
+    `${indentation}${indentation}let ratio = distance == 0 ? 0 : (position - lower.offset) / distance`,
+    `${indentation}${indentation}let lowerRed = linearRGB ? svgLinearComponent(lower.red) : lower.red`,
+    `${indentation}${indentation}let lowerGreen = linearRGB ? svgLinearComponent(lower.green) : lower.green`,
+    `${indentation}${indentation}let lowerBlue = linearRGB ? svgLinearComponent(lower.blue) : lower.blue`,
+    `${indentation}${indentation}let upperRed = linearRGB ? svgLinearComponent(upper.red) : upper.red`,
+    `${indentation}${indentation}let upperGreen = linearRGB ? svgLinearComponent(upper.green) : upper.green`,
+    `${indentation}${indentation}let upperBlue = linearRGB ? svgLinearComponent(upper.blue) : upper.blue`,
+    `${indentation}${indentation}var red = lowerRed + (upperRed - lowerRed) * ratio`,
+    `${indentation}${indentation}var green = lowerGreen + (upperGreen - lowerGreen) * ratio`,
+    `${indentation}${indentation}var blue = lowerBlue + (upperBlue - lowerBlue) * ratio`,
+    `${indentation}${indentation}if linearRGB {`,
+    `${indentation}${indentation}${indentation}red = svgEncodedComponent(red)`,
+    `${indentation}${indentation}${indentation}green = svgEncodedComponent(green)`,
+    `${indentation}${indentation}${indentation}blue = svgEncodedComponent(blue)`,
+    `${indentation}${indentation}}`,
+    `${indentation}${indentation}components.append(contentsOf: [red, green, blue, lower.alpha + (upper.alpha - lower.alpha) * ratio])`,
+    `${indentation}${indentation}locations.append(location)`,
+    `${indentation}}`,
+    `${indentation}let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!`,
+    `${indentation}return components.withUnsafeBufferPointer { componentBuffer in`,
+    `${indentation}${indentation}locations.withUnsafeBufferPointer { locationBuffer in`,
+    `${indentation}${indentation}${indentation}CGGradient(colorSpace: colorSpace, colorComponents: componentBuffer.baseAddress!, locations: locationBuffer.baseAddress!, count: locations.count)`,
+    `${indentation}${indentation}}`,
+    `${indentation}}`,
+    "}",
+  ];
 }
 
 function createView(
@@ -295,6 +488,7 @@ function createView(
     layerStruct[0] = `private ${layerStruct[0]}`;
     body.push("", ...layerStruct);
   }
+  if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
   return createStructTemplate({ name, indent: indentationSize, returnType: "View", body });
 }
 
@@ -330,7 +524,14 @@ export function generateView(
 ): GeneratedSwiftUI {
   const indentationSize = config.indentationSize ?? 4;
   const options = createOptions(svgProperties, document, config, true);
-  const context: ViewBuildContext = { options, helpers: [], nextLayer: 0, nextClip: 0 };
+  const context: ViewBuildContext = {
+    options,
+    helpers: [],
+    nextLayer: 0,
+    nextClip: 0,
+    document,
+    precision: config.precision ?? 10,
+  };
   const nodes = buildViewNodes(document.children, context);
   return {
     lines: createView(config.structName ?? "SVGView", nodes, context.helpers, indentationSize),

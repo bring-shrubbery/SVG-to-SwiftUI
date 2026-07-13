@@ -59,8 +59,9 @@ function containsIndependentCompositing(nodes: RenderNode[]): boolean {
 }
 
 function solidColor(paint: Paint, opacity: number): string | undefined {
-  if (paint.type !== "solid") return undefined;
-  return swiftUIColor(paint.value, opacity);
+  if (paint.type === "solid") return swiftUIColor(paint.value, opacity);
+  if (paint.type === "reference" && paint.fallback) return swiftUIColor(paint.fallback, opacity);
+  return undefined;
 }
 
 function hasIntrinsicAlpha(paint: Paint): boolean {
@@ -73,12 +74,18 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   const paints = collectVisiblePaints(document.children);
   const reasons: string[] = [];
   const needsViewportClip = containsViewportClip(document.children);
+  const hasGradientPaint = paints.some(({ paint }) => {
+    if (paint.type !== "reference") return false;
+    const server = document.resources.paints.get(paint.id);
+    return server?.type === "linearGradient" || server?.type === "radialGradient";
+  });
   const needsIndependentCompositing =
     containsIndependentCompositing(document.children) || paints.some(({ paint }) => hasIntrinsicAlpha(paint));
 
   if (
     config.preserveColors === false &&
     !needsViewportClip &&
+    !hasGradientPaint &&
     !needsIndependentCompositing &&
     !containsGeneralViewContent(document.children)
   ) {
@@ -91,13 +98,23 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
 
   if (containsGeneralViewContent(document.children)) reasons.push("document contains non-geometry view content");
   if (needsViewportClip) reasons.push("document contains a clipped nested viewport");
+  if (hasGradientPaint) reasons.push("document uses an SVG gradient paint server");
   if (needsIndependentCompositing) reasons.push("document uses independent paint or group opacity");
 
-  const colors = paints.map(({ paint, opacity }) => solidColor(paint, opacity));
+  const colors = paints.map(({ paint, opacity }) => {
+    if (paint.type === "reference") {
+      const server = document.resources.paints.get(paint.id);
+      if (server?.type === "linearGradient" || server?.type === "radialGradient") return `gradient:#${paint.id}`;
+    }
+    return solidColor(paint, opacity);
+  });
   const allColorsSupported = colors.every((color) => color !== undefined);
   if (!allColorsSupported) {
     return {
-      mode: containsGeneralViewContent(document.children) ? "view" : "shape",
+      mode:
+        config.preserveColors === true || containsGeneralViewContent(document.children) || hasGradientPaint
+          ? "view"
+          : "shape",
       reasons: ["one or more source paints require a future paint backend"],
       paintCount: paints.length,
     };
