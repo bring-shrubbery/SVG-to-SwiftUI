@@ -23,8 +23,13 @@ export interface TranspilerOptions {
   hasFills: boolean;
   /** Generate an independent paint layer instead of geometry for a shared silhouette. */
   separatePaintLayer: boolean;
+  hasStrokes: boolean;
   /** Active SVG fill-rule for the current path: "nonzero" | "evenodd". */
   fillRule: string;
+  /** SVG elements indexed by id, used to resolve <use> references. */
+  definitions: Map<string, import("svg-parser").ElementNode>;
+  /** Active <use> references, used to reject circular definitions. */
+  activeUseReferences: Set<string>;
 }
 
 export interface ViewBoxData {

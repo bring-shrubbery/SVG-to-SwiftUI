@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 64 32">
+  <title>Reusable map markers</title>
+  <desc>The same marker is referenced twice using SVG 1 and SVG 2 href syntax.</desc>
+  <defs>
+    <g id="marker">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 6 8 14 8 14s8-8 8-14c0-4.42-3.58-8-8-8Z" />
+      <circle cx="8" cy="8" r="3" fill="white" />
+    </g>
+  </defs>
+  <use href="#marker" x="8" y="5" />
+  <use xlink:href="#marker" x="40" y="5" />
+</svg>

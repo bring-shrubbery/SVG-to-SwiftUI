@@ -52,12 +52,41 @@ function svgHasFills(node: ElementNode, inheritedFill?: string): boolean {
   return false;
 }
 
+function svgHasStrokes(node: ElementNode, inheritedStroke?: string): boolean {
+  const ownStroke = node.properties?.stroke as string | undefined;
+  const style = node.properties?.style as string | undefined;
+  let effectiveStroke = ownStroke ?? inheritedStroke;
+
+  if (style) {
+    const match = /stroke\s*:\s*([^;]+)/.exec(style);
+    if (match) effectiveStroke = match[1]!.trim();
+  }
+
+  if (effectiveStroke && effectiveStroke !== "none") return true;
+  return node.children.some(
+    (child) => typeof child !== "string" && child.type === "element" && svgHasStrokes(child, effectiveStroke),
+  );
+}
+
+function collectDefinitions(node: ElementNode, definitions: Map<string, ElementNode>): void {
+  const id = node.properties?.id;
+  if (id !== undefined) definitions.set(String(id), node);
+
+  for (const child of node.children) {
+    if (typeof child !== "string" && child.type === "element") {
+      collectDefinitions(child, definitions);
+    }
+  }
+}
+
 function createRootOptions(
   svgProperties: SVGElementProperties,
-  hasFills: boolean,
+  svgElement: ElementNode,
   config?: SwiftUIGeneratorConfig,
   separatePaintLayer = false,
 ): TranspilerOptions {
+  const definitions = new Map<string, ElementNode>();
+  collectDefinitions(svgElement, definitions);
   return {
     ...svgProperties,
     precision: config?.precision ?? 10,
@@ -69,9 +98,12 @@ function createRootOptions(
     strokeExpansion: 0,
     reverseWinding: false,
     normalizeWindingCW: false,
-    hasFills,
+    hasFills: svgHasFills(svgElement),
+    hasStrokes: svgHasStrokes(svgElement),
     separatePaintLayer,
     fillRule: "nonzero",
+    definitions,
+    activeUseReferences: new Set<string>(),
   };
 }
 
@@ -148,10 +180,7 @@ function swiftUIGenerator(svgElement: ElementNode, config?: SwiftUIGeneratorConf
     (config?.preserveColors === true || (config?.preserveColors === undefined && distinctColors.size > 1));
 
   if (preservesColors) {
-    const layers = collectPaintLayers(
-      svgElement,
-      createRootOptions(svgProperties, svgHasFills(svgElement), config, true),
-    );
+    const layers = collectPaintLayers(svgElement, createRootOptions(svgProperties, svgElement, config, true));
     const fullSwiftUIView = createMulticolorView(
       configWithDefaults.structName ?? "SVGView",
       layers,
@@ -171,7 +200,7 @@ function swiftUIGenerator(svgElement: ElementNode, config?: SwiftUIGeneratorConf
   }
 
   // The initial options passed to the first element.
-  const rootTranspilerOptions = createRootOptions(svgProperties, svgHasFills(svgElement), config);
+  const rootTranspilerOptions = createRootOptions(svgProperties, svgElement, config);
 
   // Generate SwiftUI Shape body.
   const generatedBody = handleElement(svgElement, rootTranspilerOptions);

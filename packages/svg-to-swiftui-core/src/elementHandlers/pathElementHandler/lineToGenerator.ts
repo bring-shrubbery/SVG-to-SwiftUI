@@ -4,8 +4,8 @@ import type { SwiftGenerator } from "../types";
 export const generateLineToSwift: SwiftGenerator<{ x: number; y: number }> = (data, options) => {
   const xy = stringifyRectValues(
     {
-      x: data.x / options.viewBox.width,
-      y: data.y / options.viewBox.height,
+      x: (data.x - options.viewBox.x) / options.viewBox.width,
+      y: (data.y - options.viewBox.y) / options.viewBox.height,
     },
     options.precision,
   );

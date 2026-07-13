@@ -35,8 +35,8 @@ export function parsePointsToSwift(points: string, options: TranspilerOptions, c
   const lines: string[] = [];
 
   for (let i = 0; i < nums.length; i += 2) {
-    const nx = nums[i]! / options.viewBox.width;
-    const ny = nums[i + 1]! / options.viewBox.height;
+    const nx = (nums[i]! - options.viewBox.x) / options.viewBox.width;
+    const ny = (nums[i + 1]! - options.viewBox.y) / options.viewBox.height;
     const sx = clampNormalisedSizeProduct(toFixed(nx), "width");
     const sy = clampNormalisedSizeProduct(toFixed(ny), "height");
 

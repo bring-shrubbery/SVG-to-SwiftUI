@@ -11,6 +11,25 @@ import handlePathElement from "./pathElementHandler";
 import handlePolygonElement from "./polygonElementHandler";
 import handlePolylineElement from "./polylineElementHandler";
 import handleRectElement from "./rectElementHandler";
+import handleSwitchElement from "./switchElementHandler";
+import handleUseElement from "./useElementHandler";
+
+const NON_RENDERING_ELEMENTS = new Set([
+  "defs",
+  "symbol",
+  "title",
+  "desc",
+  "metadata",
+  "style",
+  "script",
+  "linearGradient",
+  "radialGradient",
+  "stop",
+  "pattern",
+  "clipPath",
+  "mask",
+  "marker",
+]);
 
 interface PresentationStyle {
   hasFill: boolean;
@@ -100,20 +119,20 @@ function buildStrokeLines(lines: string[], style: PresentationStyle, options: Tr
   }
 
   if (isLightStroke) {
-    // Light strokes create holes by ensuring CCW winding
-    return [
-      `var ${varName} = Path()`,
-      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
-      `path.addPath(${varName}.ccwStrokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
-    ];
-  }
-
-  if (options.hasFills) {
-    // Dark strokes over fills: use cwStrokedPath to prevent unwanted holes
+    // Light strokes use the opposite winding from the document's dark geometry.
     return [
       `var ${varName} = Path()`,
       ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
       `path.addPath(${varName}.cwStrokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
+    ];
+  }
+
+  if (options.hasFills) {
+    // Keep CoreGraphics' natural stroke winding so it matches primitive paths.
+    return [
+      `var ${varName} = Path()`,
+      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      `path.addPath(${strokeCall})`,
     ];
   }
 
@@ -140,10 +159,15 @@ function wrapWithStroke(lines: string[], style: PresentationStyle, options: Tran
 }
 
 export function handleElement(element: ElementNode, options: TranspilerOptions): string[] {
+  if (NON_RENDERING_ELEMENTS.has(element.tagName ?? "")) return [];
+
   // Groups/svg delegate directly without stroke handling
-  if (element.tagName === "g" || element.tagName === "svg") {
+  if (element.tagName === "g" || element.tagName === "svg" || element.tagName === "a") {
     return handleGroupElement(element, options);
   }
+
+  if (element.tagName === "use") return handleUseElement(element, options);
+  if (element.tagName === "switch") return handleSwitchElement(element, options);
 
   const style = extractPresentationStyle(element, options.parentStyle);
 
@@ -156,13 +180,9 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
     }
   }
 
-  // For fill+stroke elements, expand geometry by half stroke width
+  // Stroke geometry is emitted separately after the element is converted.
   const prevExpansion = options.strokeExpansion;
-  if (style.hasFill && style.hasStroke) {
-    options.strokeExpansion = style.strokeWidth / 2;
-  } else {
-    options.strokeExpansion = 0;
-  }
+  options.strokeExpansion = 0;
 
   // Enable winding normalization only for filled paths using winding rule (not stroke-only, not evenodd)
   const prevNormalize = options.normalizeWindingCW;
@@ -213,6 +233,8 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
         ].join("\n"),
       );
       options.strokeExpansion = prevExpansion;
+      options.normalizeWindingCW = prevNormalize;
+      options.fillRule = prevFillRule;
       return [];
   }
 
@@ -241,17 +263,25 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
   const LIGHT_FILLS = new Set(["white", "#fff", "#ffffff", "rgb(255,255,255)"]);
   const isLightFill = style.hasFill && LIGHT_FILLS.has(fillColor.replace(/\s/g, ""));
 
-  let resultLines = wrapWithStroke(rawLines, style, options);
-
-  // For light-fill elements, reverse winding direction to create holes
-  if (!options.separatePaintLayer && isLightFill && resultLines.length > 0) {
+  const shouldReverseFill = options.hasStrokes ? !isLightFill : isLightFill;
+  let fillLines = rawLines;
+  if (!options.separatePaintLayer && style.hasFill && shouldReverseFill && rawLines.length > 0) {
     options.lastPathId++;
     const holeVar = `_hole${options.lastPathId}`;
-    resultLines = [
+    fillLines = [
       `var ${holeVar} = Path()`,
-      ...resultLines.map((l) => l.replace(/^path\./, `${holeVar}.`)),
+      ...rawLines.map((l) => l.replace(/^path\./, `${holeVar}.`)),
       `path.addReversedPath(${holeVar})`,
     ];
+  }
+
+  let resultLines: string[];
+  if (style.hasFill && style.hasStroke) {
+    resultLines = [...fillLines, ...buildStrokeLines(rawLines, style, options)];
+  } else if (style.hasFill) {
+    resultLines = fillLines;
+  } else {
+    resultLines = wrapWithStroke(rawLines, style, options);
   }
 
   return wrapWithSVGTransform(resultLines, getSVGTransform(element), options);

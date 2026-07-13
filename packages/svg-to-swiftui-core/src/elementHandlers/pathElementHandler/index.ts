@@ -237,8 +237,7 @@ function pointInPolygon(pt: SimplePoint, polygon: SimplePoint[]): boolean {
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[i]!;
     const b = polygon[j]!;
-    const intersects =
-      a.y > pt.y !== b.y > pt.y && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y || 1e-12) + a.x;
+    const intersects = a.y > pt.y !== b.y > pt.y && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y || 1e-12) + a.x;
     if (intersects) inside = !inside;
   }
   return inside;
@@ -360,11 +359,7 @@ export default function handlePathElement(element: ElementNode, options: Transpi
     // non-zero fill of the resulting Path produces the same visual as evenodd.
     if (options.fillRule === "evenodd") {
       try {
-        const normalized = new SVGPathData(props.d)
-          .toAbs()
-          .normalizeHVZ(false, true, true)
-          .normalizeST()
-          .aToC();
+        const normalized = new SVGPathData(props.d).toAbs().normalizeHVZ(false, true, true).normalizeST().aToC();
         const converted = evenOddToNonZero(normalized.commands);
         return convertPathToSwift(converted, options);
       } catch {
@@ -410,6 +405,10 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
 
   // Track the last quad control point for T (smooth quad) command chaining
   let lastQuadControl: { x: number; y: number } | null = null;
+  let currentX = 0;
+  let currentY = 0;
+  let subpathStartX = 0;
+  let subpathStartY = 0;
 
   for (let i = 0; i < data.length; i++) {
     const el = data[i];
@@ -421,6 +420,10 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
         swiftAccumulator.push(...generateMoveToSwift(d, options));
+        currentX = d.x;
+        currentY = d.y;
+        subpathStartX = d.x;
+        subpathStartY = d.y;
         break;
       }
       // Command L
@@ -428,6 +431,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
         swiftAccumulator.push(...generateLineToSwift(d, options));
+        currentX = d.x;
+        currentY = d.y;
         break;
       }
       // Command H
@@ -435,30 +440,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
 
-        let y = 0;
-
-        for (let li = i - 1; li >= 0; li--) {
-          const prevElement = data[li];
-
-          if (
-            prevElement?.type === SVGPathData.MOVE_TO ||
-            prevElement?.type === SVGPathData.LINE_TO ||
-            prevElement?.type === SVGPathData.VERT_LINE_TO ||
-            prevElement?.type === SVGPathData.CURVE_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_CURVE_TO ||
-            prevElement?.type === SVGPathData.QUAD_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO ||
-            prevElement?.type === SVGPathData.ARC
-          ) {
-            y = prevElement.y;
-            break;
-          } else if (prevElement?.type === SVGPathData.HORIZ_LINE_TO) {
-          } else {
-            break;
-          }
-        }
-
-        swiftAccumulator.push(...generateLineToSwift({ x: d.x, y }, options));
+        swiftAccumulator.push(...generateLineToSwift({ x: d.x, y: currentY }, options));
+        currentX = d.x;
         break;
       }
       // Command V
@@ -466,36 +449,15 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
 
-        let x = 0;
-
-        // Go backwards until a command with x value is found.
-        for (let li = i - 1; li >= 0; li--) {
-          const prevElement = data[li];
-
-          if (
-            prevElement?.type === SVGPathData.MOVE_TO ||
-            prevElement?.type === SVGPathData.LINE_TO ||
-            prevElement?.type === SVGPathData.HORIZ_LINE_TO ||
-            prevElement?.type === SVGPathData.CURVE_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_CURVE_TO ||
-            prevElement?.type === SVGPathData.QUAD_TO ||
-            prevElement?.type === SVGPathData.SMOOTH_QUAD_TO ||
-            prevElement?.type === SVGPathData.ARC
-          ) {
-            x = prevElement.x;
-            break;
-          } else if (prevElement?.type === SVGPathData.VERT_LINE_TO) {
-          } else {
-            break;
-          }
-        }
-
-        swiftAccumulator.push(...generateLineToSwift({ x, y: d.y }, options));
+        swiftAccumulator.push(...generateLineToSwift({ x: currentX, y: d.y }, options));
+        currentY = d.y;
         break;
       }
       // Command Z
       case SVGPathData.CLOSE_PATH: {
         swiftAccumulator.push(...generateClosePathSwift(null, options));
+        currentX = subpathStartX;
+        currentY = subpathStartY;
         break;
       }
       // Command Q
@@ -504,6 +466,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         const { type, relative, ...d } = el;
         lastQuadControl = { x: d.x1, y: d.y1 };
         swiftAccumulator.push(...generateQuadCurveSwift(d, options));
+        currentX = d.x;
+        currentY = d.y;
         break;
       }
       // Command T
@@ -521,18 +485,17 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
           lastQuadControl &&
           (prevElement?.type === SVGPathData.QUAD_TO || prevElement?.type === SVGPathData.SMOOTH_QUAD_TO)
         ) {
-          x1 = prevElement.x + (prevElement.x - lastQuadControl.x);
-          y1 = prevElement.y + (prevElement.y - lastQuadControl.y);
-        } else if (prevElement && "x" in prevElement && "y" in prevElement) {
-          x1 = prevElement.x as number;
-          y1 = prevElement.y as number;
+          x1 = 2 * currentX - lastQuadControl.x;
+          y1 = 2 * currentY - lastQuadControl.y;
         } else {
-          x1 = d.x;
-          y1 = d.y;
+          x1 = currentX;
+          y1 = currentY;
         }
 
         lastQuadControl = { x: x1, y: y1 };
         swiftAccumulator.push(...generateQuadCurveSwift({ ...d, x1, y1 }, options));
+        currentX = d.x;
+        currentY = d.y;
         break;
       }
       // Command C
@@ -540,6 +503,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
         swiftAccumulator.push(...generateCubicCurveSwift(d, options));
+        currentX = d.x;
+        currentY = d.y;
         break;
       }
       // Command S
@@ -554,19 +519,18 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         let y1: number;
 
         if (prevElement?.type === SVGPathData.CURVE_TO || prevElement?.type === SVGPathData.SMOOTH_CURVE_TO) {
-          x1 = prevElement.x + (prevElement.x - prevElement.x2);
-          y1 = prevElement.y + (prevElement.y - prevElement.y2);
-        } else if (prevElement && "x" in prevElement && "y" in prevElement) {
-          x1 = prevElement.x as number;
-          y1 = prevElement.y as number;
+          x1 = 2 * currentX - prevElement.x2;
+          y1 = 2 * currentY - prevElement.y2;
         } else {
-          x1 = d.x;
-          y1 = d.y;
+          x1 = currentX;
+          y1 = currentY;
         }
 
         const swiftLines = generateCubicCurveSwift({ ...d, x1, y1 }, options);
 
         swiftAccumulator.push(...swiftLines);
+        currentX = d.x;
+        currentY = d.y;
         break;
       }
       // Command A
@@ -574,43 +538,9 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { type, relative, ...d } = el;
 
-        // Find the current point (start of the arc)
-        let startX = 0;
-        let startY = 0;
-        let foundX = false;
-        let foundY = false;
-        for (let li = i - 1; li >= 0 && (!foundX || !foundY); li--) {
-          const prev = data[li];
-          if (
-            prev?.type === SVGPathData.MOVE_TO ||
-            prev?.type === SVGPathData.LINE_TO ||
-            prev?.type === SVGPathData.CURVE_TO ||
-            prev?.type === SVGPathData.SMOOTH_CURVE_TO ||
-            prev?.type === SVGPathData.QUAD_TO ||
-            prev?.type === SVGPathData.SMOOTH_QUAD_TO ||
-            prev?.type === SVGPathData.ARC
-          ) {
-            if (!foundX) startX = prev.x;
-            if (!foundY) startY = prev.y;
-            break;
-          } else if (prev?.type === SVGPathData.HORIZ_LINE_TO) {
-            if (!foundX) {
-              startX = prev.x;
-              foundX = true;
-            }
-          } else if (prev?.type === SVGPathData.VERT_LINE_TO) {
-            if (!foundY) {
-              startY = prev.y;
-              foundY = true;
-            }
-          } else {
-            break;
-          }
-        }
-
         const curves = arcToCubicCurves({
-          x1: startX,
-          y1: startY,
+          x1: currentX,
+          y1: currentY,
           rx: d.rX,
           ry: d.rY,
           xAxisRotation: d.xRot,
@@ -623,6 +553,8 @@ const convertPathToSwift: SwiftGenerator<SVGCommand[]> = (data, options) => {
         for (const curve of curves) {
           swiftAccumulator.push(...generateCubicCurveSwift(curve, options));
         }
+        currentX = d.x;
+        currentY = d.y;
         break;
       }
     }

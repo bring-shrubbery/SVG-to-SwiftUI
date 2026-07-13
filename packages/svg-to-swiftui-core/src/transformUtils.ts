@@ -11,9 +11,10 @@ export interface AffineTransform {
   f: number;
 }
 
-const IDENTITY: AffineTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+export type SVGTransform = AffineTransform;
+export const IDENTITY_TRANSFORM: AffineTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
-function multiply(left: AffineTransform, right: AffineTransform): AffineTransform {
+export function multiplyTransforms(left: AffineTransform, right: AffineTransform): AffineTransform {
   return {
     a: left.a * right.a + left.c * right.b,
     b: left.b * right.a + left.d * right.b,
@@ -91,17 +92,15 @@ function transformFunction(name: string, values: number[]): AffineTransform {
 /** Parse an SVG transform list and apply its functions in the declared order. */
 export function parseSVGTransform(value: string): AffineTransform {
   const functionPattern = /([a-zA-Z]+)\s*\(([^)]*)\)/g;
-  let matrix = IDENTITY;
+  let matrix = IDENTITY_TRANSFORM;
   let lastIndex = 0;
   let matched = false;
 
   for (const match of value.matchAll(functionPattern)) {
     const separator = value.slice(lastIndex, match.index);
-    if (!/^[\s,]*$/.test(separator)) {
-      throw new Error(`Invalid SVG transform list: ${value}`);
-    }
+    if (!/^[\s,]*$/.test(separator)) throw new Error(`Invalid SVG transform list: ${value}`);
 
-    matrix = multiply(matrix, transformFunction(match[1]!, parseNumbers(match[2]!)));
+    matrix = multiplyTransforms(matrix, transformFunction(match[1]!, parseNumbers(match[2]!)));
     lastIndex = (match.index ?? 0) + match[0].length;
     matched = true;
   }
@@ -109,8 +108,11 @@ export function parseSVGTransform(value: string): AffineTransform {
   if (!matched || !/^[\s,]*$/.test(value.slice(lastIndex))) {
     throw new Error(`Invalid SVG transform list: ${value}`);
   }
-
   return matrix;
+}
+
+export function parseTransform(value: unknown): AffineTransform {
+  return typeof value === "string" && value.trim() ? parseSVGTransform(value) : IDENTITY_TRANSFORM;
 }
 
 export function getSVGTransform(element: ElementNode | RootNode): string | undefined {
@@ -124,7 +126,6 @@ export function getSVGTransform(element: ElementNode | RootNode): string | undef
     const match = /(?:^|;)\s*transform\s*:\s*([^;]+)/i.exec(style);
     if (match?.[1]?.trim()) return match[1].trim();
   }
-
   return undefined;
 }
 
@@ -147,10 +148,23 @@ function swiftTransform(matrix: AffineTransform, options: TranspilerOptions): st
   const b = scaledRuntimeValue(matrix.b * (viewBox.width / viewBox.height), "height/width", precision);
   const c = scaledRuntimeValue(matrix.c * (viewBox.height / viewBox.width), "width/height", precision);
   const d = formatNumber(matrix.d, precision);
-  const tx = clampNormalisedSizeProduct(formatNumber(matrix.e / viewBox.width, precision), "width");
-  const ty = clampNormalisedSizeProduct(formatNumber(matrix.f / viewBox.height, precision), "height");
+  const translatedX = matrix.a * viewBox.x + matrix.c * viewBox.y + matrix.e - viewBox.x;
+  const translatedY = matrix.b * viewBox.x + matrix.d * viewBox.y + matrix.f - viewBox.y;
+  const tx = clampNormalisedSizeProduct(formatNumber(translatedX / viewBox.width, precision), "width");
+  const ty = clampNormalisedSizeProduct(formatNumber(translatedY / viewBox.height, precision), "height");
 
   return `CGAffineTransform(a: ${a}, b: ${b}, c: ${c}, d: ${d}, tx: ${tx}, ty: ${ty})`;
+}
+
+function wrapWithMatrix(lines: string[], matrix: AffineTransform, options: TranspilerOptions): string[] {
+  if (lines.length === 0) return lines;
+  options.lastPathId++;
+  const variable = `transformPath${options.lastPathId}`;
+  return [
+    `var ${variable} = Path()`,
+    ...lines.map((line) => line.replace(/^path\./, `${variable}.`)),
+    `path.addPath(${variable}.applying(${swiftTransform(matrix, options)}))`,
+  ];
 }
 
 export function wrapWithSVGTransform(
@@ -158,15 +172,16 @@ export function wrapWithSVGTransform(
   transform: string | undefined,
   options: TranspilerOptions,
 ): string[] {
-  if (!transform || lines.length === 0) return lines;
+  return transform ? wrapWithMatrix(lines, parseSVGTransform(transform), options) : lines;
+}
 
-  const matrix = parseSVGTransform(transform);
-  options.lastPathId++;
-  const variable = `transformPath${options.lastPathId}`;
-
-  return [
-    `var ${variable} = Path()`,
-    ...lines.map((line) => line.replace(/^path\./, `${variable}.`)),
-    `path.addPath(${variable}.applying(${swiftTransform(matrix, options)}))`,
-  ];
+export function wrapWithTransform(lines: string[], transform: AffineTransform, options: TranspilerOptions): string[] {
+  const isIdentity =
+    transform.a === 1 &&
+    transform.b === 0 &&
+    transform.c === 0 &&
+    transform.d === 1 &&
+    transform.e === 0 &&
+    transform.f === 0;
+  return isIdentity ? lines : wrapWithMatrix(lines, transform, options);
 }

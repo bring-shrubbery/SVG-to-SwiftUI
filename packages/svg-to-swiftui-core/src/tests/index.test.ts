@@ -220,3 +220,72 @@ test("convert-nonzero-two-rects", () => {
   });
   expect(result).toBe(expectedResult);
 });
+
+describe("structural SVG elements", () => {
+  test("renders defs through href and xlink:href use elements", () => {
+    const result = convert(
+      `<svg viewBox="0 0 40 20" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <defs><path id="diamond" d="M5 0 10 5 5 10 0 5Z" /></defs>
+        <use href="#diamond" x="2" y="5" />
+        <use xlink:href="#diamond" x="22" y="5" />
+      </svg>`,
+      { precision: 4 },
+    );
+
+    expect(result.match(/var transformPath/g)).toHaveLength(2);
+    expect(result).toContain("tx: 0.05*width");
+    expect(result).toContain("tx: 0.55*width");
+  });
+
+  test("renders a symbol into the use viewport", () => {
+    const result = convert(
+      `<svg viewBox="0 0 100 50">
+        <defs><symbol id="icon" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" /></symbol></defs>
+        <use href="#icon" x="25" width="50" height="50" />
+      </svg>`,
+      { precision: 4 },
+    );
+
+    expect(result).toContain("a: 5");
+    expect(result).toContain("tx: 0.25*width");
+    expect(result).toContain("path.addPath(transformPath");
+  });
+
+  test("supports transforms on groups and shapes", () => {
+    const result = convert(
+      `<svg viewBox="0 0 100 100"><g transform="translate(10 20) rotate(45)"><rect width="20" height="10" /></g></svg>`,
+      { precision: 4 },
+    );
+
+    expect(result).toContain("CGAffineTransform(a: 0.7071");
+    expect(result).toContain("tx: 0.1*width");
+    expect(result).toContain("ty: 0.2*height");
+  });
+
+  test("renders links and only the first switch fallback", () => {
+    const result = convert(
+      `<svg viewBox="0 0 20 20"><switch><a href="/first"><circle cx="5" cy="5" r="5" /></a><rect width="20" height="20" /></switch></svg>`,
+    );
+
+    expect(result).toContain("path.addEllipse");
+    expect(result).not.toContain("path.addRect");
+  });
+
+  test("ignores definition and accessibility-only elements", () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const result = convert(
+      `<svg viewBox="0 0 10 10"><title>Square</title><desc>An icon</desc><metadata>data</metadata><defs><style>.x{fill:black}</style></defs><rect width="10" height="10" /></svg>`,
+    );
+
+    expect(result).toContain("path.addRect");
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  test("rejects missing and circular use references", () => {
+    expect(() => convert(`<svg viewBox="0 0 10 10"><use href="#missing" /></svg>`)).toThrow("missing element #missing");
+    expect(() =>
+      convert(`<svg viewBox="0 0 10 10"><defs><g id="loop"><use href="#loop" /></g></defs><use href="#loop" /></svg>`),
+    ).toThrow("circular reference");
+  });
+});

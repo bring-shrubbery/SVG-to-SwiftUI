@@ -6,6 +6,8 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "declaration": true,
+    "downlevelIteration": true,
+    "incremental": false,
     "rootDir": ".",
     "outDir": "dist",
     "noImplicitAny": false,

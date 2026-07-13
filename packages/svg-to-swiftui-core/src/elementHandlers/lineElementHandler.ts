@@ -26,10 +26,10 @@ export default function handleLineElement(element: ElementNode, options: Transpi
 
   const toFixed = (v: number) => v.toFixed(options.precision).replace(/0+$/, "");
 
-  const nx1 = x1 / options.viewBox.width;
-  const ny1 = y1 / options.viewBox.height;
-  const nx2 = x2 / options.viewBox.width;
-  const ny2 = y2 / options.viewBox.height;
+  const nx1 = (x1 - options.viewBox.x) / options.viewBox.width;
+  const ny1 = (y1 - options.viewBox.y) / options.viewBox.height;
+  const nx2 = (x2 - options.viewBox.x) / options.viewBox.width;
+  const ny2 = (y2 - options.viewBox.y) / options.viewBox.height;
 
   const sx1 = clampNormalisedSizeProduct(toFixed(nx1), "width");
   const sy1 = clampNormalisedSizeProduct(toFixed(ny1), "height");

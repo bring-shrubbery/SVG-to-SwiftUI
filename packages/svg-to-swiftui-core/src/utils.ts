@@ -158,15 +158,15 @@ interface RectOrPosition {
 export function normaliseRectValues(rect: RectOrPosition, viewBox: ViewBoxData): RectOrPosition {
   if (rect.width && rect.height) {
     return {
-      x: rect.x / viewBox.width,
-      y: rect.y / viewBox.height,
+      x: (rect.x - viewBox.x) / viewBox.width,
+      y: (rect.y - viewBox.y) / viewBox.height,
       width: rect.width / viewBox.width,
       height: rect.height / viewBox.height,
     };
   } else {
     return {
-      x: rect.x / viewBox.width,
-      y: rect.y / viewBox.height,
+      x: (rect.x - viewBox.x) / viewBox.width,
+      y: (rect.y - viewBox.y) / viewBox.height,
     };
   }
 }

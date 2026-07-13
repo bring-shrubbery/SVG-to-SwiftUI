@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40">
+  <switch>
+    <a href="https://example.com">
+      <path d="M5 20 20 5l15 15-15 15Z" />
+    </a>
+    <circle cx="20" cy="20" r="20" />
+  </switch>
+  <rect x="40" y="10" width="15" height="20" rx="3" />
+</svg>

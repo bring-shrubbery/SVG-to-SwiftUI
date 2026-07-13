@@ -36,37 +36,30 @@ You can run the tests by running following command:
 ## Roadmap
 
 - [x] SVG `<path>` element
-  - [ ] Line commands
+  - [x] Line commands
     - [x] `M`
-    - [ ] `m`
+    - [x] `m`
     - [x] `L`
-    - [ ] `l`
+    - [x] `l`
     - [x] `H`
-    - [ ] `h`
+    - [x] `h`
     - [x] `V`
-    - [ ] `v`
+    - [x] `v`
     - [x] `Z`
-    - [ ] `z`
-  - [ ] Curve commands
-    - [ ] `C`
-    - [ ] `c`
-    - [ ] `S`
-    - [ ] `s`
-    - [ ] `Q`
-    - [ ] `q`
-    - [ ] `T`
-    - [ ] `t`
-    - [ ] `A`
-    - [ ] `a`
+    - [x] `z`
+  - [x] Curve commands (`C`, `S`, `Q`, `T`, `A`, absolute and relative)
 - [x] SVG `<circle>` element
 - [x] SVG `<rect>` element
 - [x] SVG `<ellipse>` element
+- [x] SVG `<line>` element
+- [x] SVG `<polygon>` element
+- [x] SVG `<polyline>` element
+- [x] SVG `<g>` and `<a>` containers
+- [x] SVG `<switch>` fallbacks
+- [x] SVG `<defs>`, `<symbol>`, and local `<use>` references
+- [x] SVG transforms (`matrix`, `translate`, `scale`, `rotate`, `skewX`, `skewY`)
 - [x] Solid fill/stroke styling with colours
 - [ ] SVG `<text>` element
-- [ ] SVG `<g>` element with autmatic grouping into sub-paths in SwiftUI
-- [ ] SVG `<polygon>` element
-- [ ] SVG `<polyline>` element
-- [ ] AVG `<arc>` element
 - [ ] Automatic animation support
 
 ## Built With

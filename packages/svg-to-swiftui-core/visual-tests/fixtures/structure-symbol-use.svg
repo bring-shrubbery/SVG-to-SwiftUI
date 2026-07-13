@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+  <defs>
+    <symbol id="badge" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="10" />
+      <path d="M4 8h4V4h4v4h4v4h-4v4H8v-4H4Z" fill="white" />
+    </symbol>
+  </defs>
+  <use href="#badge" x="5" width="40" height="40" />
+  <use href="#badge" x="55" y="5" width="40" height="40" />
+</svg>

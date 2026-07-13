@@ -1,9 +1,7 @@
 import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
-const currentDir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
-const contentDirectory = resolve(currentDir, "../../content");
+const contentDirectory = resolve(__dirname, "../../content");
 
 /**
  * Will load a file from `content` directory in the root of
