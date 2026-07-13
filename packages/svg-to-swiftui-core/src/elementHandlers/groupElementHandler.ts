@@ -1,5 +1,6 @@
 import type { ElementNode, RootNode } from "svg-parser";
 import { extractStyle } from "../styleUtils";
+import { getSVGTransform, wrapWithSVGTransform } from "../transformUtils";
 import type { TranspilerOptions } from "../types";
 import { handleElement } from "./index";
 
@@ -18,8 +19,9 @@ export default function handleGroupElement(element: ElementNode | RootNode, opti
     // no style to extract
   }
 
-  // Merge this group's style into the inherited parent style chain
-  const mergedParentStyle = { ...options.parentStyle, ...ownStyle };
+  // Transform is applied to the completed group path and is not inherited as style.
+  const { transform: _transform, ...presentationStyle } = ownStyle;
+  const mergedParentStyle = { ...options.parentStyle, ...presentationStyle };
 
   // For each child run the generator, accumulate swift string and return it.
   const acc: string[] = [];
@@ -44,5 +46,5 @@ export default function handleGroupElement(element: ElementNode | RootNode, opti
     options.lastPathId = childOptions.lastPathId;
   }
 
-  return acc;
+  return wrapWithSVGTransform(acc, getSVGTransform(element), options);
 }

@@ -48,6 +48,11 @@ struct Path {
     mutating func addPath(_ other: Path) {
         _path.addPath(other.cgPath)
     }
+    func applying(_ transform: CGAffineTransform) -> Path {
+        var result = Path()
+        result._path.addPath(cgPath, transform: transform)
+        return result
+    }
     mutating func addReversedPath(_ other: Path) {
         struct Elem {
             var type: CGPathElementType
