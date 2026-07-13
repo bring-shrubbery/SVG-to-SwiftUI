@@ -5,7 +5,9 @@
 [![Downloads/month](https://img.shields.io/npm/dm/svg-to-swiftui-core.svg)](https://npmjs.org/package/svg-to-swiftui-core)
 [![License](https://img.shields.io/npm/l/svg-to-swiftui-core.svg)](LICENSE.md)
 
-This is the core transpiler code that you can use to convert raw SVG code into SwiftUI Shape struct that you can use directly in your SwiftUI Project.
+This is the core transpiler code that you can use to convert raw SVG code into native SwiftUI structures for your project.
+
+Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to force the legacy single-shape output, or `preserveColors: true` to retain the original paint for a single-color SVG.
 
 ## Before we start
 
@@ -59,7 +61,7 @@ You can run the tests by running following command:
 - [x] SVG `<circle>` element
 - [x] SVG `<rect>` element
 - [x] SVG `<ellipse>` element
-- [ ] Fill/stroke styling with colours
+- [x] Solid fill/stroke styling with colours
 - [ ] SVG `<text>` element
 - [ ] SVG `<g>` element with autmatic grouping into sub-paths in SwiftUI
 - [ ] SVG `<polygon>` element

@@ -91,6 +91,14 @@ function buildStrokeLines(lines: string[], style: PresentationStyle, options: Tr
   const varName = `strokePath${options.lastPathId}`;
   const strokeCall = `${varName}.strokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit}))`;
 
+  if (options.separatePaintLayer) {
+    return [
+      `var ${varName} = Path()`,
+      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      `path.addPath(${strokeCall})`,
+    ];
+  }
+
   if (isLightStroke) {
     // Light strokes create holes by ensuring CCW winding
     return [
@@ -236,7 +244,7 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
   let resultLines = wrapWithStroke(rawLines, style, options);
 
   // For light-fill elements, reverse winding direction to create holes
-  if (isLightFill && resultLines.length > 0) {
+  if (!options.separatePaintLayer && isLightFill && resultLines.length > 0) {
     options.lastPathId++;
     const holeVar = `_hole${options.lastPathId}`;
     resultLines = [

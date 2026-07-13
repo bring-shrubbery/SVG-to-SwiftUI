@@ -116,6 +116,9 @@ async function main() {
       const swiftCode = convert(svgString, {
         structName: `S${items.length}`,
         precision: 5,
+        // This CoreGraphics harness tests shared silhouette geometry. Multicolor
+        // View output is covered separately because it has no single path(in:).
+        preserveColors: false,
       });
 
       items.push({

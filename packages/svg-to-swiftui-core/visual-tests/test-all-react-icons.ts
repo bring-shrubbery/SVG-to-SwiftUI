@@ -154,7 +154,11 @@ async function main() {
         const svg = iconDataToSvg(iconData);
 
         try {
-          const swiftCode = convert(svg, { structName: `S${visualItems.length}`, precision: 5 });
+          const swiftCode = convert(svg, {
+            structName: `S${visualItems.length}`,
+            precision: 5,
+            preserveColors: false,
+          });
 
           const testName = `${id}-${iconName}`.replace(/[^a-z0-9-]/g, "-");
           const resvg = new Resvg(svg, {

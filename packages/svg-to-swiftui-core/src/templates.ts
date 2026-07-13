@@ -3,12 +3,14 @@ import type { SwiftUIGeneratorConfig, ViewBoxData } from "./types";
 export const createUsageCommentTemplate = ({
   config,
   viewBox,
+  preservesColors = false,
 }: {
   config: SwiftUIGeneratorConfig;
   viewBox: ViewBoxData;
+  preservesColors?: boolean;
 }) => [
-  "// To use this shape, just add it to your SwiftUI View:",
-  `// ${config.structName}().fill().frame(width: ${viewBox.width}, height: ${viewBox.height})`,
+  `// To use this ${preservesColors ? "view" : "shape"}, just add it to your SwiftUI View:`,
+  `// ${config.structName}()${preservesColors ? "" : ".fill()"}.frame(width: ${viewBox.width}, height: ${viewBox.height})`,
 ];
 
 type ParameterName = string;
