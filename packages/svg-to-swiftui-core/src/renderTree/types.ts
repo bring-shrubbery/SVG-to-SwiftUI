@@ -337,6 +337,7 @@ export interface RenderGroup {
 export interface RenderText {
   type: "text";
   text: string;
+  chunks: RenderTextChunk[];
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
@@ -344,6 +345,37 @@ export interface RenderText {
   paintContext: NodeCoordinateContext;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+}
+
+export interface RenderTextChunk {
+  x?: number;
+  y?: number;
+  runs: RenderTextRun[];
+  anchor: "start" | "middle" | "end";
+}
+
+export interface RenderTextRun {
+  text: string;
+  dx: number;
+  dy: number;
+  font: {
+    family: string;
+    size: number;
+    weight: number;
+    width: number;
+    italic: boolean;
+    smallCaps: boolean;
+    sizeAdjust?: number;
+  };
+  letterSpacing: number;
+  wordSpacing: number;
+  kerning: boolean;
+  baseline: "alphabetic" | "middle" | "central" | "hanging" | "text-before-edge" | "text-after-edge";
+  baselineShift: number;
+  decoration: readonly ("underline" | "overline" | "line-through")[];
+  style: ComputedStyle;
+  transform: AffineTransform;
+  source: SourceLocation;
 }
 
 export interface RenderImage {

@@ -1,6 +1,7 @@
 import type { ElementNode } from "svg-parser";
 import { parseRGBAColor, type RGBAColor, swiftUIColor } from "../colorUtils";
 import { handleElement } from "../elementHandlers";
+import { lengthContext, type ParsedSVGLength, resolveSVGLength } from "../lengths";
 import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
@@ -17,6 +18,7 @@ import type {
   RenderDocument,
   RenderNode,
   RenderShape,
+  RenderText,
   SVGBlendMode,
 } from "./types";
 
@@ -57,6 +59,10 @@ type GeneratedViewNode =
       contentNodes: GeneratedViewNode[];
     }
   | {
+      type: "text";
+      helper: string;
+    }
+  | {
       type: "group";
       children: GeneratedViewNode[];
       opacity: number;
@@ -88,6 +94,7 @@ interface ViewBuildContext {
   precision: number;
   coordinateSpace: ViewBoxData;
   activePatterns: Set<string>;
+  textHelpers: Array<{ name: string; node: RenderText; transform: RenderNode["transform"] }>;
 }
 
 function createOptions(
@@ -461,6 +468,30 @@ function buildViewNodes(
       }
       continue;
     }
+    if (node.type === "text") {
+      if (node.style.visibility === "hidden" || node.style.visibility === "collapse" || node.text === "") continue;
+      const completeTransform = [...ancestorTransforms, node.transform].reduce(multiplyTransforms);
+      const name = `TextLayer${context.textHelpers.length}`;
+      context.textHelpers.push({ name, node, transform: completeTransform });
+      const targetTransforms = [...ancestorTransforms, node.transform];
+      const clipPath = buildClipPath(node.clipPath, targetTransforms);
+      const mask = buildMask(node.mask, targetTransforms);
+      generated.push({
+        type: "group",
+        children: [{ type: "text", helper: name }],
+        opacity: node.style.opacity,
+        isolated:
+          node.style.opacity !== 1 ||
+          node.style.isolation === "isolate" ||
+          node.style.blendMode !== "normal" ||
+          !!clipPath ||
+          !!mask,
+        blendMode: node.style.blendMode,
+        ...(clipPath ? { clipPath } : {}),
+        ...(mask ? { mask } : {}),
+      });
+      continue;
+    }
     if (node.type !== "shape" || node.style.visibility === "hidden" || node.style.visibility === "collapse") continue;
 
     const paints: GeneratedViewNode[] = [];
@@ -616,6 +647,278 @@ function swiftNumber(value: number): string {
   return String(Object.is(value, -0) ? 0 : value);
 }
 
+function swiftString(value: string): string {
+  return JSON.stringify(value).replace(/\\\//g, "/");
+}
+
+function swiftTransform(matrix: RenderNode["transform"]): string {
+  return `CGAffineTransform(a: ${formatNumber(matrix.a)}, b: ${formatNumber(matrix.b)}, c: ${formatNumber(matrix.c)}, d: ${formatNumber(matrix.d)}, tx: ${formatNumber(matrix.e)}, ty: ${formatNumber(matrix.f)})`;
+}
+
+function textGradientLength(
+  value: ParsedSVGLength,
+  units: "objectBoundingBox" | "userSpaceOnUse",
+  axis: "horizontal" | "vertical" | "other",
+  node: RenderText,
+): number {
+  if (units === "objectBoundingBox") return value.unit === "%" ? value.value / 100 : value.value;
+  const resolved = resolveSVGLength(
+    value,
+    lengthContext(
+      node.paintContext.viewport,
+      node.paintContext.rootViewport,
+      axis === "horizontal" ? "viewport-width" : axis === "vertical" ? "viewport-height" : "viewport-diagonal",
+      axis,
+      node.paintContext.fontMetrics,
+    ),
+  );
+  return typeof resolved === "number" ? resolved : 0;
+}
+
+function textPaintLiteral(
+  paint: Paint,
+  opacity: number,
+  node: RenderText,
+  document: RenderDocument,
+  transform: RenderNode["transform"],
+): string {
+  const value = paint.type === "solid" ? paint.value : paint.type === "reference" ? paint.fallback : undefined;
+  if (value) {
+    const color = parseRGBAColor(value);
+    if (color)
+      return `SVGTextSource.color(SVGTextColor(red: ${formatNumber(color.red)}, green: ${formatNumber(color.green)}, blue: ${formatNumber(color.blue)}, alpha: ${formatNumber(color.alpha * opacity)}))`;
+  }
+  if (paint.type !== "reference") return "nil";
+  const server = document.resources.paints.get(paint.id);
+  if (!server || (server.type !== "linearGradient" && server.type !== "radialGradient") || server.stops.length === 0)
+    return "nil";
+  if (server.stops.length === 1) {
+    const color = server.stops[0]!.color;
+    return `SVGTextSource.color(SVGTextColor(red: ${formatNumber(color.red)}, green: ${formatNumber(color.green)}, blue: ${formatNumber(color.blue)}, alpha: ${formatNumber(color.alpha * opacity)}))`;
+  }
+  const stops = server.stops
+    .map(
+      (stop) =>
+        `SVGTextGradientStop(location: ${formatNumber(stop.offset)}, color: SVGTextColor(red: ${formatNumber(stop.color.red)}, green: ${formatNumber(stop.color.green)}, blue: ${formatNumber(stop.color.blue)}, alpha: ${formatNumber(stop.color.alpha * opacity)}))`,
+    )
+    .join(", ");
+  const matrix = server.units === "userSpaceOnUse" ? multiplyTransforms(transform, server.transform) : server.transform;
+  const common = `stops: [${stops}], objectBoundingBox: ${server.units === "objectBoundingBox"}, transform: ${swiftTransform(matrix)}`;
+  if (server.type === "linearGradient") {
+    return `SVGTextSource.linear(SVGTextLinearGradient(${common}, x1: ${formatNumber(textGradientLength(server.x1, server.units, "horizontal", node))}, y1: ${formatNumber(textGradientLength(server.y1, server.units, "vertical", node))}, x2: ${formatNumber(textGradientLength(server.x2, server.units, "horizontal", node))}, y2: ${formatNumber(textGradientLength(server.y2, server.units, "vertical", node))}))`;
+  }
+  return `SVGTextSource.radial(SVGTextRadialGradient(${common}, cx: ${formatNumber(textGradientLength(server.cx, server.units, "horizontal", node))}, cy: ${formatNumber(textGradientLength(server.cy, server.units, "vertical", node))}, radius: ${formatNumber(textGradientLength(server.r, server.units, "other", node))}, fx: ${formatNumber(textGradientLength(server.fx, server.units, "horizontal", node))}, fy: ${formatNumber(textGradientLength(server.fy, server.units, "vertical", node))}, innerRadius: ${formatNumber(textGradientLength(server.fr, server.units, "other", node))}))`;
+}
+
+function createTextHelper(
+  helper: { name: string; node: RenderText; transform: RenderNode["transform"] },
+  coordinateSpace: ViewBoxData,
+  document: RenderDocument,
+  indentationSize: number,
+): string[] {
+  const indentation = " ".repeat(indentationSize);
+  const i2 = indentation.repeat(2);
+  const i3 = indentation.repeat(3);
+  const i4 = indentation.repeat(4);
+  const i5 = indentation.repeat(5);
+  const chunks = helper.node.chunks
+    .map((chunk) => {
+      const runs = chunk.runs
+        .map((run) => {
+          const transform = multiplyTransforms(helper.transform, run.transform);
+          const localOpacity = run.source.element === "tspan" ? run.style.opacity : 1;
+          const order = run.style.paintOrder
+            .filter((phase) => phase !== "markers")
+            .map((phase) => (phase === "fill" ? ".fill" : ".stroke"))
+            .join(", ");
+          const baseline = run.baseline.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
+          const decorations = run.decoration
+            .map((item) => `.${item === "line-through" ? "lineThrough" : item}`)
+            .join(", ");
+          return `SVGTextRun(text: ${swiftString(run.text)}, dx: ${formatNumber(run.dx)}, dy: ${formatNumber(run.dy)}, family: ${swiftString(run.font.family)}, size: ${formatNumber(run.font.size)}, weight: ${formatNumber(run.font.weight)}, width: ${formatNumber(run.font.width)}, italic: ${run.font.italic}, smallCaps: ${run.font.smallCaps}, sizeAdjust: ${run.font.sizeAdjust === undefined ? "nil" : formatNumber(run.font.sizeAdjust)}, letterSpacing: ${formatNumber(run.letterSpacing)}, wordSpacing: ${formatNumber(run.wordSpacing)}, kerning: ${run.kerning}, baseline: .${baseline}, baselineShift: ${formatNumber(run.baselineShift)}, decorations: [${decorations}], fill: ${textPaintLiteral(run.style.fill, run.style.fillOpacity * localOpacity, helper.node, document, transform)}, stroke: ${textPaintLiteral(run.style.stroke, run.style.strokeOpacity * localOpacity, helper.node, document, transform)}, strokeWidth: ${formatNumber(run.style.strokeStyle.width)}, lineCap: .${run.style.strokeStyle.lineCap}, lineJoin: .${run.style.strokeStyle.lineJoin}, miterLimit: ${formatNumber(run.style.strokeStyle.miterLimit)}, paintOrder: [${order}], transform: ${swiftTransform(transform)})`;
+        })
+        .join(", ");
+      return `SVGTextChunk(x: ${chunk.x === undefined ? "nil" : formatNumber(chunk.x)}, y: ${chunk.y === undefined ? "nil" : formatNumber(chunk.y)}, anchor: .${chunk.anchor}, runs: [${runs}])`;
+    })
+    .join(`,\n${i3}`);
+
+  return [
+    "// CoreText glyph paths preserve SVG metrics; accessibility text is retained, but selection is unavailable.",
+    `private struct ${helper.name}: View {`,
+    `${indentation}var body: some View {`,
+    `${i2}Canvas { context, size in`,
+    `${i3}context.withCGContext { graphics in`,
+    `${i4}graphics.saveGState()`,
+    `${i4}graphics.scaleBy(x: size.width / ${formatNumber(coordinateSpace.width)}, y: size.height / ${formatNumber(coordinateSpace.height)})`,
+    `${i4}graphics.translateBy(x: ${formatNumber(-coordinateSpace.x)}, y: ${formatNumber(-coordinateSpace.y)})`,
+    `${i4}draw(chunks: [`,
+    `${i3}${chunks}`,
+    `${i4}], in: graphics)`,
+    `${i4}graphics.restoreGState()`,
+    `${i3}}`,
+    `${i2}}`,
+    `${i2}.accessibilityElement(children: .ignore)`,
+    `${i2}.accessibilityLabel(${swiftString(helper.node.text)})`,
+    `${indentation}}`,
+    "",
+    `${indentation}private struct SVGTextColor { let red: CGFloat; let green: CGFloat; let blue: CGFloat; let alpha: CGFloat }`,
+    `${indentation}private struct SVGTextGradientStop { let location: CGFloat; let color: SVGTextColor }`,
+    `${indentation}private struct SVGTextLinearGradient { let stops: [SVGTextGradientStop]; let objectBoundingBox: Bool; let transform: CGAffineTransform; let x1: CGFloat; let y1: CGFloat; let x2: CGFloat; let y2: CGFloat }`,
+    `${indentation}private struct SVGTextRadialGradient { let stops: [SVGTextGradientStop]; let objectBoundingBox: Bool; let transform: CGAffineTransform; let cx: CGFloat; let cy: CGFloat; let radius: CGFloat; let fx: CGFloat; let fy: CGFloat; let innerRadius: CGFloat }`,
+    `${indentation}private enum SVGTextSource { case color(SVGTextColor), linear(SVGTextLinearGradient), radial(SVGTextRadialGradient) }`,
+    `${indentation}private enum SVGTextAnchor { case start, middle, end }`,
+    `${indentation}private enum SVGTextBaseline { case alphabetic, middle, central, hanging, textBeforeEdge, textAfterEdge }`,
+    `${indentation}private enum SVGTextDecoration { case underline, overline, lineThrough }`,
+    `${indentation}private enum SVGTextPaint { case fill, stroke }`,
+    `${indentation}private struct SVGTextChunk { let x: CGFloat?; let y: CGFloat?; let anchor: SVGTextAnchor; let runs: [SVGTextRun] }`,
+    `${indentation}private struct SVGTextRun {`,
+    `${i2}let text: String; let dx: CGFloat; let dy: CGFloat`,
+    `${i2}let family: String; let size: CGFloat; let weight: CGFloat; let width: CGFloat`,
+    `${i2}let italic: Bool; let smallCaps: Bool; let sizeAdjust: CGFloat?`,
+    `${i2}let letterSpacing: CGFloat; let wordSpacing: CGFloat; let kerning: Bool`,
+    `${i2}let baseline: SVGTextBaseline; let baselineShift: CGFloat`,
+    `${i2}let decorations: [SVGTextDecoration]; let fill: SVGTextSource?; let stroke: SVGTextSource?`,
+    `${i2}let strokeWidth: CGFloat; let lineCap: CGLineCap; let lineJoin: CGLineJoin; let miterLimit: CGFloat`,
+    `${i2}let paintOrder: [SVGTextPaint]; let transform: CGAffineTransform`,
+    `${indentation}}`,
+    "",
+    `${indentation}private struct PreparedRun { let run: SVGTextRun; let font: CTFont; let line: CTLine; let width: CGFloat }`,
+    "",
+    `${indentation}private func font(for run: SVGTextRun) -> CTFont {`,
+    `${i2}var symbolic: CTFontSymbolicTraits = []`,
+    `${i2}if run.italic { symbolic.insert(.traitItalic) }`,
+    `${i2}let normalizedWeight = max(-1, min(1, (run.weight - 400) / 750))`,
+    `${i2}let normalizedWidth = max(-1, min(1, (run.width - 100) / 100))`,
+    `${i2}let traits: [CFString: Any] = [kCTFontWeightTrait: normalizedWeight, kCTFontWidthTrait: normalizedWidth, kCTFontSymbolicTrait: symbolic.rawValue]`,
+    `${i2}let variation: [NSNumber: Any] = [NSNumber(value: 2003265652): run.weight, NSNumber(value: 2003072104): run.width]`,
+    `${i2}let attributes: [CFString: Any] = [kCTFontFamilyNameAttribute: run.family, kCTFontTraitsAttribute: traits, kCTFontVariationAttribute: variation]`,
+    `${i2}let descriptor = CTFontDescriptorCreateWithAttributes(attributes as CFDictionary)`,
+    `${i2}var result = CTFontCreateWithFontDescriptor(descriptor, run.size, nil)`,
+    `${i2}if let desired = run.sizeAdjust, CTFontGetXHeight(result) > 0 {`,
+    `${i3}result = CTFontCreateWithFontDescriptor(descriptor, run.size * desired / (CTFontGetXHeight(result) / run.size), nil)`,
+    `${i2}}`,
+    `${i2}return result`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func prepare(_ run: SVGTextRun) -> PreparedRun {`,
+    `${i2}let resolvedFont = font(for: run)`,
+    `${i2}let attributed = NSMutableAttributedString(string: run.text)`,
+    `${i2}let fullRange = NSRange(location: 0, length: attributed.length)`,
+    `${i2}attributed.addAttribute(NSAttributedString.Key(kCTFontAttributeName as String), value: resolvedFont, range: fullRange)`,
+    `${i2}if run.letterSpacing != 0 || !run.kerning { attributed.addAttribute(NSAttributedString.Key(kCTKernAttributeName as String), value: run.letterSpacing, range: fullRange) }`,
+    `${i2}if run.wordSpacing != 0 {`,
+    `${i3}let source = run.text as NSString`,
+    `${i3}for index in 0..<source.length where source.character(at: index) == 32 {`,
+    `${i4}attributed.addAttribute(NSAttributedString.Key(kCTKernAttributeName as String), value: run.letterSpacing + run.wordSpacing, range: NSRange(location: index, length: 1))`,
+    `${i3}}`,
+    `${i2}}`,
+    `${i2}let line = CTLineCreateWithAttributedString(attributed)`,
+    `${i2}return PreparedRun(run: run, font: resolvedFont, line: line, width: CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil)))`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func baselineOffset(_ item: PreparedRun) -> CGFloat {`,
+    `${i2}let ascent = CTFontGetAscent(item.font); let descent = CTFontGetDescent(item.font)`,
+    `${i2}switch item.run.baseline {`,
+    `${i2}case .alphabetic: return -item.run.baselineShift`,
+    `${i2}case .middle: return CTFontGetXHeight(item.font) / 2 - item.run.baselineShift`,
+    `${i2}case .central: return (ascent - descent) / 2 - item.run.baselineShift`,
+    `${i2}case .hanging: return ascent * 0.8 - item.run.baselineShift`,
+    `${i2}case .textBeforeEdge: return ascent - item.run.baselineShift`,
+    `${i2}case .textAfterEdge: return -descent - item.run.baselineShift`,
+    `${i2}}`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func path(for item: PreparedRun, x: CGFloat, y: CGFloat) -> CGPath {`,
+    `${i2}let result = CGMutablePath()`,
+    `${i2}for case let glyphRun as CTRun in CTLineGetGlyphRuns(item.line) as NSArray {`,
+    `${i3}let count = CTRunGetGlyphCount(glyphRun)`,
+    `${i3}var glyphs = [CGGlyph](repeating: 0, count: count)`,
+    `${i3}var positions = [CGPoint](repeating: .zero, count: count)`,
+    `${i3}CTRunGetGlyphs(glyphRun, CFRange(location: 0, length: 0), &glyphs)`,
+    `${i3}CTRunGetPositions(glyphRun, CFRange(location: 0, length: 0), &positions)`,
+    `${i3}for index in 0..<count {`,
+    `${i4}guard let glyphPath = CTFontCreatePathForGlyph(item.font, glyphs[index], nil) else { continue }`,
+    `${i4}var glyphTransform = CGAffineTransform(translationX: x + positions[index].x, y: y - positions[index].y).scaledBy(x: 1, y: -1)`,
+    `${i4}if let placed = glyphPath.copy(using: &glyphTransform) { result.addPath(placed) }`,
+    `${i3}}`,
+    `${i2}}`,
+    `${i2}let thickness = max(CTFontGetUnderlineThickness(item.font), item.run.size / 16)`,
+    `${i2}for decoration in item.run.decorations {`,
+    `${i3}let decorationY: CGFloat`,
+    `${i3}switch decoration {`,
+    `${i3}case .underline: decorationY = y - CTFontGetUnderlinePosition(item.font)`,
+    `${i3}case .overline: decorationY = y - CTFontGetAscent(item.font)`,
+    `${i3}case .lineThrough: decorationY = y - CTFontGetXHeight(item.font) / 2`,
+    `${i3}}`,
+    `${i3}result.addRect(CGRect(x: x, y: decorationY, width: item.width, height: thickness))`,
+    `${i2}}`,
+    `${i2}var transform = item.run.transform`,
+    `${i2}return result.copy(using: &transform) ?? result`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func cgColor(_ color: SVGTextColor) -> CGColor {`,
+    `${i2}CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [color.red, color.green, color.blue, color.alpha])!`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func cgGradient(_ stops: [SVGTextGradientStop]) -> CGGradient? {`,
+    `${i2}CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!, colors: stops.map { cgColor($0.color) } as CFArray, locations: stops.map(\\.location))`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func paint(_ source: SVGTextSource, path: CGPath, run: SVGTextRun, stroke: Bool, in graphics: CGContext) {`,
+    `${i2}graphics.saveGState()`,
+    `${i2}graphics.addPath(path)`,
+    `${i2}if stroke { graphics.setLineWidth(run.strokeWidth); graphics.setLineCap(run.lineCap); graphics.setLineJoin(run.lineJoin); graphics.setMiterLimit(run.miterLimit) }`,
+    `${i2}switch source {`,
+    `${i2}case .color(let color):`,
+    `${i3}if stroke { graphics.setStrokeColor(cgColor(color)); graphics.strokePath() } else { graphics.setFillColor(cgColor(color)); graphics.fillPath() }`,
+    `${i2}case .linear(let value):`,
+    `${i3}if stroke { graphics.replacePathWithStrokedPath() }`,
+    `${i3}let bounds = stroke ? path.boundingBoxOfPath.insetBy(dx: -run.strokeWidth / 2, dy: -run.strokeWidth / 2) : path.boundingBoxOfPath`,
+    `${i3}graphics.clip()`,
+    `${i3}if value.objectBoundingBox { graphics.concatenate(CGAffineTransform(translationX: bounds.minX, y: bounds.minY).scaledBy(x: bounds.width, y: bounds.height)) }`,
+    `${i3}graphics.concatenate(value.transform)`,
+    `${i3}if let gradient = cgGradient(value.stops) {`,
+    `${i4}graphics.drawLinearGradient(gradient, start: CGPoint(x: value.x1, y: value.y1), end: CGPoint(x: value.x2, y: value.y2), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+    `${i3}}`,
+    `${i2}case .radial(let value):`,
+    `${i3}if stroke { graphics.replacePathWithStrokedPath() }`,
+    `${i3}let bounds = stroke ? path.boundingBoxOfPath.insetBy(dx: -run.strokeWidth / 2, dy: -run.strokeWidth / 2) : path.boundingBoxOfPath`,
+    `${i3}graphics.clip()`,
+    `${i3}if value.objectBoundingBox { graphics.concatenate(CGAffineTransform(translationX: bounds.minX, y: bounds.minY).scaledBy(x: bounds.width, y: bounds.height)) }`,
+    `${i3}graphics.concatenate(value.transform)`,
+    `${i3}if let gradient = cgGradient(value.stops) {`,
+    `${i4}graphics.drawRadialGradient(gradient, startCenter: CGPoint(x: value.fx, y: value.fy), startRadius: value.innerRadius, endCenter: CGPoint(x: value.cx, y: value.cy), endRadius: value.radius, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+    `${i3}}`,
+    `${i2}}`,
+    `${i2}graphics.restoreGState()`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func draw(chunks: [SVGTextChunk], in graphics: CGContext) {`,
+    `${i2}var currentX: CGFloat = 0; var currentY: CGFloat = 0`,
+    `${i2}for chunk in chunks {`,
+    `${i3}let prepared = chunk.runs.map(prepare)`,
+    `${i3}let chunkWidth = prepared.reduce(0) { $0 + $1.run.dx + $1.width }`,
+    `${i3}if let x = chunk.x { currentX = x }; if let y = chunk.y { currentY = y }`,
+    `${i3}if chunk.anchor == .middle { currentX -= chunkWidth / 2 } else if chunk.anchor == .end { currentX -= chunkWidth }`,
+    `${i3}for item in prepared {`,
+    `${i4}currentX += item.run.dx; currentY += item.run.dy`,
+    `${i4}let glyphPath = path(for: item, x: currentX, y: currentY + baselineOffset(item))`,
+    `${i4}for phase in item.run.paintOrder {`,
+    `${i5}switch phase {`,
+    `${i5}case .fill:`,
+    `${i5}${indentation}if let fill = item.run.fill { paint(fill, path: glyphPath, run: item.run, stroke: false, in: graphics) }`,
+    `${i5}case .stroke:`,
+    `${i5}${indentation}if let stroke = item.run.stroke, item.run.strokeWidth > 0 { paint(stroke, path: glyphPath, run: item.run, stroke: true, in: graphics) }`,
+    `${i5}}`,
+    `${i4}}`,
+    `${i4}currentX += item.width`,
+    `${i3}}`,
+    `${i2}}`,
+    `${indentation}}`,
+    `}`,
+  ];
+}
+
 function gradientStopLiteral(stop: GradientStop, opacity: number): string {
   return `SVGGradientStop(offset: ${formatNumber(stop.offset)}, red: ${formatNumber(stop.color.red)}, green: ${formatNumber(stop.color.green)}, blue: ${formatNumber(stop.color.blue)}, alpha: ${formatNumber(stop.color.alpha * opacity)})`;
 }
@@ -739,6 +1042,7 @@ function renderGeneratedCommands(
   const prefix = indentation.repeat(level);
   const inner = indentation.repeat(level + 1);
   for (const node of nodes) {
+    if (node.type === "text") continue;
     if (node.type === "paint") {
       const color = node.cgColor;
       lines.push(
@@ -973,6 +1277,7 @@ function renderPatternCommands(
 
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
+  if (node.type === "text") return [`${prefix}${node.helper}()`];
   if (node.type === "paint") {
     if (!node.clipUnions) return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
     const inner = `${prefix}${indentation}`;
@@ -1184,6 +1489,9 @@ function createView(
   name: string,
   nodes: GeneratedViewNode[],
   helpers: ShapeHelper[],
+  textHelpers: ViewBuildContext["textHelpers"],
+  coordinateSpace: ViewBoxData,
+  document: RenderDocument,
   indentationSize: number,
 ): string[] {
   const indentation = " ".repeat(indentationSize);
@@ -1211,6 +1519,8 @@ function createView(
     layerStruct[0] = `private ${layerStruct[0]}`;
     body.push("", ...layerStruct);
   }
+  for (const helper of textHelpers)
+    body.push("", ...createTextHelper(helper, coordinateSpace, document, indentationSize));
   if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
   return createStructTemplate({
     name,
@@ -1262,10 +1572,22 @@ export function generateView(
     precision: config.precision ?? 10,
     coordinateSpace: document.viewport.coordinateSpace,
     activePatterns: new Set(),
+    textHelpers: [],
   };
   const nodes = buildViewNodes(document.children, context);
   return {
-    lines: createView(config.structName ?? "SVGView", nodes, context.helpers, indentationSize),
+    lines: [
+      ...(context.textHelpers.length > 0 ? ["import CoreText", "import SwiftUI", ""] : []),
+      ...createView(
+        config.structName ?? "SVGView",
+        nodes,
+        context.helpers,
+        context.textHelpers,
+        document.viewport.coordinateSpace,
+        document,
+        indentationSize,
+      ),
+    ],
     preservesColors: true,
   };
 }

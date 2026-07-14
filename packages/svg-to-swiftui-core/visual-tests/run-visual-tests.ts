@@ -29,7 +29,18 @@ function ensureWebKitRenderer(): void {
   mkdirSync(dirname(WEBKIT_RENDERER_BINARY), { recursive: true });
   execFileSync(
     "xcrun",
-    ["swiftc", WEBKIT_RENDERER_SOURCE, "-framework", "WebKit", "-framework", "AppKit", "-o", WEBKIT_RENDERER_BINARY],
+    [
+      "swiftc",
+      "-module-cache-path",
+      resolve(RENDERS_DIR, ".cache", "module-cache"),
+      WEBKIT_RENDERER_SOURCE,
+      "-framework",
+      "WebKit",
+      "-framework",
+      "AppKit",
+      "-o",
+      WEBKIT_RENDERER_BINARY,
+    ],
     { stdio: "pipe" },
   );
   webKitRendererReady = true;
@@ -266,6 +277,7 @@ async function main() {
         structName: swiftTypeName,
         precision: 5,
         preserveColors: fixture.expectedMode === "view",
+        fonts: { availableFamilies: fixture.fontFamilies, fallbackFamily: fixture.fontFamilies[0] ?? "Helvetica" },
       });
       const actualMode = outputMode(swiftCode);
       if (actualMode !== fixture.expectedMode) {
@@ -281,6 +293,7 @@ async function main() {
         scale: fixture.scale,
         background: fixture.background,
         fonts: fixture.fonts,
+        fontFamilies: fixture.fontFamilies,
         expectedMode: fixture.expectedMode,
         tags: fixture.tags,
         tolerance: fixture.tolerance,

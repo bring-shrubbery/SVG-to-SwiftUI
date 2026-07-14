@@ -189,17 +189,15 @@ describe("output capability analysis", () => {
     expect(__testing.renderDocumentBounds(document)).toEqual({ x: 13, y: 25, width: 47, height: 35 });
   });
 
-  test("reports future content and strict mode refuses to drop it", () => {
+  test("retains renderable text content without unsupported diagnostics", () => {
     const raw = `<svg viewBox="0 0 10 10"><text x="0" y="5">Hello</text></svg>`;
     const document = __testing.parseRenderDocument(raw);
 
     expect(flatten(document.children)).toEqual(
       expect.arrayContaining([expect.objectContaining({ type: "text", text: "Hello" })]),
     );
-    expect(document.diagnostics).toEqual([
-      expect.objectContaining({ code: "unsupported-text-rendering", source: { element: "text" } }),
-    ]);
-    expect(() => convert(raw, { strict: true })).toThrow("Text is represented in the render tree");
+    expect(document.diagnostics).toEqual([]);
+    expect(convert(raw, { strict: true })).toContain(": View");
   });
 
   test("conversion is byte-identical across repeated runs", () => {

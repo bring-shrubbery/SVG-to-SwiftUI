@@ -21,7 +21,7 @@ When root `width` or `height` is percentage/viewport-relative, pass the containi
 convert(svg, { outerViewport: { width: 320, height: 180 } });
 ```
 
-Without `outerViewport`, permissive mode resolves against the valid `viewBox`, or the deterministic 300×150 fallback when no viewBox exists, and records a diagnostic. `strict: true` rejects that fallback. Missing root dimensions are inferred from a valid viewBox. Zero-sized viewports render nothing. Until deterministic font loading lands with text rendering, `ex` and `ch` use the resolver’s documented 0.5em fallback metrics.
+Without `outerViewport`, permissive mode resolves against the valid `viewBox`, or the deterministic 300×150 fallback when no viewBox exists, and records a diagnostic. `strict: true` rejects that fallback. Missing root dimensions are inferred from a valid viewBox. Zero-sized viewports render nothing. Geometry `ex` and `ch` lengths use the resolver’s documented 0.5em fallback metrics.
 
 ### Embedded CSS and computed styles
 
@@ -78,6 +78,25 @@ Color stops are sampled in unpremultiplied SVG color space before Core Graphics 
 `pattern` definitions are resolved as typed fill and stroke resources. The resolver supports `patternUnits`, `patternContentUnits`, `viewBox`/`preserveAspectRatio`, `patternTransform`, `href` and `xlink:href` inheritance, local content replacement, nested patterns, groups, `use`, gradients, alpha, and diagnostics for invalid dimensions or cyclic references.
 
 Generated SwiftUI keeps pattern content vector-based in `Canvas`. It repeats compound paths without tile seams, clips overflowing content to each tile, preserves fractional origins at different display scales, and resolves object-bounding-box patterns against each painted shape.
+
+### Static text and fonts
+
+Horizontal `<text>` and nested `<tspan>` content uses CoreText glyph paths inside a scalable SwiftUI `Canvas`. The renderer preserves inherited font and paint styles, single-value `x`/`y`/`dx`/`dy`, anchors, common baselines, spacing, decorations, transforms, solid/gradient fills, strokes, painter order, SVG whitespace, Unicode shaping, and an accessibility label. Glyph outlines provide deterministic SVG positioning but are not selectable text.
+
+Configure the same registered families in the conversion host and generated app:
+
+```ts
+convert(svg, {
+  fonts: {
+    availableFamilies: ["Poppins"],
+    substitutions: { Inter: "Poppins" },
+    fallbackFamily: "Poppins",
+    strict: true,
+  },
+});
+```
+
+Permissive lookup emits a structured `missing-font-family` warning and uses the configured fallback. Font-strict lookup fails conversion. Advanced per-glyph position lists, rotation lists, `textLength`, vertical writing, and `textPath` remain part of the advanced text ticket.
 
 ## Before we start
 
@@ -155,7 +174,8 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG masks, Level 1 blend modes, group compositing, and isolation
 - [x] SVG markers, vertex placement, orientation, units, context paint, viewports, and painter order
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
-- [ ] SVG `<text>` element
+- [x] Basic static SVG `<text>` and `<tspan>` rendering
+- [ ] Advanced SVG text positioning and `<textPath>`
 - [ ] Automatic animation support
 
 ## Built With

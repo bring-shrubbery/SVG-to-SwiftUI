@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 110">
+  <rect width="280" height="110" fill="#f0fdf4"/>
+  <text x="12" y="42" font-family="Noto Sans" font-size="24" fill="#166534">Cafe&#x301;   Ελληνικά</text>
+  <text x="12" y="82" xml:space="preserve" font-family="Noto Sans" font-size="21" fill="#4c1d95">A   B <tspan font-weight="700">אבג</tspan></text>
+</svg>

@@ -11,6 +11,17 @@ export interface SwiftUIGeneratorConfig {
   outerViewport?: { width: number; height: number };
   /** Select a static <view id="…"> fragment, with or without a leading #. */
   fragment?: string;
+  /** Deterministic font lookup used by SVG text rendering. */
+  fonts?: {
+    /** Font families known to be registered by the generated view's host. */
+    availableFamilies?: string[];
+    /** Case-insensitive SVG family substitutions, for example { Inter: "Noto Sans" }. */
+    substitutions?: Record<string, string>;
+    /** Family used after the authored list cannot be resolved. Defaults to Helvetica. */
+    fallbackFamily?: string;
+    /** Fail conversion when an authored family cannot be resolved. */
+    strict?: boolean;
+  };
 }
 
 export interface TranspilerOptions {

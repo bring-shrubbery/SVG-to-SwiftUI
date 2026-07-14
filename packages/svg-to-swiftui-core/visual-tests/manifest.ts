@@ -15,6 +15,7 @@ export interface FixtureManifestEntry {
   scale: number;
   background: string | null;
   fonts: string[];
+  fontFamilies: string[];
   expectedMode: ExpectedOutputMode;
   tags: string[];
   tolerance: RgbaTolerance;
@@ -27,6 +28,7 @@ interface RawFixtureEntry {
   scale?: number;
   background?: string | null;
   fonts?: string[];
+  fontFamilies?: string[];
   expectedMode: ExpectedOutputMode;
   tags: string[];
   tolerance?: Partial<RgbaTolerance>;
@@ -39,6 +41,7 @@ interface FixtureManifestFile {
     scale: number;
     background: string | null;
     fonts: string[];
+    fontFamilies?: string[];
     tolerance: RgbaTolerance;
   };
   fixtures: Record<string, RawFixtureEntry>;
@@ -85,6 +88,7 @@ export function loadFixtures(): LoadedFixture[] {
       scale: entry.scale ?? manifest.defaults.scale,
       background: entry.background === undefined ? manifest.defaults.background : entry.background,
       fonts: entry.fonts ?? manifest.defaults.fonts,
+      fontFamilies: entry.fontFamilies ?? manifest.defaults.fontFamilies ?? [],
       expectedMode: entry.expectedMode,
       tags: entry.tags,
       tolerance: { ...manifest.defaults.tolerance, ...entry.tolerance },
@@ -156,6 +160,8 @@ export function validateManifest(): string[] {
         errors.push(`${prefix} deterministic font does not exist: ${font}`);
       }
     }
+    if (fixture.fonts.length > 0 && fixture.fontFamilies.length === 0)
+      errors.push(`${prefix} deterministic font files require at least one fontFamilies entry`);
 
     if (!existsSync(fixture.sourcePath)) continue;
     const source = readFileSync(fixture.sourcePath, "utf8");

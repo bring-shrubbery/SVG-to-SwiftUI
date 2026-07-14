@@ -12,7 +12,7 @@ import {
 } from "../lengths";
 import { type Presentation, type StyleResolution, SVGStyleResolver } from "../styleCascade";
 import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTransform } from "../transformUtils";
-import type { SVGElementProperties, ViewBoxData } from "../types";
+import type { SVGElementProperties, SwiftUIGeneratorConfig, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { resolvePaintServers } from "./gradients";
@@ -34,6 +34,9 @@ import type {
   RenderGroup,
   RenderNode,
   RenderShape,
+  RenderText,
+  RenderTextChunk,
+  RenderTextRun,
   ResourceRegistry,
   SourceLocation,
   SVGBlendMode,
@@ -50,6 +53,7 @@ interface BuildContext {
   diagnostics: RenderDiagnostic[];
   activeReferences: Set<string>;
   styleResolver: SVGStyleResolver;
+  config: SwiftUIGeneratorConfig;
 }
 
 const GEOMETRY_ELEMENTS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
@@ -769,9 +773,403 @@ function childElements(element: ElementNode): ElementNode[] {
 }
 
 function textContent(element: ElementNode): string {
+  const decode = (value: string) =>
+    value.replace(/&(?:#(\d+)|#x([\da-f]+)|amp|lt|gt|quot|apos);/gi, (entity, decimal, hex) => {
+      if (decimal) return String.fromCodePoint(Number(decimal));
+      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
+      return ({ "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&apos;": "'" } as const)[
+        entity.toLowerCase() as "&amp;"
+      ];
+    });
   return element.children
-    .map((child) => (typeof child === "string" ? child : child.type === "text" ? child.value : ""))
+    .map((child) => {
+      if (typeof child === "string") return decode(child);
+      if (child.type === "text") return decode(String(child.value ?? ""));
+      if (child.type === "element" && child.tagName === "tspan") return textContent(child);
+      return "";
+    })
     .join("");
+}
+
+function textLength(
+  value: unknown,
+  axis: "horizontal" | "vertical" | "other",
+  coordinate: CoordinateContext,
+  fontMetrics: FontMetrics,
+  element: ElementNode,
+  context: BuildContext,
+  label: string,
+  fallback = 0,
+): number {
+  if (value === undefined || value === null || String(value).trim() === "") return fallback;
+  const tokens = String(value)
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  if (tokens.length > 1) {
+    addDiagnostic(
+      context,
+      element,
+      "advanced-text-positioning",
+      `${label} lists are deferred to the advanced text positioning ticket; using the first value.`,
+    );
+  }
+  return (
+    lengthValue(
+      tokens[0],
+      { ...coordinate, fontMetrics },
+      axis === "horizontal" ? "viewport-width" : axis === "vertical" ? "viewport-height" : fontMetrics.fontSize,
+      axis,
+      element,
+      context,
+      { fallback, negative: "allow", label },
+    ) ?? fallback
+  );
+}
+
+function fontFamilies(value: unknown): string[] {
+  return String(value ?? "sans-serif")
+    .split(/,(?=(?:[^"']|"[^"]*"|'[^']*')*$)/)
+    .map((family) => family.trim().replace(/^(?:"([\s\S]*)"|'([\s\S]*)')$/, "$1$2"))
+    .filter(Boolean);
+}
+
+function resolveTextFamily(element: ElementNode, value: unknown, context: BuildContext): string {
+  const requested = fontFamilies(value);
+  const configured = context.config.fonts;
+  const substitutions = new Map(
+    Object.entries(configured?.substitutions ?? {}).map(([from, to]) => [from.toLowerCase(), to]),
+  );
+  const available = configured?.availableFamilies;
+  const availableMap = new Map((available ?? []).map((family) => [family.toLowerCase(), family]));
+  const generic: Record<string, string> = {
+    "sans-serif": configured?.fallbackFamily ?? "Helvetica",
+    serif: "Times New Roman",
+    monospace: "Menlo",
+    "system-ui": ".AppleSystemUIFont",
+    cursive: "Apple Chancery",
+    fantasy: "Papyrus",
+  };
+  for (const authored of requested) {
+    const replacement = substitutions.get(authored.toLowerCase()) ?? authored;
+    const mapped = generic[replacement.toLowerCase()] ?? replacement;
+    if (!available || availableMap.has(mapped.toLowerCase())) return availableMap.get(mapped.toLowerCase()) ?? mapped;
+  }
+  const fallback = configured?.fallbackFamily ?? "Helvetica";
+  const message = `None of the requested font families (${requested.join(", ")}) are configured; using ${fallback}.`;
+  const source = sourceLocation(element);
+  if (
+    !context.diagnostics.some(
+      (item) =>
+        item.code === "missing-font-family" && item.source.element === source.element && item.source.id === source.id,
+    )
+  )
+    context.diagnostics.push({
+      code: "missing-font-family",
+      message,
+      severity: configured?.strict ? "error" : "warning",
+      source,
+    });
+  return availableMap.get(fallback.toLowerCase()) ?? fallback;
+}
+
+function textNumber(value: unknown, fallback: number): number {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function fontWeight(value: unknown): number {
+  const normalized = String(value ?? "normal")
+    .trim()
+    .toLowerCase();
+  const named: Record<string, number> = { normal: 400, bold: 700, bolder: 700, lighter: 300 };
+  const css = named[normalized] ?? textNumber(normalized, 400);
+  return Math.max(1, Math.min(1000, css));
+}
+
+function fontWidth(value: unknown): number {
+  const widths: Record<string, number> = {
+    "ultra-condensed": 50,
+    "extra-condensed": 62.5,
+    condensed: 75,
+    "semi-condensed": 87.5,
+    normal: 100,
+    "semi-expanded": 112.5,
+    expanded: 125,
+    "extra-expanded": 150,
+    "ultra-expanded": 200,
+  };
+  return (
+    widths[
+      String(value ?? "normal")
+        .trim()
+        .toLowerCase()
+    ] ?? 100
+  );
+}
+
+function textBaseline(value: unknown): RenderTextRun["baseline"] {
+  const normalized = String(value ?? "alphabetic")
+    .trim()
+    .toLowerCase();
+  if (normalized === "middle" || normalized === "central" || normalized === "hanging") return normalized;
+  if (normalized === "text-before-edge" || normalized === "before-edge" || normalized === "text-top")
+    return "text-before-edge";
+  if (normalized === "text-after-edge" || normalized === "after-edge" || normalized === "text-bottom")
+    return "text-after-edge";
+  return "alphabetic";
+}
+
+function buildText(
+  element: ElementNode,
+  resolved: ReturnType<typeof resolvedPresentation>,
+  coordinate: CoordinateContext,
+  context: BuildContext,
+): RenderText {
+  interface RawRun extends RenderTextRun {
+    x?: number;
+    y?: number;
+    anchor: RenderTextChunk["anchor"];
+    preserveSpace: boolean;
+  }
+  const rawRuns: RawRun[] = [];
+  const rootCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
+
+  const visit = (
+    owner: ElementNode,
+    ownerResolved: ReturnType<typeof resolvedPresentation>,
+    ownerCoordinate: CoordinateContext,
+    transform: AffineTransform,
+    inheritedPreserve: boolean,
+  ): void => {
+    const props = owner.properties ?? {};
+    const effective = ownerResolved.effective;
+    const preserveSpace =
+      props["xml:space"] === "preserve" ||
+      (props["xml:space"] !== "default" &&
+        (inheritedPreserve || ["pre", "pre-wrap", "break-spaces"].includes(String(effective["white-space"]))));
+    const anchorValue = String(effective["text-anchor"] ?? "start").toLowerCase();
+    const anchor: RenderTextChunk["anchor"] = anchorValue === "middle" || anchorValue === "end" ? anchorValue : "start";
+    let positionPending = true;
+    const position = () => {
+      if (!positionPending) return { dx: 0, dy: 0 };
+      positionPending = false;
+      return {
+        ...(props.x === undefined
+          ? {}
+          : {
+              x: textLength(
+                props.x,
+                "horizontal",
+                ownerCoordinate,
+                ownerResolved.fontMetrics,
+                owner,
+                context,
+                "text-x",
+              ),
+            }),
+        ...(props.y === undefined
+          ? {}
+          : {
+              y: textLength(props.y, "vertical", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-y"),
+            }),
+        dx: textLength(props.dx, "horizontal", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-dx"),
+        dy: textLength(props.dy, "vertical", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-dy"),
+      };
+    };
+    for (const child of owner.children) {
+      if (typeof child !== "string" && child.type === "element") {
+        if (child.tagName !== "tspan") continue;
+        const childResolved = resolvedPresentation(child, ownerResolved.effective, ownerCoordinate, context);
+        visit(
+          child,
+          childResolved,
+          { ...ownerCoordinate, fontMetrics: childResolved.fontMetrics },
+          multiplyTransforms(transform, computedTransform(child, childResolved, context)),
+          preserveSpace,
+        );
+        positionPending = false;
+        continue;
+      }
+      const value = typeof child === "string" ? child : child.type === "text" ? String(child.value ?? "") : "";
+      const decoded = textContent({ ...owner, children: [child] });
+      if (!value && !decoded) continue;
+      const size = ownerResolved.fontMetrics.fontSize;
+      const spacing = (name: "letter-spacing" | "word-spacing") => {
+        const raw = effective[name];
+        return String(raw ?? "normal")
+          .trim()
+          .toLowerCase() === "normal"
+          ? 0
+          : textLength(raw, "other", ownerCoordinate, ownerResolved.fontMetrics, owner, context, name);
+      };
+      const shiftRaw = String(effective["baseline-shift"] ?? "baseline")
+        .trim()
+        .toLowerCase();
+      const baselineShift =
+        shiftRaw === "sub"
+          ? -0.2 * size
+          : shiftRaw === "super"
+            ? 0.4 * size
+            : shiftRaw === "baseline"
+              ? 0
+              : textLength(
+                  shiftRaw,
+                  "other",
+                  ownerCoordinate,
+                  ownerResolved.fontMetrics,
+                  owner,
+                  context,
+                  "baseline-shift",
+                );
+      const decorationValue = `${effective["text-decoration"] ?? ""} ${effective["text-decoration-line"] ?? ""}`;
+      const decoration = (["underline", "overline", "line-through"] as const).filter((item) =>
+        new RegExp(`(?:^|\\s)${item}(?:\\s|$)`).test(decorationValue),
+      );
+      const sizeAdjustRaw = String(effective["font-size-adjust"] ?? "none")
+        .trim()
+        .toLowerCase();
+      rawRuns.push({
+        text: decoded,
+        ...position(),
+        font: {
+          family: resolveTextFamily(owner, effective["font-family"], context),
+          size,
+          weight: fontWeight(effective["font-weight"]),
+          width: fontWidth(effective["font-stretch"]),
+          italic: ["italic", "oblique"].includes(String(effective["font-style"] ?? "normal").toLowerCase()),
+          smallCaps: /small-caps/i.test(String(effective["font-variant"] ?? "normal")),
+          ...(sizeAdjustRaw !== "none" && Number.isFinite(Number(sizeAdjustRaw))
+            ? { sizeAdjust: Number(sizeAdjustRaw) }
+            : {}),
+        },
+        letterSpacing: spacing("letter-spacing"),
+        wordSpacing: spacing("word-spacing"),
+        kerning: String(effective["font-kerning"] ?? "auto").toLowerCase() !== "none",
+        baseline: textBaseline(effective["alignment-baseline"] ?? effective["dominant-baseline"]),
+        baselineShift,
+        decoration,
+        style: ownerResolved.style,
+        transform,
+        source: sourceLocation(owner),
+        anchor,
+        preserveSpace,
+      });
+    }
+    if (owner.children.length === 0) {
+      rawRuns.push({
+        text: "",
+        ...position(),
+        font: {
+          family: resolveTextFamily(owner, effective["font-family"], context),
+          size: ownerResolved.fontMetrics.fontSize,
+          weight: fontWeight(effective["font-weight"]),
+          width: fontWidth(effective["font-stretch"]),
+          italic: false,
+          smallCaps: false,
+        },
+        letterSpacing: 0,
+        wordSpacing: 0,
+        kerning: true,
+        baseline: "alphabetic",
+        baselineShift: 0,
+        decoration: [],
+        style: ownerResolved.style,
+        transform,
+        source: sourceLocation(owner),
+        anchor,
+        preserveSpace,
+      });
+    }
+  };
+
+  visit(element, resolved, rootCoordinate, IDENTITY_TRANSFORM, false);
+  const firstRun = rawRuns[0];
+  if (firstRun) {
+    const rootProps = element.properties ?? {};
+    if (firstRun.x === undefined && rootProps.x !== undefined)
+      firstRun.x = textLength(
+        rootProps.x,
+        "horizontal",
+        rootCoordinate,
+        resolved.fontMetrics,
+        element,
+        context,
+        "text-x",
+      );
+    if (firstRun.y === undefined && rootProps.y !== undefined)
+      firstRun.y = textLength(
+        rootProps.y,
+        "vertical",
+        rootCoordinate,
+        resolved.fontMetrics,
+        element,
+        context,
+        "text-y",
+      );
+    if (firstRun.source.element === "tspan") {
+      firstRun.dx += textLength(
+        rootProps.dx,
+        "horizontal",
+        rootCoordinate,
+        resolved.fontMetrics,
+        element,
+        context,
+        "text-dx",
+      );
+      firstRun.dy += textLength(
+        rootProps.dy,
+        "vertical",
+        rootCoordinate,
+        resolved.fontMetrics,
+        element,
+        context,
+        "text-dy",
+      );
+    }
+  }
+  let previousCollapsedSpace = true;
+  for (const run of rawRuns) {
+    if (run.preserveSpace) {
+      previousCollapsedSpace = /\s$/.test(run.text);
+      continue;
+    }
+    let normalized = run.text.replace(/[\t\n\r ]+/g, " ");
+    if (previousCollapsedSpace) normalized = normalized.replace(/^ /, "");
+    previousCollapsedSpace = / $/.test(normalized);
+    run.text = normalized;
+  }
+  for (let index = rawRuns.length - 1; index >= 0; index--) {
+    const run = rawRuns[index]!;
+    if (run.preserveSpace) break;
+    if (run.text === "") continue;
+    run.text = run.text.replace(/ $/, "");
+    break;
+  }
+
+  const chunks: RenderTextChunk[] = [];
+  for (const raw of rawRuns) {
+    const { x, y, anchor, preserveSpace: _preserve, ...run } = raw;
+    const last = chunks[chunks.length - 1];
+    const startsChunk = chunks.length === 0 || x !== undefined || y !== undefined || last?.anchor !== anchor;
+    if (startsChunk)
+      chunks.push({ ...(x === undefined ? {} : { x }), ...(y === undefined ? {} : { y }), anchor, runs: [] });
+    chunks[chunks.length - 1]!.runs.push(run);
+  }
+  return {
+    type: "text",
+    text: textContent(element),
+    chunks,
+    attributes: { ...(element.properties ?? {}) } as Record<string, string | number>,
+    style: resolved.style,
+    transform: computedTransform(element, resolved, context),
+    source: sourceLocation(element),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...resolved.fontMetrics },
+    },
+  };
 }
 
 function safeViewBox(element: ElementNode, context: BuildContext): ViewBoxData | undefined {
@@ -1069,27 +1467,7 @@ function buildNode(
       : [];
   }
   if (tag === "text") {
-    addDiagnostic(
-      context,
-      element,
-      "unsupported-text-rendering",
-      "Text is represented in the render tree but is not implemented by the SwiftUI backend yet.",
-    );
-    return [
-      {
-        type: "text",
-        text: textContent(element),
-        attributes: { ...(element.properties ?? {}) } as Record<string, string | number>,
-        style: resolved.style,
-        transform,
-        source: sourceLocation(element),
-        paintContext: {
-          viewport: { ...coordinate.viewport },
-          rootViewport: { ...coordinate.rootViewport },
-          fontMetrics: { ...resolved.fontMetrics },
-        },
-      },
-    ];
+    return [buildText(element, resolved, coordinate, context)];
   }
   if (tag === "image") {
     const href = element.properties?.href ?? element.properties?.["xlink:href"] ?? "";
@@ -1119,11 +1497,12 @@ export function buildRenderDocument(
   svg: ElementNode,
   properties: SVGElementProperties,
   initialDiagnostics: RenderDiagnostic[] = [],
+  config: SwiftUIGeneratorConfig = {},
 ): RenderDocument {
   const resources = createRegistry(svg);
   const diagnostics = [...initialDiagnostics];
   const styleResolver = new SVGStyleResolver(svg, diagnostics);
-  const context: BuildContext = { resources, diagnostics, activeReferences: new Set(), styleResolver };
+  const context: BuildContext = { resources, diagnostics, activeReferences: new Set(), styleResolver, config };
   const coordinate: CoordinateContext = {
     viewport: properties.userViewport,
     rootViewport: { width: properties.width, height: properties.height },
