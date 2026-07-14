@@ -13,7 +13,10 @@ import { comparePngFiles, type RgbaMetrics, type RgbaTolerance } from "./rgba-co
 const execFile = promisify(execFileCallback);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SUPPORT_PATH = resolve(__dirname, "swiftui-renderer-support.swift");
-const MAX_BATCH_SIZE = 2000;
+// Keep each generated Swift source small enough for slower GitHub macOS runners.
+// Swift type-checking this many independent View declarations is superlinear;
+// one monolithic corpus can exceed the per-process timeout without a code error.
+const MAX_BATCH_SIZE = 500;
 const SWIFT_RENDERER_VERSION = "real-swiftui-srgb-v2";
 
 export interface BatchTestItem {

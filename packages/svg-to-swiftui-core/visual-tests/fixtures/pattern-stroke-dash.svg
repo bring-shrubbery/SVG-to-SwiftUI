@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <defs>
+    <pattern id="tiles" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
+      <rect width="6" height="12" fill="#264653"/>
+      <rect x="6" width="6" height="12" fill="#e9c46a"/>
+    </pattern>
+  </defs>
+  <rect x="15" y="15" width="130" height="70" fill="none" stroke="url(#tiles)"
+    stroke-width="14" stroke-linejoin="round" stroke-dasharray="28 18 5" stroke-dashoffset="11"/>
+</svg>

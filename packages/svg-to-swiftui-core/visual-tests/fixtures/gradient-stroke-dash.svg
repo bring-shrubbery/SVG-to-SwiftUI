@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90">
+  <defs>
+    <linearGradient id="spectrum" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff006e"/>
+      <stop offset="0.5" stop-color="#ffbe0b"/>
+      <stop offset="1" stop-color="#3a86ff"/>
+    </linearGradient>
+  </defs>
+  <path d="M12 45 C36 3 65 87 91 45 S135 3 150 45" fill="none" stroke="url(#spectrum)"
+    stroke-width="12" stroke-linecap="round" stroke-dasharray="18 16" stroke-dashoffset="-6"/>
+</svg>

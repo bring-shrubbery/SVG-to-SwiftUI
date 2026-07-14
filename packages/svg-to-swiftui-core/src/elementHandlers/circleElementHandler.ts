@@ -3,6 +3,7 @@ import type { ElementNode } from "svg-parser";
 import type { SVGCircleAttributes } from "../svgTypes";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct, normaliseRectValues, stringifyRectValues } from "../utils";
+import handlePathElement from "./pathElementHandler";
 import { resolvedGeometryNumber } from "./resolvedGeometry";
 
 export default function handleCircleElement(element: ElementNode, options: TranspilerOptions): string[] {
@@ -22,6 +23,17 @@ export default function handleCircleElement(element: ElementNode, options: Trans
     const cx = resolvedGeometryNumber(circleProps.cx, 0);
     const cy = resolvedGeometryNumber(circleProps.cy, 0);
     const r = resolvedGeometryNumber(circleProps.r, 0) + (options.strokeExpansion || 0);
+
+    if (options.resolvedStyle?.strokeStyle.dashArray) {
+      const d = [
+        `M${cx + r} ${cy}`,
+        `A${r} ${r} 0 0 1 ${cx} ${cy + r}`,
+        `A${r} ${r} 0 0 1 ${cx - r} ${cy}`,
+        `A${r} ${r} 0 0 1 ${cx} ${cy - r}`,
+        `A${r} ${r} 0 0 1 ${cx + r} ${cy}Z`,
+      ].join(" ");
+      return handlePathElement({ ...element, tagName: "path", properties: { ...element.properties, d } }, options);
+    }
 
     // Convert center-radius to bounding box.
     const x = cx - r;

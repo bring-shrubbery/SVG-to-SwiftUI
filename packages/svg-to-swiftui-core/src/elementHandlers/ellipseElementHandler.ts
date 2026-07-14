@@ -3,6 +3,7 @@ import type { ElementNode } from "svg-parser";
 import type { SVGEllipseAttributes } from "../svgTypes";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct, normaliseRectValues, stringifyRectValues } from "../utils";
+import handlePathElement from "./pathElementHandler";
 import { resolvedGeometryNumber } from "./resolvedGeometry";
 
 export default function handleEllipseElement(element: ElementNode, options: TranspilerOptions): string[] {
@@ -17,6 +18,17 @@ export default function handleEllipseElement(element: ElementNode, options: Tran
     const cy = resolvedGeometryNumber(ellipseProps.cy, 0);
     const rx = resolvedGeometryNumber(ellipseProps.rx, 0) + (options.strokeExpansion || 0);
     const ry = resolvedGeometryNumber(ellipseProps.ry, 0) + (options.strokeExpansion || 0);
+
+    if (options.resolvedStyle?.strokeStyle.dashArray) {
+      const d = [
+        `M${cx + rx} ${cy}`,
+        `A${rx} ${ry} 0 0 1 ${cx} ${cy + ry}`,
+        `A${rx} ${ry} 0 0 1 ${cx - rx} ${cy}`,
+        `A${rx} ${ry} 0 0 1 ${cx} ${cy - ry}`,
+        `A${rx} ${ry} 0 0 1 ${cx + rx} ${cy}Z`,
+      ].join(" ");
+      return handlePathElement({ ...element, tagName: "path", properties: { ...element.properties, d } }, options);
+    }
 
     // Get size variables
     const x = cx - rx;

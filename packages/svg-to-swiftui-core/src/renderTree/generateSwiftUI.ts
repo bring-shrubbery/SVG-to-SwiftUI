@@ -153,6 +153,9 @@ function styleProperties(style: ComputedStyle): Record<string, string | number> 
     "stroke-linecap": style.strokeStyle.lineCap,
     "stroke-linejoin": style.strokeStyle.lineJoin,
     "stroke-miterlimit": style.strokeStyle.miterLimit,
+    ...(style.strokeStyle.dashArray ? { "stroke-dasharray": style.strokeStyle.dashArray.join(" ") } : {}),
+    "stroke-dashoffset": style.strokeStyle.dashOffset,
+    "vector-effect": style.strokeStyle.vectorEffect,
   };
 }
 
@@ -173,8 +176,11 @@ function renderShape(
   shape: RenderShape,
   options: TranspilerOptions,
   override?: { fill: string; stroke: string },
+  preStrokeTransform?: RenderNode["transform"],
 ): string[] {
   const previous = options.resolvedStyle;
+  const previousPreStrokeTransform = options.preStrokeTransform;
+  options.preStrokeTransform = preStrokeTransform;
   options.resolvedStyle = override
     ? {
         ...shape.style,
@@ -184,7 +190,8 @@ function renderShape(
     : shape.style;
   const lines = handleElement(shapeElement(shape, override), options);
   options.resolvedStyle = previous;
-  return wrapWithTransform(lines, shape.transform, options);
+  options.preStrokeTransform = previousPreStrokeTransform;
+  return preStrokeTransform ? lines : wrapWithTransform(lines, shape.transform, options);
 }
 
 function renderShapeNodes(nodes: RenderNode[], options: TranspilerOptions): string[] {
@@ -455,13 +462,20 @@ function buildViewNodes(
     const paints: GeneratedViewNode[] = [];
 
     const addLayer = (kind: "fill" | "stroke", paint: Paint, paintOpacity: number) => {
+      const nonScalingStroke = kind === "stroke" && node.style.strokeStyle.vectorEffect === "non-scaling-stroke";
+      const completeTransform = nonScalingStroke
+        ? [...ancestorTransforms, node.transform].reduce(multiplyTransforms)
+        : undefined;
       let lines = renderShape(
         node,
         context.options,
         kind === "fill" ? { fill: "black", stroke: "none" } : { fill: "none", stroke: "black" },
+        completeTransform,
       );
-      for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
-        lines = wrapWithTransform(lines, ancestorTransforms[index]!, context.options);
+      if (!nonScalingStroke) {
+        for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
+          lines = wrapWithTransform(lines, ancestorTransforms[index]!, context.options);
+        }
       }
       if (lines.length === 0) return;
       const helper = addHelper(context, `Layer${context.nextLayer++}`, lines);

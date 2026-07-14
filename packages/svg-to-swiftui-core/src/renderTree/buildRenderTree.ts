@@ -196,6 +196,76 @@ function plainNumber(
   }
 }
 
+function computedStrokeLineCap(
+  value: unknown,
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): ComputedStyle["strokeStyle"]["lineCap"] {
+  const normalized = String(value ?? "butt")
+    .trim()
+    .toLowerCase();
+  if (normalized === "butt" || normalized === "round" || normalized === "square") return normalized;
+  addDiagnostic(context, element, "invalid-stroke-linecap", `Invalid stroke-linecap '${normalized}'.`, css);
+  return "butt";
+}
+
+function computedStrokeLineJoin(
+  value: unknown,
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): ComputedStyle["strokeStyle"]["lineJoin"] {
+  const normalized = String(value ?? "miter")
+    .trim()
+    .toLowerCase();
+  if (normalized === "miter" || normalized === "round" || normalized === "bevel") return normalized;
+  const code =
+    normalized === "miter-clip" || normalized === "arcs" ? "unsupported-stroke-linejoin" : "invalid-stroke-linejoin";
+  addDiagnostic(
+    context,
+    element,
+    code,
+    code === "unsupported-stroke-linejoin"
+      ? `stroke-linejoin '${normalized}' is not representable by SwiftUI StrokeStyle; using miter.`
+      : `Invalid stroke-linejoin '${normalized}'.`,
+    css,
+  );
+  return "miter";
+}
+
+function computedMiterLimit(
+  value: unknown,
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): number {
+  const limit = plainNumber(value, 4, "stroke-miterlimit", element, context, css);
+  if (limit >= 1) return limit;
+  addDiagnostic(context, element, "invalid-stroke-miterlimit", "stroke-miterlimit must be at least 1.", css);
+  return 4;
+}
+
+function computedVectorEffect(
+  value: unknown,
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): ComputedStyle["strokeStyle"]["vectorEffect"] {
+  const normalized = String(value ?? "none")
+    .trim()
+    .toLowerCase();
+  if (normalized === "none" || normalized === "non-scaling-stroke") return normalized;
+  addDiagnostic(
+    context,
+    element,
+    "unsupported-vector-effect",
+    `vector-effect '${normalized}' is outside the static SwiftUI profile; using none.`,
+    css,
+  );
+  return "none";
+}
+
 const DEFAULT_PAINT_ORDER: readonly PaintOrderPhase[] = ["fill", "stroke", "markers"];
 
 function computedPaintOrder(
@@ -360,18 +430,31 @@ function computeStyle(
   let dashArray: number[] | undefined;
   const dashSource = effective["stroke-dasharray"];
   if (dashSource !== undefined && String(dashSource).trim().toLowerCase() !== "none") {
-    const values = String(dashSource)
-      .trim()
-      .split(/[\s,]+/)
-      .filter(Boolean);
-    const resolved = values.map((value) =>
-      lengthValue(value, styleCoordinate, "viewport-diagonal", "other", element, context, {
-        negative: "reject",
-        label: "stroke-dasharray",
-        css: provenance["stroke-dasharray"],
-      }),
-    );
-    if (resolved.length > 0 && resolved.every((value): value is number => value !== undefined)) dashArray = resolved;
+    const source = String(dashSource).trim();
+    const malformedSeparators = source.length === 0 || /^\s*,|,\s*$|,\s*,/.test(source);
+    if (malformedSeparators) {
+      addDiagnostic(
+        context,
+        element,
+        "invalid-stroke-dasharray",
+        `Invalid stroke-dasharray '${source}'.`,
+        provenance["stroke-dasharray"],
+      );
+    } else {
+      const values = source.split(/[\s,]+/).filter(Boolean);
+      const resolved = values.map((value) =>
+        lengthValue(value, styleCoordinate, "viewport-diagonal", "other", element, context, {
+          negative: "reject",
+          label: "stroke-dasharray",
+          css: provenance["stroke-dasharray"],
+        }),
+      );
+      if (resolved.length > 0 && resolved.every((value): value is number => value !== undefined)) {
+        if (resolved.some((value) => value !== 0)) {
+          dashArray = resolved.length % 2 === 1 ? [...resolved, ...resolved] : resolved;
+        }
+      }
+    }
   }
   const mask = computedMask(effective.mask, element, context, provenance.mask);
   const clipPath = computedClipPath(effective["clip-path"], element, context, provenance["clip-path"]);
@@ -410,18 +493,12 @@ function computeStyle(
     isolation: isolationValue === "isolate" ? "isolate" : "auto",
     strokeStyle: {
       width,
-      lineCap: String(effective["stroke-linecap"] ?? "butt"),
-      lineJoin: String(effective["stroke-linejoin"] ?? "miter"),
-      miterLimit: plainNumber(
-        effective["stroke-miterlimit"],
-        4,
-        "stroke-miterlimit",
-        element,
-        context,
-        provenance["stroke-miterlimit"],
-      ),
+      lineCap: computedStrokeLineCap(effective["stroke-linecap"], element, context, provenance["stroke-linecap"]),
+      lineJoin: computedStrokeLineJoin(effective["stroke-linejoin"], element, context, provenance["stroke-linejoin"]),
+      miterLimit: computedMiterLimit(effective["stroke-miterlimit"], element, context, provenance["stroke-miterlimit"]),
       ...(dashArray ? { dashArray } : {}),
       dashOffset,
+      vectorEffect: computedVectorEffect(effective["vector-effect"], element, context, provenance["vector-effect"]),
     },
     presentation: effective,
     provenance,

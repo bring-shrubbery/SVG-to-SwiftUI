@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 120">
+  <g fill="none" stroke-width="5">
+    <g transform="translate(12 8) scale(2.2 1.35)">
+      <line x1="0" y1="14" x2="62" y2="14" stroke="#e63946" stroke-dasharray="12 8"/>
+      <line x1="0" y1="36" x2="62" y2="36" stroke="#457b9d" vector-effect="non-scaling-stroke"/>
+    </g>
+    <g transform="translate(112 69) rotate(24) skewX(18) scale(1.25 .9)">
+      <polyline points="-34,-15 0,8 34,-15" stroke="#f4a261" stroke-dasharray="12 8"/>
+      <polyline points="-34,12 0,35 34,12" stroke="#2a9d8f" vector-effect="non-scaling-stroke"/>
+    </g>
+  </g>
+</svg>

@@ -211,6 +211,24 @@
       "expectedMode": "view",
       "tags": ["circle", "compositing", "g", "geometry", "opacity", "path", "rect", "stroke", "transform", "view"]
     },
+    "compositing-stroke-paint-order-opacity": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "compositing",
+        "g",
+        "geometry",
+        "opacity",
+        "paint-order",
+        "path",
+        "rect",
+        "stroke",
+        "stroke-dasharray",
+        "stroke-linejoin",
+        "view"
+      ]
+    },
     "compositing-transformed-nonsquare": {
       "width": 128,
       "height": 58,
@@ -410,6 +428,28 @@
       "height": 56,
       "expectedMode": "view",
       "tags": ["geometry", "gradient", "linearGradient", "rect", "stop", "units", "view"]
+    },
+    "gradient-stroke-dash": {
+      "width": 128,
+      "height": 72,
+      "expectedMode": "view",
+      "tags": [
+        "geometry",
+        "gradient",
+        "linearGradient",
+        "path",
+        "stop",
+        "stroke",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "stroke-linecap",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 9,
+        "maxMeanRgbError": 3.5
+      },
+      "toleranceReason": "CoreGraphics and the SVG reference interpolate the clipped gradient at slightly different antialiased dash edges."
     },
     "gradient-transforms": {
       "width": 128,
@@ -6355,7 +6395,17 @@
       "width": 128,
       "height": 128,
       "expectedMode": "shape",
-      "tags": ["circle", "geometry", "lucide", "path", "realistic", "shape", "stroke"]
+      "tags": [
+        "circle",
+        "geometry",
+        "lucide",
+        "path",
+        "realistic",
+        "shape",
+        "stroke",
+        "stroke-linecap",
+        "stroke-linejoin"
+      ]
     },
     "lucide-mars": {
       "width": 128,
@@ -10928,7 +10978,7 @@
       "width": 128,
       "height": 64,
       "expectedMode": "shape",
-      "tags": ["geometry", "path", "shape", "stroke"]
+      "tags": ["geometry", "path", "shape", "stroke", "stroke-linecap", "stroke-linejoin"]
     },
     "pattern-alpha": {
       "width": 128,
@@ -10962,7 +11012,18 @@
       "width": 128,
       "height": 80,
       "expectedMode": "view",
-      "tags": ["circle", "geometry", "path", "pattern", "pattern-transform", "pattern-units", "rect", "stroke", "view"]
+      "tags": [
+        "circle",
+        "geometry",
+        "path",
+        "pattern",
+        "pattern-transform",
+        "pattern-units",
+        "rect",
+        "stroke",
+        "stroke-linecap",
+        "view"
+      ]
     },
     "pattern-fractional-1x": {
       "width": 128,
@@ -11048,6 +11109,28 @@
       "expectedMode": "view",
       "tags": ["geometry", "pattern", "pattern-units", "rect", "view"]
     },
+    "pattern-stroke-dash": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "geometry",
+        "pattern",
+        "pattern-transform",
+        "pattern-units",
+        "rect",
+        "stroke",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "stroke-linejoin",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 6,
+        "maxMeanRgbError": 4
+      },
+      "toleranceReason": "CoreGraphics and the SVG reference rasterize repeated pattern colors at dashed stroke edges differently."
+    },
     "pattern-tile-clipping": {
       "width": 128,
       "height": 80,
@@ -11105,7 +11188,7 @@
       "width": 128,
       "height": 128,
       "expectedMode": "view",
-      "tags": ["geometry", "polygon", "stroke", "view"]
+      "tags": ["geometry", "polygon", "stroke", "stroke-linejoin", "view"]
     },
     "polyline-filled": {
       "width": 128,
@@ -11172,6 +11255,75 @@
       "height": 128,
       "expectedMode": "shape",
       "tags": ["geometry", "path", "shape"]
+    },
+    "stroke-caps-joins-miters": {
+      "width": 128,
+      "height": 85,
+      "expectedMode": "view",
+      "tags": ["g", "geometry", "path", "stroke", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "view"]
+    },
+    "stroke-dash-curves-subpaths": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "shape",
+      "tags": ["g", "geometry", "path", "shape", "stroke", "stroke-dasharray", "stroke-dashoffset", "stroke-linecap"]
+    },
+    "stroke-dash-primitives": {
+      "width": 128,
+      "height": 96,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "ellipse",
+        "g",
+        "geometry",
+        "line",
+        "polygon",
+        "polyline",
+        "rect",
+        "stroke",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "stroke-linecap",
+        "view"
+      ]
+    },
+    "stroke-non-scaling-transforms": {
+      "width": 128,
+      "height": 85,
+      "expectedMode": "view",
+      "tags": ["g", "geometry", "line", "polyline", "stroke", "stroke-dasharray", "transform", "vector-effect", "view"],
+      "tolerance": {
+        "maxOutsidePercent": 5,
+        "maxMeanAlphaError": 6.5
+      },
+      "toleranceReason": "WebKit and CoreGraphics use different antialias coverage for affine-transformed stroke outlines."
+    },
+    "stroke-units-nonzero-origin": {
+      "width": 128,
+      "height": 53,
+      "expectedMode": "view",
+      "tags": [
+        "g",
+        "geometry",
+        "path",
+        "stroke",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+        "stroke-linecap",
+        "units",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 5
+      },
+      "toleranceReason": "Subpixel dash edges at a non-zero viewBox origin differ by one coverage pixel between Resvg and CoreGraphics."
+    },
+    "stroke-zero-invalid": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["g", "geometry", "path", "rect", "stroke", "stroke-dasharray", "view"]
     },
     "structure-defs-use": {
       "width": 128,

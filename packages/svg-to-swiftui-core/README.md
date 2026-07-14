@@ -39,6 +39,12 @@ Element and group `opacity` are applied once after their children have been pain
 
 The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms and stroke extents, exclude `display: none`, retain zero-opacity geometry, and intersect nested viewport clips. Future marker and filter tickets can extend the same query.
 
+### Advanced strokes
+
+Generated `StrokeStyle` values preserve SVG width, cap, join, miter limit, dash array, and dash offset semantics. Lengths and percentages use the SVG normalized viewport diagonal; odd dash lists repeat, all-zero lists render solid, negative entries are diagnosed, and every subpath restarts its dash pattern. Dashed circles, ellipses, and rectangles use their SVG 2 equivalent-path start point and direction.
+
+`vector-effect="non-scaling-stroke"` transforms the centerline into the complete host coordinate space before SwiftUI constructs its stroke outline, keeping the width constant through nested scale, skew, and rotation transforms. It uses the layered `View` backend even when `preserveColors: false`. SwiftUI cannot represent SVG 2 `miter-clip` or `arcs` joins natively, so they produce structured diagnostics and fall back to `miter`; strict conversion rejects those diagnostics.
+
 ### Clipping paths
 
 `clip-path: url(#id)` and `<clipPath>` are resolved as typed resources. Generated SwiftUI supports `userSpaceOnUse` and `objectBoundingBox`, resource/target/content transforms, `clip-rule`, groups, `use`, overlapping child unions, nested intersections, empty clips, and clipping on groups and painted shapes.
@@ -93,7 +99,7 @@ You can run the tests by running following command:
 
 ### Visual regression tests
 
-The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against the original SVG. It uses resvg for the general corpus and WebKit for blend/isolation fixtures because resvg does not implement CSS blend modes. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
+The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against the original SVG. It uses resvg for the general corpus and WebKit for blend/isolation and vector-effect fixtures. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
 
 ```sh
 bun run visual-test                              # full macOS corpus
@@ -136,6 +142,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG lengths, nested viewports, `<view>` fragments, and `preserveAspectRatio`
 - [x] SVG transforms (`matrix`, `translate`, `scale`, `rotate`, `skewX`, `skewY`)
 - [x] Solid fill/stroke styling with colours
+- [x] Advanced strokes: caps, joins, miter limits, dashes, offsets, units, and non-scaling strokes
 - [x] Linear/radial gradient fills and strokes, stops, inheritance, transforms, and spread methods
 - [x] Pattern fills and strokes, inheritance, coordinate systems, transforms, viewBox behavior, and vector tiling
 - [x] SVG clipping paths, clip rules, coordinate systems, transforms, unions, and nested intersections
