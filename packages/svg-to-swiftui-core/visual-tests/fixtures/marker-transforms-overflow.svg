@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 150">
+  <rect width="260" height="150" fill="#fff7ed"/>
+  <defs>
+    <marker id="hidden" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <g transform="rotate(20 5 5)"><rect x="-4" y="2" width="18" height="6" fill="#dc2626"/><circle cx="5" cy="5" r="3" fill="#fef2f2"/></g>
+    </marker>
+    <marker id="visible" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+      <g transform="rotate(20 5 5)"><rect x="-4" y="2" width="18" height="6" fill="#2563eb"/><circle cx="5" cy="5" r="3" fill="#eff6ff"/></g>
+    </marker>
+  </defs>
+  <g transform="translate(30 5) rotate(12 90 45) scale(1.15 .8)">
+    <path d="M5 45C45 5 100 85 145 45" fill="none" stroke="#9a3412" stroke-width="4" marker-start="url(#hidden)" marker-mid="url(#hidden)" marker-end="url(#hidden)"/>
+  </g>
+  <g transform="translate(15 70) skewX(-12)">
+    <polyline points="20,35 80,8 140,35 200,8" fill="none" stroke="#1e40af" stroke-width="4" marker-start="url(#visible)" marker-mid="url(#visible)" marker-end="url(#visible)"/>
+  </g>
+</svg>

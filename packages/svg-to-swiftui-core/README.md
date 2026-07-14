@@ -33,17 +33,23 @@ SVG presentation defaults include SVG 2 properties such as `paint-order`, `mask`
 
 ### Painter order and compositing
 
-Rendered children keep SVG document order. `display: none` removes a subtree, while `visibility: hidden` can be overridden by a visible descendant. Fill, stroke, and marker phases use the computed `paint-order`; marker rendering will be added by the marker feature.
+Rendered children keep SVG document order. `display: none` removes a subtree, while `visibility: hidden` can be overridden by a visible descendant. Fill, stroke, and marker phases use the computed `paint-order`.
 
 Element and group `opacity` are applied once after their children have been painted into an isolated SwiftUI compositing group. Fill and stroke opacity remain independent. The generator intentionally keeps zero-opacity content in its semantic render tree and uses `.compositingGroup()` instead of rasterizing with `.drawingGroup()`.
 
-The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms and stroke extents, exclude `display: none`, retain zero-opacity geometry, and intersect nested viewport clips. Future marker and filter tickets can extend the same query.
+The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms, stroke extents, and marker shadow content; exclude `display: none`; retain zero-opacity geometry; and intersect nested viewport clips. The filter ticket can extend the same query.
 
 ### Advanced strokes
 
 Generated `StrokeStyle` values preserve SVG width, cap, join, miter limit, dash array, and dash offset semantics. Lengths and percentages use the SVG normalized viewport diagonal; odd dash lists repeat, all-zero lists render solid, negative entries are diagnosed, and every subpath restarts its dash pattern. Dashed circles, ellipses, and rectangles use their SVG 2 equivalent-path start point and direction.
 
 `vector-effect="non-scaling-stroke"` transforms the centerline into the complete host coordinate space before SwiftUI constructs its stroke outline, keeping the width constant through nested scale, skew, and rotation transforms. It uses the layered `View` backend even when `preserveColors: false`. SwiftUI cannot represent SVG 2 `miter-clip` or `arcs` joins natively, so they produce structured diagnostics and fall back to `miter`; strict conversion rejects those diagnostics.
+
+### Markers
+
+`marker-start`, `marker-mid`, and `marker-end` resolve typed `<marker>` resources and render their complete child trees at SVG vertices. Placement supports lines, curves, arcs, closed and multiple subpaths, coincident segments, tangent bisectors, `auto`, `auto-start-reverse`, explicit angle units, both `markerUnits` modes, reference points, viewBox mapping, overflow clipping, and transformed hosts/content.
+
+Marker content supports groups, `use`, gradients, patterns, opacity, and solid `context-fill`/`context-stroke` paints. Markers follow `paint-order`, share their host shape's clipping, masking, and opacity, and contribute to painted bounds. Missing, wrong-type, cyclic, and invalid marker references produce structured diagnostics and fail strict conversion.
 
 ### Clipping paths
 
@@ -99,7 +105,7 @@ You can run the tests by running following command:
 
 ### Visual regression tests
 
-The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against the original SVG. It uses resvg for the general corpus and WebKit for blend/isolation and vector-effect fixtures. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
+The macOS visual harness compiles the generated declaration with real SwiftUI and compares its full transparent RGBA output against the original SVG. It uses resvg for the general corpus, WebKit for blend/isolation and vector-effect fixtures, and Firefox for SVG marker fixtures including context paint. Every fixture is declared in `visual-tests/fixture-manifest.json` with an exact logical size, scale, output mode, deterministic fonts, feature tags, and channel tolerances.
 
 ```sh
 bun run visual-test                              # full macOS corpus
@@ -147,6 +153,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] Pattern fills and strokes, inheritance, coordinate systems, transforms, viewBox behavior, and vector tiling
 - [x] SVG clipping paths, clip rules, coordinate systems, transforms, unions, and nested intersections
 - [x] SVG masks, Level 1 blend modes, group compositing, and isolation
+- [x] SVG markers, vertex placement, orientation, units, context paint, viewports, and painter order
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [ ] SVG `<text>` element
 - [ ] Automatic animation support

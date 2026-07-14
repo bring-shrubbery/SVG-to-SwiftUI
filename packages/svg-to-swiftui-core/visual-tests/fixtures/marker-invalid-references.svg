@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 110">
+  <rect width="240" height="110" fill="#fef2f2"/>
+  <defs>
+    <path id="wrong" d="M0 0h5"/>
+    <marker id="cycle" markerWidth="8" markerHeight="8"><path d="M0 0L8 4L0 8Z" fill="#dc2626" marker-end="url(#cycle)"/></marker>
+    <marker id="valid" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse"><circle cx="5" cy="5" r="4" fill="#16a34a"/></marker>
+  </defs>
+  <path d="M15 25H225" stroke="#991b1b" stroke-width="4" marker-start="url(#missing)" marker-mid="url(#wrong)" marker-end="url(#cycle)"/>
+  <polyline points="15,60 80,90 150,60 225,90" fill="none" stroke="#166534" stroke-width="4" marker-start="url(#valid)" marker-mid="url(#missing)" marker-end="url(#valid)"/>
+</svg>

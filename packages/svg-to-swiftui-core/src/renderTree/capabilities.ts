@@ -25,6 +25,7 @@ function collectVisiblePaints(nodes: RenderNode[], paints: VisiblePaint[] = []):
     if (node.style.stroke.type !== "none") {
       paints.push({ paint: node.style.stroke, opacity: node.style.strokeOpacity });
     }
+    if (node.markers) collectVisiblePaints(node.markers, paints);
   }
   return paints;
 }
@@ -34,13 +35,16 @@ function containsGeneralViewContent(nodes: RenderNode[]): boolean {
     (node) =>
       node.type === "text" ||
       node.type === "image" ||
+      (node.type === "shape" && node.markers !== undefined && containsGeneralViewContent(node.markers)) ||
       (node.type === "group" && containsGeneralViewContent(node.children)),
   );
 }
 
 function containsViewportClip(nodes: RenderNode[]): boolean {
   return nodes.some(
-    (node) => node.type === "group" && (node.viewport?.clip === true || containsViewportClip(node.children)),
+    (node) =>
+      (node.type === "shape" && node.markers !== undefined && containsViewportClip(node.markers)) ||
+      (node.type === "group" && (node.viewport?.clip === true || containsViewportClip(node.children))),
   );
 }
 
@@ -57,7 +61,10 @@ function containsIndependentCompositing(nodes: RenderNode[]): boolean {
       node.style.blendMode !== "normal"
     )
       return true;
-    return node.type === "group" && containsIndependentCompositing(node.children);
+    return (
+      (node.type === "shape" && node.markers !== undefined && containsIndependentCompositing(node.markers)) ||
+      (node.type === "group" && containsIndependentCompositing(node.children))
+    );
   });
 }
 
@@ -67,7 +74,16 @@ function containsNonScalingStroke(nodes: RenderNode[]): boolean {
       (node.type === "shape" &&
         node.style.stroke.type !== "none" &&
         node.style.strokeStyle.vectorEffect === "non-scaling-stroke") ||
+      (node.type === "shape" && node.markers !== undefined && containsNonScalingStroke(node.markers)) ||
       (node.type === "group" && containsNonScalingStroke(node.children)),
+  );
+}
+
+function containsMarkers(nodes: RenderNode[]): boolean {
+  return nodes.some(
+    (node) =>
+      (node.type === "shape" && (node.markers?.length ?? 0) > 0) ||
+      (node.type === "group" && containsMarkers(node.children)),
   );
 }
 
@@ -101,6 +117,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   const needsIndependentCompositing =
     containsIndependentCompositing(document.children) || paints.some(({ paint }) => hasIntrinsicAlpha(paint));
   const needsNonScalingStroke = containsNonScalingStroke(document.children);
+  const needsMarkers = containsMarkers(document.children);
 
   if (
     config.preserveColors === false &&
@@ -108,6 +125,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
     !hasPaintServer &&
     !needsIndependentCompositing &&
     !needsNonScalingStroke &&
+    !needsMarkers &&
     !containsGeneralViewContent(document.children)
   ) {
     return {
@@ -123,6 +141,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   if (hasPatternPaint) reasons.push("document uses an SVG pattern paint server");
   if (needsIndependentCompositing) reasons.push("document uses independent paint or group opacity");
   if (needsNonScalingStroke) reasons.push("document uses non-scaling stroke geometry");
+  if (needsMarkers) reasons.push("document uses SVG marker shadow content");
 
   const colors = paints.map(({ paint, opacity }) => {
     if (paint.type === "reference") {

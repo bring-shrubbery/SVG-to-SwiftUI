@@ -2,9 +2,9 @@
 /** Full-color SVG-to-SwiftUI visual regression runner. */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import { convert } from "../src/index";
 import { type BatchTestItem, type BatchTestResult, runBatchVisualTest } from "./batch-render";
@@ -16,6 +16,12 @@ const REFERENCE_CACHE_PATH = resolve(RENDERS_DIR, ".reference-cache.json");
 const REFERENCE_RENDERER_VERSION = "rgba-resvg-v1";
 const WEBKIT_RENDERER_SOURCE = resolve(__dirname, "webkit-reference-render.swift");
 const WEBKIT_RENDERER_BINARY = resolve(RENDERS_DIR, ".cache", "webkit-reference-render");
+const FIREFOX_RENDERER_BINARY = [
+  process.env.FIREFOX_BIN,
+  "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox",
+  "/Applications/Firefox.app/Contents/MacOS/firefox",
+].find((candidate): candidate is string => !!candidate && existsSync(candidate));
+const FIREFOX_REFERENCE_VERSION = "rgba-firefox-developer-edition-v1";
 let webKitRendererReady = false;
 
 function ensureWebKitRenderer(): void {
@@ -45,6 +51,36 @@ function renderWebKitReference(
     WEBKIT_RENDERER_BINARY,
     [inputPath, outputPath, String(width), String(height), String(pixelWidth), String(pixelHeight)],
     { stdio: "pipe" },
+  );
+}
+
+function renderFirefoxReference(
+  source: string,
+  name: string,
+  outputPath: string,
+  pixelWidth: number,
+  pixelHeight: number,
+): void {
+  if (!FIREFOX_RENDERER_BINARY)
+    throw new Error("Firefox reference renderer was not found. Set FIREFOX_BIN to its executable path.");
+  const cacheDirectory = resolve(RENDERS_DIR, ".cache");
+  const inputPath = resolve(cacheDirectory, `${name}-firefox-source.svg`);
+  const profilePath = resolve(cacheDirectory, "firefox-profile");
+  mkdirSync(profilePath, { recursive: true });
+  writeFileSync(inputPath, withPixelViewport(source, pixelWidth, pixelHeight));
+  if (existsSync(outputPath)) unlinkSync(outputPath);
+  execFileSync(
+    FIREFOX_RENDERER_BINARY,
+    [
+      "--headless",
+      "--no-remote",
+      "--profile",
+      profilePath,
+      `--screenshot=${outputPath}`,
+      `--window-size=${pixelWidth},${pixelHeight}`,
+      pathToFileURL(inputPath).href,
+    ],
+    { stdio: "pipe", timeout: 15_000 },
   );
 }
 
@@ -163,7 +199,9 @@ async function main() {
       const pixelWidth = Math.round(fixture.width * fixture.scale);
       const pixelHeight = Math.round(fixture.height * fixture.scale);
       const resourceBytes = fixture.fonts.map((font) => readFileSync(resolve(__dirname, font)));
-      const usesWebKitReference = fixture.tags.includes("blend-mode") || fixture.tags.includes("vector-effect");
+      const usesFirefoxReference = fixture.tags.includes("marker");
+      const usesWebKitReference =
+        !usesFirefoxReference && (fixture.tags.includes("blend-mode") || fixture.tags.includes("vector-effect"));
       if (usesWebKitReference) resourceBytes.push(readFileSync(WEBKIT_RENDERER_SOURCE));
       for (const match of source.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
         const href = match[1]!;
@@ -172,7 +210,11 @@ async function main() {
       const referenceHash = hash(
         source,
         JSON.stringify({
-          renderer: usesWebKitReference ? "rgba-webkit-v2" : REFERENCE_RENDERER_VERSION,
+          renderer: usesFirefoxReference
+            ? FIREFOX_REFERENCE_VERSION
+            : usesWebKitReference
+              ? "rgba-webkit-v2"
+              : REFERENCE_RENDERER_VERSION,
           pixelWidth,
           pixelHeight,
           background: fixture.background,
@@ -183,7 +225,9 @@ async function main() {
       if (!fresh && referenceCache[fixture.name]?.hash === referenceHash && existsSync(referencePath)) {
         referenceCacheHits++;
       } else {
-        if (usesWebKitReference) {
+        if (usesFirefoxReference) {
+          renderFirefoxReference(source, fixture.name, referencePath, pixelWidth, pixelHeight);
+        } else if (usesWebKitReference) {
           renderWebKitReference(
             source,
             fixture.name,

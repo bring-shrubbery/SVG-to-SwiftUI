@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150">
+  <rect width="300" height="150" fill="#f8fafc"/>
+  <defs>
+    <g id="content"><rect width="10" height="20" fill="#dbeafe"/><circle cx="2" cy="3" r="2" fill="#dc2626"/><path d="M1 18L9 12" stroke="#1d4ed8" stroke-width="1.5"/></g>
+    <marker id="none" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="none"><use href="#content"/></marker>
+    <marker id="xmin-ymin" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMinYMin meet"><use href="#content"/></marker>
+    <marker id="xmid-ymin" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMidYMin meet"><use href="#content"/></marker>
+    <marker id="xmax-ymin" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMaxYMin meet"><use href="#content"/></marker>
+    <marker id="xmin-ymid" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMinYMid meet"><use href="#content"/></marker>
+    <marker id="xmid-ymid" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMidYMid meet"><use href="#content"/></marker>
+    <marker id="xmax-ymid" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMaxYMid meet"><use href="#content"/></marker>
+    <marker id="xmin-ymax" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMinYMax meet"><use href="#content"/></marker>
+    <marker id="xmid-ymax" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMidYMax meet"><use href="#content"/></marker>
+    <marker id="xmax-ymax" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMaxYMax meet"><use href="#content"/></marker>
+    <marker id="slice" viewBox="0 0 10 20" refX="5" refY="10" markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" preserveAspectRatio="xMidYMid slice"><use href="#content"/></marker>
+  </defs>
+  <g fill="none" stroke="#64748b">
+    <path d="M30 28h1" marker-end="url(#none)"/><path d="M90 28h1" marker-end="url(#xmin-ymin)"/><path d="M150 28h1" marker-end="url(#xmid-ymin)"/><path d="M210 28h1" marker-end="url(#xmax-ymin)"/>
+    <path d="M30 75h1" marker-end="url(#xmin-ymid)"/><path d="M90 75h1" marker-end="url(#xmid-ymid)"/><path d="M150 75h1" marker-end="url(#xmax-ymid)"/><path d="M210 75h1" marker-end="url(#slice)"/>
+    <path d="M50 122h1" marker-end="url(#xmin-ymax)"/><path d="M120 122h1" marker-end="url(#xmid-ymax)"/><path d="M190 122h1" marker-end="url(#xmax-ymax)"/>
+  </g>
+</svg>

@@ -323,6 +323,7 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
   if (node.type === "shape") {
     if (hidden(node.style.visibility)) return undefined;
     let painted = transformedShapeBounds(node, transform);
+    if (node.markers) painted = union(painted, renderNodesBounds(node.markers, transform));
     if (node.clipPath) {
       const clip = clipPathInstanceBounds(node.clipPath, transform);
       painted = clip ? intersect(painted, clip) : undefined;

@@ -16,12 +16,16 @@ import type { SVGElementProperties, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { resolvePaintServers } from "./gradients";
+import { markerVertices, orientedMarkerAngle, resolveMarkerResources } from "./markers";
 import { resolveMaskInstance, resolveMaskResources } from "./masks";
 import { resolvePatternPaintServers } from "./patterns";
 import type {
   ComputedStyle,
   CSSDiagnosticContext,
   Geometry,
+  MarkerRefCoordinate,
+  MarkerReference,
+  MarkerResource,
   Paint,
   PaintOrderPhase,
   PatternPaint,
@@ -93,6 +97,8 @@ function addDiagnostic(
 function parsePaint(value: unknown, currentColor: string): Paint {
   const normalized = String(value ?? "none").trim();
   if (normalized.toLowerCase() === "none") return { type: "none" };
+  if (normalized.toLowerCase() === "context-fill") return { type: "context", source: "fill" };
+  if (normalized.toLowerCase() === "context-stroke") return { type: "context", source: "stroke" };
   if (normalized.toLowerCase() === "currentcolor") return { type: "solid", value: currentColor };
   const reference = /^url\(\s*#([^\s)]+)\s*\)(?:\s+(.+))?$/i.exec(normalized);
   if (reference) {
@@ -104,6 +110,27 @@ function parsePaint(value: unknown, currentColor: string): Paint {
     };
   }
   return { type: "solid", value: normalized };
+}
+
+function computedMarkerReference(
+  value: unknown,
+  property: "marker-start" | "marker-mid" | "marker-end",
+  element: ElementNode,
+  context: BuildContext,
+  css?: CSSDiagnosticContext,
+): MarkerReference | undefined {
+  const normalized = String(value ?? "none").trim();
+  if (normalized.toLowerCase() === "none") return undefined;
+  const local = /^url\(\s*["']?#([^\s)"']+)["']?\s*\)$/i.exec(normalized);
+  if (local) return { id: local[1]!, invalid: false };
+  addDiagnostic(
+    context,
+    element,
+    /^url\(/i.test(normalized) ? "external-marker-reference" : "invalid-marker-reference",
+    `Only one local ${property} reference of the form url(#id) is supported; received '${normalized}'.`,
+    css,
+  );
+  return { invalid: true };
 }
 
 function lengthValue(
@@ -458,9 +485,32 @@ function computeStyle(
   }
   const mask = computedMask(effective.mask, element, context, provenance.mask);
   const clipPath = computedClipPath(effective["clip-path"], element, context, provenance["clip-path"]);
+  const markerStart = computedMarkerReference(
+    effective["marker-start"],
+    "marker-start",
+    element,
+    context,
+    provenance["marker-start"],
+  );
+  const markerMid = computedMarkerReference(
+    effective["marker-mid"],
+    "marker-mid",
+    element,
+    context,
+    provenance["marker-mid"],
+  );
+  const markerEnd = computedMarkerReference(
+    effective["marker-end"],
+    "marker-end",
+    element,
+    context,
+    provenance["marker-end"],
+  );
+  const fill = parsePaint(effective.fill ?? "black", color);
 
   return {
-    fill: parsePaint(isLine ? "none" : (effective.fill ?? "black"), color),
+    fill: isLine ? { type: "none" } : fill,
+    ...(isLine ? { contextFill: fill } : {}),
     stroke: parsePaint(effective.stroke ?? "none", color),
     color,
     opacity: computedOpacity(effective.opacity, "opacity", element, context, provenance.opacity),
@@ -478,6 +528,9 @@ function computeStyle(
       context,
       provenance["stroke-opacity"],
     ),
+    ...(markerStart ? { markerStart } : {}),
+    ...(markerMid ? { markerMid } : {}),
+    ...(markerEnd ? { markerEnd } : {}),
     paintOrder: computedPaintOrder(effective["paint-order"], element, context, provenance["paint-order"]),
     fillRule: fillRule === "evenodd" ? "evenodd" : "nonzero",
     clipRule: clipRule === "evenodd" ? "evenodd" : "nonzero",
@@ -683,6 +736,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
     masks: new Map(),
     maskElements: new Map(),
     markers: new Map(),
+    markerElements: new Map(),
     filters: new Map(),
     views: new Map(),
   };
@@ -697,7 +751,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
         registry.paintElements.set(id, element);
       if (element.tagName === "clipPath") registry.clipElements.set(id, element);
       if (element.tagName === "mask") registry.maskElements.set(id, element);
-      if (element.tagName === "marker") registry.markers.set(id, element);
+      if (element.tagName === "marker") registry.markerElements.set(id, element);
       if (element.tagName === "filter") registry.filters.set(id, element);
     }
     for (const child of element.children) {
@@ -1102,6 +1156,13 @@ export function buildRenderDocument(
     resolved.effective,
     diagnostics,
   );
+  resources.markers = resolveMarkerResources(
+    svg,
+    resources.markerElements,
+    styleResolver,
+    resolved.effective,
+    diagnostics,
+  );
   const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
@@ -1119,6 +1180,293 @@ export function buildRenderDocument(
     },
   };
   const children: RenderNode[] = [root];
+
+  function diagnoseMarkerOnce(node: RenderNode, code: string, message: string): void {
+    if (
+      diagnostics.some(
+        (item) =>
+          item.code === code &&
+          item.source.element === node.source.element &&
+          item.source.id === node.source.id &&
+          item.message === message,
+      )
+    )
+      return;
+    diagnostics.push({ code, message, severity: "warning", source: node.source });
+  }
+
+  const translation = (x: number, y: number): AffineTransform => ({ a: 1, b: 0, c: 0, d: 1, e: x, f: y });
+  const scaling = (value: number): AffineTransform => ({ a: value, b: 0, c: 0, d: value, e: 0, f: 0 });
+  const rotation = (degrees: number): AffineTransform => {
+    const radians = (degrees * Math.PI) / 180;
+    return { a: Math.cos(radians), b: Math.sin(radians), c: -Math.sin(radians), d: Math.cos(radians), e: 0, f: 0 };
+  };
+  const transformedPoint = (matrix: AffineTransform, x: number, y: number) => ({
+    x: matrix.a * x + matrix.c * y + matrix.e,
+    y: matrix.b * x + matrix.d * y + matrix.f,
+  });
+
+  function markerLength(
+    resource: MarkerResource,
+    shape: RenderShape,
+    axis: "horizontal" | "vertical",
+    fontMetrics: FontMetrics,
+  ): number {
+    const value = axis === "horizontal" ? resource.markerWidth : resource.markerHeight;
+    const result = resolveSVGLength(
+      value,
+      lengthContext(
+        shape.paintContext.viewport,
+        shape.paintContext.rootViewport,
+        axis === "horizontal" ? "viewport-width" : "viewport-height",
+        axis,
+        fontMetrics,
+      ),
+    );
+    return typeof result === "number" ? result : 0;
+  }
+
+  function markerReferenceCoordinate(
+    coordinateValue: MarkerRefCoordinate,
+    axis: "horizontal" | "vertical",
+    resource: MarkerResource,
+    viewport: { width: number; height: number },
+    shape: RenderShape,
+    fontMetrics: FontMetrics,
+  ): number {
+    const source = resource.viewBox
+      ? axis === "horizontal"
+        ? { origin: resource.viewBox.x, size: resource.viewBox.width }
+        : { origin: resource.viewBox.y, size: resource.viewBox.height }
+      : { origin: 0, size: axis === "horizontal" ? viewport.width : viewport.height };
+    if (coordinateValue.type === "keyword") {
+      const ratio = coordinateValue.value === "min" ? 0 : coordinateValue.value === "center" ? 0.5 : 1;
+      return source.origin + source.size * ratio;
+    }
+    const result = resolveSVGLength(
+      coordinateValue.value,
+      lengthContext(
+        { width: source.size, height: source.size },
+        shape.paintContext.rootViewport,
+        source.size,
+        axis,
+        fontMetrics,
+      ),
+    );
+    const resolvedValue = typeof result === "number" ? result : 0;
+    return coordinateValue.value.unit === "%" ? source.origin + resolvedValue : resolvedValue;
+  }
+
+  function resolveContextPaint(paint: Paint, shape: RenderShape): Paint {
+    if (paint.type !== "context") return paint;
+    const resolvedPaint = paint.source === "fill" ? (shape.style.contextFill ?? shape.style.fill) : shape.style.stroke;
+    return resolvedPaint.type === "context" ? { type: "none" } : resolvedPaint;
+  }
+
+  function resolveContextPaints(nodes: RenderNode[], shape: RenderShape): void {
+    for (const node of nodes) {
+      node.style = {
+        ...node.style,
+        fill: resolveContextPaint(node.style.fill, shape),
+        stroke: resolveContextPaint(node.style.stroke, shape),
+      };
+      if (node.type === "group") resolveContextPaints(node.children, shape);
+    }
+  }
+
+  function buildMarkerInstance(
+    resource: MarkerResource,
+    shape: RenderShape,
+    kind: "start" | "mid" | "end",
+    vertex: ReturnType<typeof markerVertices>[number],
+    stack: string[],
+  ): RenderGroup | undefined {
+    const effective = { ...resource.presentation } as Presentation;
+    const markerFontCoordinate: CoordinateContext = {
+      viewport: { ...shape.paintContext.viewport },
+      rootViewport: { ...shape.paintContext.rootViewport },
+      fontMetrics: { ...shape.paintContext.fontMetrics },
+    };
+    const fontMetrics = computedFontMetrics(
+      { "font-size": shape.paintContext.fontMetrics.fontSize },
+      effective,
+      resource.provenance,
+      markerFontCoordinate,
+      resource.element,
+      context,
+    );
+    const width = markerLength(resource, shape, "horizontal", fontMetrics);
+    const height = markerLength(resource, shape, "vertical", fontMetrics);
+    if (width <= 0 || height <= 0 || resource.viewBox?.width === 0 || resource.viewBox?.height === 0) return undefined;
+
+    const viewport = { width, height };
+    const contentViewport = resource.viewBox
+      ? { width: resource.viewBox.width, height: resource.viewBox.height }
+      : viewport;
+    const markerCoordinate: CoordinateContext = {
+      viewport: contentViewport,
+      rootViewport: { ...shape.paintContext.rootViewport },
+      fontMetrics,
+    };
+    const resourceStyle = computeStyle(
+      effective,
+      resource.provenance,
+      markerCoordinate,
+      fontMetrics,
+      resource.element,
+      context,
+    );
+    const markerContext: BuildContext = {
+      ...context,
+      activeReferences: new Set(context.activeReferences).add(resource.id),
+    };
+    const built: RenderNode[] = [];
+    for (const content of resource.contentElements) {
+      try {
+        built.push(...buildNode(content, effective, markerCoordinate, markerContext));
+      } catch (error) {
+        diagnoseMarkerOnce(
+          shape,
+          "invalid-marker-content-reference",
+          `Marker #${resource.id} content could not be resolved: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    resolveContextPaints(built, shape);
+    materializeMarkers(built, [...stack, resource.id]);
+
+    const markerViewport = { x: 0, y: 0, width, height };
+    const boxTransform = viewBoxTransform(resource.viewBox, markerViewport, resource.preserveAspectRatio);
+    const ref = transformedPoint(
+      boxTransform,
+      markerReferenceCoordinate(resource.refX, "horizontal", resource, viewport, shape, fontMetrics),
+      markerReferenceCoordinate(resource.refY, "vertical", resource, viewport, shape, fontMetrics),
+    );
+    const angle = orientedMarkerAngle(resource.orient, kind, vertex.angle);
+    const unitScale = resource.units === "strokeWidth" ? shape.style.strokeStyle.width : 1;
+    const placement = [
+      translation(vertex.x, vertex.y),
+      rotation(angle),
+      scaling(unitScale),
+      translation(-ref.x, -ref.y),
+    ].reduce(multiplyTransforms);
+    const group: RenderGroup = {
+      type: "group",
+      children: built,
+      // display on the marker element is forced to none only for direct rendering;
+      // referenced shadow content still consumes all other computed properties.
+      style: { ...resourceStyle, display: "inline" },
+      transform: multiplyTransforms(placement, boxTransform),
+      source: resource.source,
+      paintContext: {
+        viewport: { ...contentViewport },
+        rootViewport: { ...shape.paintContext.rootViewport },
+        fontMetrics: { ...fontMetrics },
+      },
+      markerPlacement: {
+        kind,
+        x: vertex.x,
+        y: vertex.y,
+        angle,
+        unitScale,
+        refX: ref.x,
+        refY: ref.y,
+        viewBoxTransform: boxTransform,
+      },
+      viewport: {
+        rect: markerViewport,
+        ...(resource.viewBox ? { viewBox: resource.viewBox } : {}),
+        preserveAspectRatio: resource.preserveAspectRatio,
+        overflow: resource.overflow,
+        clip: resource.overflow !== "visible",
+        zeroSized: false,
+        clipTransform: placement,
+      },
+    };
+    if (resource.children.length === 0) resource.children = built;
+    return group;
+  }
+
+  function materializeMarkers(nodes: RenderNode[], stack: string[] = []): void {
+    for (const node of nodes) {
+      if (node.type === "group") {
+        materializeMarkers(node.children, stack);
+        continue;
+      }
+      if (node.type !== "shape") continue;
+      let vertices: ReturnType<typeof markerVertices>;
+      try {
+        vertices = markerVertices(node.geometry);
+      } catch (error) {
+        diagnoseMarkerOnce(
+          node,
+          "invalid-marker-geometry",
+          `Marker vertices could not be computed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        continue;
+      }
+      if (vertices.length === 0) continue;
+
+      const requests: Array<{
+        kind: "start" | "mid" | "end";
+        reference: MarkerReference | undefined;
+        vertex: (typeof vertices)[number];
+      }> = [];
+      if (vertices.length === 1) {
+        requests.push(
+          { kind: "start", reference: node.style.markerStart, vertex: vertices[0]! },
+          { kind: "end", reference: node.style.markerEnd, vertex: vertices[0]! },
+        );
+      } else {
+        requests.push({ kind: "start", reference: node.style.markerStart, vertex: vertices[0]! });
+        for (let index = 1; index < vertices.length - 1; index++)
+          requests.push({ kind: "mid", reference: node.style.markerMid, vertex: vertices[index]! });
+        requests.push({
+          kind: "end",
+          reference: node.style.markerEnd,
+          vertex: vertices[vertices.length - 1]!,
+        });
+      }
+
+      const instances: RenderGroup[] = [];
+      for (const request of requests) {
+        const reference = request.reference;
+        if (!reference || reference.invalid || !reference.id) continue;
+        const id = reference.id;
+        const resource = resources.markers.get(id);
+        if (!resource) {
+          const target = resources.definitions.get(id);
+          diagnoseMarkerOnce(
+            node,
+            target ? "wrong-marker-resource-type" : "missing-marker-resource",
+            target
+              ? `Marker reference #${id} targets <${target.tagName}> instead of a marker.`
+              : `Marker reference #${id} does not resolve to a local marker resource.`,
+          );
+          continue;
+        }
+        if (stack.includes(id)) {
+          const cycle = [...stack.slice(stack.indexOf(id)), id];
+          diagnoseMarkerOnce(
+            node,
+            "cyclic-marker-reference",
+            `Marker cycle detected: ${cycle.map((item) => `#${item}`).join(" -> ")}.`,
+          );
+          continue;
+        }
+        const instance = buildMarkerInstance(resource, node, request.kind, request.vertex, stack);
+        if (instance) instances.push(instance);
+      }
+      if (instances.length > 0) {
+        node.markers = instances;
+        for (const instance of instances) {
+          const resource = resources.markers.get(instance.source.id ?? "");
+          if (resource) resource.instances.set(node, [...(resource.instances.get(node) ?? []), instance]);
+        }
+      }
+    }
+  }
+  materializeMarkers(children);
 
   function diagnosePatternOnce(pattern: PatternPaint, code: string, message: string): void {
     if (diagnostics.some((item) => item.code === code && item.source.id === pattern.id && item.message === message))
@@ -1157,6 +1505,7 @@ export function buildRenderDocument(
         );
       }
     }
+    materializeMarkers(built);
     return built;
   }
 
@@ -1185,6 +1534,7 @@ export function buildRenderDocument(
           continue;
         }
         if (node.type !== "shape") continue;
+        if (node.markers) visit(node.markers);
         for (const paint of [node.style.fill, node.style.stroke]) {
           if (paint.type !== "reference") continue;
           const dependency = resources.paints.get(paint.id);
@@ -1202,6 +1552,7 @@ export function buildRenderDocument(
         continue;
       }
       if (node.type !== "shape") continue;
+      if (node.markers) materializeReferencedPatterns(node.markers);
       for (const paint of [node.style.fill, node.style.stroke]) {
         if (paint.type !== "reference") continue;
         const pattern = resources.paints.get(paint.id);
@@ -1236,6 +1587,7 @@ export function buildRenderDocument(
   function materializeClipPaths(nodes: RenderNode[], stack: string[] = []): void {
     for (const node of nodes) {
       if (node.type === "group") materializeClipPaths(node.children, stack);
+      else if (node.type === "shape" && node.markers) materializeClipPaths(node.markers, stack);
       const reference = node.style.clipPath;
       if (!reference || reference.invalid || !reference.id) continue;
       const id = reference.id;
@@ -1319,6 +1671,7 @@ export function buildRenderDocument(
           fontMetrics: { ...fontMetrics },
         },
       };
+      materializeMarkers([rootGroup]);
       materializeClipPaths([rootGroup], [...stack, id]);
       const instance = resolveClipPathInstance(resource, node, [rootGroup]);
       if (instance.invalid && resource.units === "objectBoundingBox")
@@ -1357,6 +1710,7 @@ export function buildRenderDocument(
   function materializeMasks(nodes: RenderNode[], stack: string[] = []): void {
     for (const node of nodes) {
       if (node.type === "group") materializeMasks(node.children, stack);
+      else if (node.type === "shape" && node.markers) materializeMasks(node.markers, stack);
       const reference = node.style.mask;
       if (!reference || reference.invalid || !reference.id) continue;
       const id = reference.id;
@@ -1406,6 +1760,7 @@ export function buildRenderDocument(
           );
         }
       }
+      materializeMarkers(built);
       materializeReferencedPatterns(built);
       materializeClipPaths(built);
       materializeMasks(built, [...stack, id]);
@@ -1424,6 +1779,7 @@ export function buildRenderDocument(
         continue;
       }
       if (node.type !== "shape") continue;
+      if (node.markers) diagnosePaintReferences(node.markers);
       for (const paint of [node.style.fill, node.style.stroke]) {
         if (paint.type !== "reference") continue;
         const server = resources.paints.get(paint.id);
