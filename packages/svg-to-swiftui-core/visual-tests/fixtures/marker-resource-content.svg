@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 140">
+  <rect width="260" height="140" fill="#f0fdf4"/>
+  <defs>
+    <linearGradient id="marker-gradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#facc15"/><stop offset="1" stop-color="#dc2626"/></linearGradient>
+    <pattern id="marker-pattern" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="2" height="4" fill="#0ea5e9"/><rect x="2" width="2" height="4" fill="#e0f2fe"/></pattern>
+    <path id="petal" d="M5 1C8 1 9 4 5 7C1 4 2 1 5 1Z"/>
+    <marker id="resource" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+      <g stroke="#713f12" stroke-width=".6"><use href="#petal" fill="url(#marker-gradient)"/><use href="#petal" fill="url(#marker-pattern)" transform="rotate(180 5 5)"/></g>
+    </marker>
+  </defs>
+  <path d="M20 35C70 5 100 65 130 35S205 5 240 35" fill="none" stroke="#166534" stroke-width="4" marker-start="url(#resource)" marker-mid="url(#resource)" marker-end="url(#resource)"/>
+  <polygon points="35,100 80,75 125,100 80,125" fill="#bbf7d0" stroke="#15803d" stroke-width="3" marker-start="url(#resource)" marker-mid="url(#resource)" marker-end="url(#resource)"/>
+  <polyline points="155,115 180,78 210,118 240,82" fill="none" stroke="#0369a1" stroke-width="3" marker-start="url(#resource)" marker-mid="url(#resource)" marker-end="url(#resource)"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 150">
+  <rect width="260" height="150" fill="#fff7ed"/>
+  <defs>
+    <marker id="diamond" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+      <path d="M5 0L10 5L5 10L0 5Z" fill="#f97316" stroke="#7c2d12"/>
+    </marker>
+  </defs>
+  <path d="M12 42 C28 4 58 4 74 42 Q94 82 114 42 A24 16 0 0 1 158 42 L190 18 L228 42"
+    fill="none" stroke="#9a3412" stroke-width="3" marker-start="url(#diamond)" marker-mid="url(#diamond)" marker-end="url(#diamond)"/>
+  <path d="M18 105 L18 105 C18 105 46 76 70 105 L70 105 L104 105 M132 105 A18 18 0 1 0 168 105 M190 105 H230 H190"
+    fill="none" stroke="#0f766e" stroke-width="3" marker-start="url(#diamond)" marker-mid="url(#diamond)" marker-end="url(#diamond)"/>
+</svg>

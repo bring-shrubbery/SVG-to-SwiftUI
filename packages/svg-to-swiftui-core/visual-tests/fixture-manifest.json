@@ -10883,6 +10883,218 @@
       "expectedMode": "shape",
       "tags": ["circle", "geometry", "line", "lucide", "realistic", "shape", "stroke"]
     },
+    "marker-context-paint": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "context-paint",
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "overflow",
+        "path",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-curves-arcs-subpaths": {
+      "width": 128,
+      "height": 74,
+      "expectedMode": "view",
+      "tags": [
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "overflow",
+        "path",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-invalid-references": {
+      "width": 128,
+      "height": 59,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-start",
+        "marker-units",
+        "path",
+        "polyline",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-orientation-angles": {
+      "width": 128,
+      "height": 67,
+      "expectedMode": "view",
+      "tags": [
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "overflow",
+        "path",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-paint-order-opacity": {
+      "width": 128,
+      "height": 57,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "opacity",
+        "overflow",
+        "paint-order",
+        "polygon",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-primitives": {
+      "width": 128,
+      "height": 75,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "line",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "overflow",
+        "path",
+        "polygon",
+        "polyline",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-resource-content": {
+      "width": 128,
+      "height": 69,
+      "expectedMode": "view",
+      "tags": [
+        "g",
+        "geometry",
+        "linearGradient",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "overflow",
+        "path",
+        "pattern",
+        "pattern-units",
+        "polygon",
+        "polyline",
+        "rect",
+        "stop",
+        "stroke",
+        "transform",
+        "use",
+        "view"
+      ]
+    },
+    "marker-transforms-overflow": {
+      "width": 128,
+      "height": 74,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "g",
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-mid",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "overflow",
+        "path",
+        "polyline",
+        "rect",
+        "stroke",
+        "transform",
+        "view"
+      ]
+    },
+    "marker-units-ref-points": {
+      "width": 128,
+      "height": 74,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-orient",
+        "marker-start",
+        "marker-units",
+        "opacity",
+        "overflow",
+        "path",
+        "rect",
+        "stroke",
+        "view"
+      ]
+    },
+    "marker-viewbox-preserve-aspect": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "g",
+        "geometry",
+        "marker",
+        "marker-end",
+        "marker-units",
+        "path",
+        "preserve-aspect-ratio",
+        "rect",
+        "stroke",
+        "use",
+        "view"
+      ]
+    },
     "mask-alpha-luminance-primary": {
       "width": 128,
       "height": 64,

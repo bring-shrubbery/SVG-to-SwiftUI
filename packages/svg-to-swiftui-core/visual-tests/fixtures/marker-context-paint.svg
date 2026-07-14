@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 130">
+  <rect width="260" height="130" fill="#f1f5f9"/>
+  <defs>
+    <marker id="context" viewBox="0 0 14 14" refX="7" refY="7" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+      <path d="M1 7L7 1L13 7L7 13Z" fill="context-stroke" stroke="context-fill" stroke-width="2"/>
+      <circle cx="7" cy="7" r="2" fill="#fff"/>
+    </marker>
+  </defs>
+  <path d="M20 28H110" fill="#fde68a" stroke="#dc2626" stroke-width="5" marker-start="url(#context)" marker-end="url(#context)"/>
+  <path d="M150 28H240" fill="#bfdbfe" stroke="#2563eb" stroke-width="5" marker-start="url(#context)" marker-end="url(#context)"/>
+  <path d="M20 82Q65 120 110 82" fill="#dcfce7" stroke="#16a34a" stroke-width="4" marker-start="url(#context)" marker-mid="url(#context)" marker-end="url(#context)"/>
+  <path d="M150 82Q195 44 240 82" fill="#fae8ff" stroke="#a21caf" stroke-width="4" marker-start="url(#context)" marker-mid="url(#context)" marker-end="url(#context)"/>
+</svg>

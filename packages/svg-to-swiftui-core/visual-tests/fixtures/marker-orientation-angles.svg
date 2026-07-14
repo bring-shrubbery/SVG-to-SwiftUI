@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 125">
+  <rect width="240" height="125" fill="#f5f3ff"/>
+  <defs>
+    <marker id="auto-reverse" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse" overflow="visible"><path d="M1 1L9 5L1 9Z" fill="#7c3aed"/></marker>
+    <marker id="deg" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="45deg" overflow="visible"><path d="M1 1L9 5L1 9Z" fill="#dc2626"/></marker>
+    <marker id="rad" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="1.5707963267948966rad" overflow="visible"><path d="M1 1L9 5L1 9Z" fill="#ea580c"/></marker>
+    <marker id="grad" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="100grad" overflow="visible"><path d="M1 1L9 5L1 9Z" fill="#0891b2"/></marker>
+    <marker id="turn" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient=".75turn" overflow="visible"><path d="M1 1L9 5L1 9Z" fill="#16a34a"/></marker>
+  </defs>
+  <path d="M20 25H105" stroke="#4c1d95" stroke-width="3" marker-start="url(#auto-reverse)" marker-end="url(#auto-reverse)"/>
+  <path d="M135 25H220" stroke="#991b1b" stroke-width="3" marker-start="url(#deg)" marker-end="url(#deg)"/>
+  <path d="M35 70H95" stroke="#9a3412" stroke-width="3" marker-start="url(#rad)" marker-end="url(#rad)"/>
+  <path d="M120 70H180" stroke="#155e75" stroke-width="3" marker-start="url(#grad)" marker-end="url(#grad)"/>
+  <path d="M65 108H175" stroke="#166534" stroke-width="3" marker-start="url(#turn)" marker-end="url(#turn)"/>
+</svg>

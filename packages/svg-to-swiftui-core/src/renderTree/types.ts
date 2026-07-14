@@ -34,7 +34,8 @@ export interface RenderDiagnostic {
 export type Paint =
   | { type: "none" }
   | { type: "solid"; value: string }
-  | { type: "reference"; id: string; fallback?: string };
+  | { type: "reference"; id: string; fallback?: string }
+  | { type: "context"; source: "fill" | "stroke" };
 
 export type GradientUnits = "objectBoundingBox" | "userSpaceOnUse";
 export type GradientSpreadMethod = "pad" | "reflect" | "repeat";
@@ -212,14 +213,50 @@ export interface StrokeStyle {
 
 export type PaintOrderPhase = "fill" | "stroke" | "markers";
 
+export interface MarkerReference {
+  id?: string;
+  invalid: boolean;
+}
+
+export type MarkerUnits = "strokeWidth" | "userSpaceOnUse";
+export type MarkerOrient = { type: "auto" | "auto-start-reverse" } | { type: "angle"; degrees: number };
+export type MarkerRefCoordinate =
+  | { type: "length"; value: ParsedSVGLength }
+  | { type: "keyword"; value: "min" | "center" | "max" };
+
+export interface MarkerResource {
+  id: string;
+  markerWidth: ParsedSVGLength;
+  markerHeight: ParsedSVGLength;
+  refX: MarkerRefCoordinate;
+  refY: MarkerRefCoordinate;
+  units: MarkerUnits;
+  orient: MarkerOrient;
+  viewBox?: ViewBoxData;
+  preserveAspectRatio: PreserveAspectRatio;
+  overflow: string;
+  source: SourceLocation;
+  element: ElementNode;
+  contentElements: ElementNode[];
+  children: RenderNode[];
+  instances: Map<RenderShape, RenderGroup[]>;
+  presentation: Readonly<Record<string, string | number>>;
+  provenance: Readonly<Record<string, CSSDiagnosticContext>>;
+}
+
 /** Presentation properties after inheritance and inline-style precedence have been resolved. */
 export interface ComputedStyle {
   fill: Paint;
+  /** Authored fill retained for context-fill when the host geometry itself has no fill phase (for example line). */
+  contextFill?: Paint;
   stroke: Paint;
   color: string;
   opacity: number;
   fillOpacity: number;
   strokeOpacity: number;
+  markerStart?: MarkerReference;
+  markerMid?: MarkerReference;
+  markerEnd?: MarkerReference;
   /** Complete SVG paint sequence after omitted phases are appended in default order. */
   paintOrder: readonly PaintOrderPhase[];
   fillRule: "nonzero" | "evenodd";
@@ -256,6 +293,19 @@ export interface RenderShape {
   paintContext: NodeCoordinateContext;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  /** Materialized marker shadow trees in SVG vertex order. */
+  markers?: RenderGroup[];
+}
+
+export interface MarkerPlacement {
+  kind: "start" | "mid" | "end";
+  x: number;
+  y: number;
+  angle: number;
+  unitScale: number;
+  refX: number;
+  refY: number;
+  viewBoxTransform: AffineTransform;
 }
 
 export interface RenderGroup {
@@ -267,6 +317,8 @@ export interface RenderGroup {
   paintContext: NodeCoordinateContext;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  /** Present only on a marker shadow-tree root. */
+  markerPlacement?: MarkerPlacement;
   /** True when this group came from a referenced definition. */
   referenceId?: string;
   /** Semantic viewport data retained for clipping and later coordinate-space consumers. */
@@ -320,7 +372,8 @@ export interface ResourceRegistry {
   clipElements: Map<string, ElementNode>;
   masks: Map<string, MaskResource>;
   maskElements: Map<string, ElementNode>;
-  markers: Map<string, ElementNode>;
+  markers: Map<string, MarkerResource>;
+  markerElements: Map<string, ElementNode>;
   filters: Map<string, ElementNode>;
   views: Map<string, ElementNode>;
 }

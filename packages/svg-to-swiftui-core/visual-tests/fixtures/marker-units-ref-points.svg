@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 150">
+  <rect width="260" height="150" fill="#ecfeff"/>
+  <defs>
+    <marker id="stroke" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="4" markerHeight="4" markerUnits="strokeWidth" orient="auto" overflow="visible"><path d="M0 1L10 5L0 9Z" fill="#0e7490" opacity=".8"/></marker>
+    <marker id="user" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto" overflow="visible"><path d="M0 1L10 5L0 9Z" fill="#c2410c" opacity=".8"/></marker>
+    <marker id="left" viewBox="-5 -5 10 10" refX="-5" refY="-5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" overflow="visible"><circle cx="0" cy="0" r="4" fill="#7c3aed"/></marker>
+    <marker id="center" viewBox="-5 -5 10 10" refX="0" refY="0" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" overflow="visible"><circle cx="0" cy="0" r="4" fill="#16a34a"/></marker>
+  </defs>
+  <path d="M20 25H115" stroke="#164e63" stroke-width="2" marker-end="url(#stroke)"/>
+  <path d="M145 25H240" stroke="#164e63" stroke-width="7" marker-end="url(#stroke)"/>
+  <path d="M20 72H115" stroke="#9a3412" stroke-width="2" marker-end="url(#user)"/>
+  <path d="M145 72H240" stroke="#9a3412" stroke-width="7" marker-end="url(#user)"/>
+  <path d="M30 122H100" stroke="#4c1d95" stroke-width="2" marker-start="url(#left)"/>
+  <path d="M160 122H230" stroke="#166534" stroke-width="2" marker-start="url(#center)"/>
+</svg>

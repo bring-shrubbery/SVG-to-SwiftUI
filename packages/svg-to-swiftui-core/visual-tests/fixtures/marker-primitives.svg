@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140">
+  <rect width="240" height="140" fill="#f8fafc"/>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+      <path d="M1 1L9 5L1 9Z" fill="#ef4444" stroke="#7f1d1d" stroke-width="1"/>
+    </marker>
+    <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse">
+      <circle cx="5" cy="5" r="4" fill="#22c55e" stroke="#14532d"/>
+    </marker>
+  </defs>
+  <line x1="15" y1="20" x2="105" y2="20" stroke="#1e3a8a" stroke-width="3" marker-start="url(#arrow)"/>
+  <line x1="135" y1="20" x2="225" y2="20" stroke="#1e3a8a" stroke-width="3" marker-end="url(#arrow)"/>
+  <polyline points="15,55 55,38 95,55" fill="none" stroke="#2563eb" stroke-width="3" marker-mid="url(#dot)"/>
+  <polygon points="135,55 180,35 225,55 205,85 155,85" fill="#bfdbfe" stroke="#1d4ed8" stroke-width="3" marker-start="url(#arrow)" marker-mid="url(#dot)" marker-end="url(#arrow)"/>
+  <path d="M77 108A22 22 0 0 1 55 130A22 22 0 0 1 33 108A22 22 0 0 1 55 86A22 22 0 0 1 77 108Z" fill="none" stroke="#7c3aed" stroke-width="2" marker-start="url(#arrow)" marker-mid="url(#dot)" marker-end="url(#arrow)"/>
+  <path d="M149 94H206A9 9 0 0 1 215 103V115A9 9 0 0 1 206 124H149A9 9 0 0 1 140 115V103A9 9 0 0 1 149 94Z" fill="none" stroke="#0891b2" stroke-width="2" marker-start="url(#arrow)" marker-mid="url(#dot)" marker-end="url(#arrow)"/>
+</svg>

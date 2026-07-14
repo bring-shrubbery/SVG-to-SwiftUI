@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 120">
+  <rect width="270" height="120" fill="#f8fafc"/>
+  <defs>
+    <marker id="large" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="24" markerHeight="24" markerUnits="userSpaceOnUse" orient="auto" overflow="visible">
+      <circle cx="5" cy="5" r="5" fill="#f59e0b" fill-opacity=".7" stroke="#78350f" stroke-width="1.5"/>
+    </marker>
+  </defs>
+  <polygon points="20,25 70,15 95,55 55,85 15,60" fill="#60a5fa" stroke="#1e3a8a" stroke-width="10" opacity=".8" marker-start="url(#large)" marker-mid="url(#large)" marker-end="url(#large)"/>
+  <polygon points="105,25 155,15 180,55 140,85 100,60" fill="#60a5fa" stroke="#1e3a8a" stroke-width="10" opacity=".8" paint-order="markers fill stroke" marker-start="url(#large)" marker-mid="url(#large)" marker-end="url(#large)"/>
+  <polygon points="190,25 240,15 265,55 225,85 185,60" fill="#60a5fa" stroke="#1e3a8a" stroke-width="10" opacity=".8" paint-order="stroke markers fill" marker-start="url(#large)" marker-mid="url(#large)" marker-end="url(#large)"/>
+</svg>

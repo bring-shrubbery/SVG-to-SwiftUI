@@ -58,6 +58,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (name.startsWith("gradient-")) tags.add("gradient");
   if (name.startsWith("pattern-")) tags.add("pattern");
   if (name.startsWith("mask-")) tags.add("mask");
+  if (name.startsWith("marker-")) tags.add("marker");
   if (name.startsWith("clip-")) tags.add("clip-path");
   if (name.startsWith("blend-")) tags.add("blend-mode");
   if (name.startsWith("viewport-")) tags.add("viewport");
@@ -76,6 +77,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     "stop",
     "pattern",
     "mask",
+    "marker",
     "clipPath",
     "use",
     "symbol",
@@ -101,6 +103,12 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/\bvisibility\s*(?:=|:)/.test(source)) tags.add("visibility");
   if (/\bdisplay\s*(?:=|:)/.test(source)) tags.add("display");
   if (/\bpaint-order\s*(?:=|:)/.test(source)) tags.add("paint-order");
+  if (/\bmarker-start\s*(?:=|:)/.test(source)) tags.add("marker-start");
+  if (/\bmarker-mid\s*(?:=|:)/.test(source)) tags.add("marker-mid");
+  if (/\bmarker-end\s*(?:=|:)/.test(source)) tags.add("marker-end");
+  if (/\bmarkerUnits\s*=/.test(source)) tags.add("marker-units");
+  if (/\borient\s*=/.test(source)) tags.add("marker-orient");
+  if (/\bcontext-(?:fill|stroke)\b/.test(source)) tags.add("context-paint");
   if (/\bgradientUnits\s*=/.test(source)) tags.add("gradient-units");
   if (/\bgradientTransform\s*=/.test(source)) tags.add("gradient-transform");
   if (/\bspreadMethod\s*=/.test(source)) tags.add("gradient-spread");

@@ -120,7 +120,9 @@ function createOptions(
 function hasFill(nodes: RenderNode[]): boolean {
   return nodes.some(
     (node) =>
-      (node.type === "shape" && node.style.fill.type !== "none") || (node.type === "group" && hasFill(node.children)),
+      (node.type === "shape" &&
+        (node.style.fill.type !== "none" || (node.markers !== undefined && hasFill(node.markers)))) ||
+      (node.type === "group" && hasFill(node.children)),
   );
 }
 
@@ -128,6 +130,7 @@ function hasStroke(nodes: RenderNode[]): boolean {
   return nodes.some(
     (node) =>
       (node.type === "shape" && node.style.stroke.type !== "none") ||
+      (node.type === "shape" && node.markers !== undefined && hasStroke(node.markers)) ||
       (node.type === "group" && hasStroke(node.children)),
   );
 }
@@ -135,6 +138,7 @@ function hasStroke(nodes: RenderNode[]): boolean {
 function paintValue(paint: Paint): string {
   if (paint.type === "none") return "none";
   if (paint.type === "solid") return paint.value;
+  if (paint.type === "context") return `context-${paint.source}`;
   return paint.fallback ?? `url(#${paint.id})`;
 }
 
@@ -576,6 +580,9 @@ function buildViewNodes(
       }
       if (kind === "stroke" && node.style.stroke.type !== "none") {
         addLayer("stroke", node.style.stroke, node.style.strokeOpacity);
+      }
+      if (kind === "markers" && node.markers && node.markers.length > 0) {
+        paints.push(...buildViewNodes(node.markers, context, [...ancestorTransforms, node.transform]));
       }
     }
     if (paints.length > 0) {
