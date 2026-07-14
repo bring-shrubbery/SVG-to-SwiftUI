@@ -52,6 +52,7 @@ function containsIndependentCompositing(nodes: RenderNode[]): boolean {
       node.style.fillOpacity !== 1 ||
       node.style.strokeOpacity !== 1 ||
       node.style.isolation === "isolate" ||
+      node.clipPath !== undefined ||
       node.style.mask !== undefined ||
       node.style.blendMode !== "normal"
     )

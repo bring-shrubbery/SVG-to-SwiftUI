@@ -77,6 +77,7 @@ export interface RadialGradientPaint extends GradientPaintBase {
 
 export type PatternUnits = "objectBoundingBox" | "userSpaceOnUse";
 export type MaskUnits = "objectBoundingBox" | "userSpaceOnUse";
+export type ClipPathUnits = "objectBoundingBox" | "userSpaceOnUse";
 export type MaskType = "alpha" | "luminance";
 export type SVGBlendMode =
   | "normal"
@@ -129,6 +130,30 @@ export interface MaskInstance {
 }
 
 export interface MaskReference {
+  id?: string;
+  invalid: boolean;
+}
+
+export interface ClipPathResource {
+  id: string;
+  units: ClipPathUnits;
+  source: SourceLocation;
+  element: ElementNode;
+  contentElements: ElementNode[];
+  children: RenderNode[];
+  instances: Map<RenderNode, ClipPathInstance>;
+  presentation: Readonly<Record<string, string | number>>;
+  provenance: Readonly<Record<string, CSSDiagnosticContext>>;
+}
+
+export interface ClipPathInstance {
+  resource?: ClipPathResource;
+  children: RenderNode[];
+  contentTransform: AffineTransform;
+  invalid: boolean;
+}
+
+export interface ClipPathReference {
   id?: string;
   invalid: boolean;
 }
@@ -200,6 +225,7 @@ export interface ComputedStyle {
   clipRule: "nonzero" | "evenodd";
   display: string;
   visibility: string;
+  clipPath?: ClipPathReference;
   mask?: MaskReference;
   blendMode: SVGBlendMode;
   isolation: "auto" | "isolate";
@@ -227,6 +253,7 @@ export interface RenderShape {
   source: SourceLocation;
   /** Coordinate context at the referencing element, retained for user-space paint percentages. */
   paintContext: NodeCoordinateContext;
+  clipPath?: ClipPathInstance;
   mask?: MaskInstance;
 }
 
@@ -237,6 +264,7 @@ export interface RenderGroup {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  clipPath?: ClipPathInstance;
   mask?: MaskInstance;
   /** True when this group came from a referenced definition. */
   referenceId?: string;
@@ -261,6 +289,7 @@ export interface RenderText {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  clipPath?: ClipPathInstance;
   mask?: MaskInstance;
 }
 
@@ -272,6 +301,7 @@ export interface RenderImage {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  clipPath?: ClipPathInstance;
   mask?: MaskInstance;
 }
 
@@ -285,7 +315,8 @@ export interface ResourceRegistry {
   paints: Map<string, PaintServer>;
   /** Original paint elements retained for future pattern/resource resolvers. */
   paintElements: Map<string, ElementNode>;
-  clips: Map<string, ElementNode>;
+  clips: Map<string, ClipPathResource>;
+  clipElements: Map<string, ElementNode>;
   masks: Map<string, MaskResource>;
   maskElements: Map<string, ElementNode>;
   markers: Map<string, ElementNode>;

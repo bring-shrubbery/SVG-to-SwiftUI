@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 96">
+  <defs>
+    <linearGradient id="rainbow" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#00d2d3"/>
+      <stop offset=".5" stop-color="#5f27cd"/>
+      <stop offset="1" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <clipPath id="left"><rect x="10" y="10" width="84" height="76" rx="12"/></clipPath>
+    <clipPath id="nested" clip-path="url(#left)">
+      <circle cx="64" cy="48" r="42"/>
+      <rect x="76" y="22" width="42" height="52" rx="8"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#nested)" transform="rotate(4 64 48)">
+    <rect x="4" y="4" width="120" height="88" fill="url(#rainbow)"/>
+    <circle cx="48" cy="44" r="24" fill="#ffffff" opacity=".45"/>
+    <circle cx="82" cy="54" r="24" fill="#000000" opacity=".25"/>
+  </g>
+</svg>

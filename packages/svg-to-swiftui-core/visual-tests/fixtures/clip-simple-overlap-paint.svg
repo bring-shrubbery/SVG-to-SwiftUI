@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <defs>
+    <linearGradient id="paint" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff4d6d"/>
+      <stop offset="1" stop-color="#5f27cd"/>
+    </linearGradient>
+    <clipPath id="overlap">
+      <circle cx="46" cy="40" r="30" fill="none" stroke="red" stroke-width="18" opacity=".1"/>
+      <rect x="48" y="18" width="62" height="44" fill="none"/>
+    </clipPath>
+  </defs>
+  <rect width="128" height="80" rx="10" fill="url(#paint)" clip-path="url(#overlap)"/>
+</svg>

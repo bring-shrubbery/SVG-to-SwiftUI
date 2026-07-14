@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <style>.clipped { clip-path: url(#windows); }</style>
+  <defs>
+    <path id="window" d="M8 8H52V34H8Z"/>
+    <clipPath id="windows">
+      <use href="#window"/>
+      <use href="#window" transform="translate(60 38)"/>
+    </clipPath>
+    <linearGradient id="paint" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#00d2d3"/>
+      <stop offset="1" stop-color="#5f27cd"/>
+    </linearGradient>
+  </defs>
+  <rect class="clipped" width="128" height="80" fill="url(#paint)"/>
+</svg>

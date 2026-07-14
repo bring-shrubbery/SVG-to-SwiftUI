@@ -58,6 +58,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (name.startsWith("gradient-")) tags.add("gradient");
   if (name.startsWith("pattern-")) tags.add("pattern");
   if (name.startsWith("mask-")) tags.add("mask");
+  if (name.startsWith("clip-")) tags.add("clip-path");
   if (name.startsWith("blend-")) tags.add("blend-mode");
   if (name.startsWith("viewport-")) tags.add("viewport");
   if (name.startsWith("viewport-realistic-")) tags.add("realistic");
@@ -75,6 +76,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     "stop",
     "pattern",
     "mask",
+    "clipPath",
     "use",
     "symbol",
     "switch",
@@ -102,6 +104,8 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/\bmaskUnits\s*=/.test(source)) tags.add("mask-units");
   if (/\bmaskContentUnits\s*=/.test(source)) tags.add("mask-content-units");
   if (/\bmask-type\s*(?:=|:)/.test(source)) tags.add("mask-type");
+  if (/\bclipPathUnits\s*=/.test(source)) tags.add("clip-path-units");
+  if (/\bclip-rule\s*(?:=|:)/.test(source)) tags.add("clip-rule");
   if (/\bmix-blend-mode\s*(?:=|:)/.test(source)) tags.add("blend-mode");
   if (/\bisolation\s*(?:=|:)/.test(source)) tags.add("isolation");
   if (/<pattern\b[^>]*(?:href|xlink:href)\s*=/.test(source)) tags.add("pattern-href");

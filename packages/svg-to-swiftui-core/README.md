@@ -39,6 +39,12 @@ Element and group `opacity` are applied once after their children have been pain
 
 The render tree also exposes shared painted-bounds queries through `__testing`. Bounds include transforms and stroke extents, exclude `display: none`, retain zero-opacity geometry, and intersect nested viewport clips. Future marker and filter tickets can extend the same query.
 
+### Clipping paths
+
+`clip-path: url(#id)` and `<clipPath>` are resolved as typed resources. Generated SwiftUI supports `userSpaceOnUse` and `objectBoundingBox`, resource/target/content transforms, `clip-rule`, groups, `use`, overlapping child unions, nested intersections, empty clips, and clipping on groups and painted shapes.
+
+Clip coverage uses raw geometry only: source fill, stroke, stroke width, paint, and opacity do not affect it. Object bounding boxes likewise use unclipped geometry without stroke, markers, masks, or other effects. Invalid local references apply no clipping and emit a diagnostic; empty, cyclic, or zero-bounds object-box clips render no coverage. Strict conversion rejects every such diagnostic. CSS basic-shape clip paths are diagnosed and deferred.
+
 ### Masks, blend modes, and isolation
 
 `mask` definitions are typed resources with the SVG defaults for `maskUnits`, `maskContentUnits`, the expanded `-10%/-10%/120%/120%` region, and luminance interpretation. Generated SwiftUI supports alpha and luminance masks, object-bounding-box and user-space coordinates, region clipping, transforms, nested masks, groups, `use`, gradients, patterns, opacity, empty masks, and structured diagnostics for missing, wrong-type, malformed, or cyclic references.
@@ -132,6 +138,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] Solid fill/stroke styling with colours
 - [x] Linear/radial gradient fills and strokes, stops, inheritance, transforms, and spread methods
 - [x] Pattern fills and strokes, inheritance, coordinate systems, transforms, viewBox behavior, and vector tiling
+- [x] SVG clipping paths, clip rules, coordinate systems, transforms, unions, and nested intersections
 - [x] SVG masks, Level 1 blend modes, group compositing, and isolation
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [ ] SVG `<text>` element

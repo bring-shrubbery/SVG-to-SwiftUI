@@ -1,6 +1,6 @@
 import { SVGPathData } from "svg-pathdata";
 import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms } from "../transformUtils";
-import type { Geometry, RenderBounds, RenderDocument, RenderNode, RenderShape } from "./types";
+import type { ClipPathInstance, Geometry, RenderBounds, RenderDocument, RenderNode, RenderShape } from "./types";
 
 function union(left: RenderBounds | undefined, right: RenderBounds | undefined): RenderBounds | undefined {
   if (!left) return right;
@@ -154,6 +154,44 @@ function hidden(visibility: string): boolean {
   return visibility === "hidden" || visibility === "collapse";
 }
 
+/** Raw clip geometry bounds. Paint, stroke, opacity, masks, and filters do not contribute. */
+function clipNodesBounds(nodes: RenderNode[], parent: AffineTransform): RenderBounds | undefined {
+  let bounds: RenderBounds | undefined;
+  for (const node of nodes) {
+    if (node.style.display === "none") continue;
+    const transform = multiplyTransforms(parent, node.transform);
+    let candidate: RenderBounds | undefined;
+    if (node.type === "shape") {
+      if (hidden(node.style.visibility)) continue;
+      const geometry = geometryBounds(node.geometry);
+      candidate = geometry
+        ? transformedRect(geometry.x, geometry.y, geometry.width, geometry.height, transform)
+        : undefined;
+    } else if (node.type === "group") {
+      candidate = clipNodesBounds(node.children, transform);
+    }
+    if (node.clipPath) {
+      const nested = clipPathInstanceBounds(node.clipPath, transform);
+      candidate = nested ? intersect(candidate, nested) : undefined;
+    }
+    bounds = union(bounds, candidate);
+  }
+  return bounds;
+}
+
+function clipPathInstanceBounds(
+  instance: ClipPathInstance,
+  targetTransform: AffineTransform,
+): RenderBounds | undefined {
+  if (instance.invalid || instance.children.length === 0) return undefined;
+  const content = instance.children.map((node) =>
+    node.type === "group"
+      ? { ...node, transform: multiplyTransforms(node.transform, instance.contentTransform) }
+      : node,
+  );
+  return clipNodesBounds(content, targetTransform);
+}
+
 /** Painted axis-aligned bounds for a node in the generated root coordinate space. */
 export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM): RenderBounds | undefined {
   if (node.style.display === "none") return undefined;
@@ -161,7 +199,12 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
   if (node.type === "shape") {
     if (hidden(node.style.visibility)) return undefined;
     const bounds = localShapeBounds(node);
-    return bounds ? transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform) : undefined;
+    let painted = bounds ? transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform) : undefined;
+    if (node.clipPath) {
+      const clip = clipPathInstanceBounds(node.clipPath, transform);
+      painted = clip ? intersect(painted, clip) : undefined;
+    }
+    return painted;
   }
   if (node.type === "group") {
     let bounds = renderNodesBounds(node.children, transform);
@@ -169,6 +212,10 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
       const clip = node.viewport.rect;
       const clipTransform = multiplyTransforms(parent, node.viewport.clipTransform);
       bounds = intersect(bounds, transformedRect(clip.x, clip.y, clip.width, clip.height, clipTransform));
+    }
+    if (node.clipPath) {
+      const clip = clipPathInstanceBounds(node.clipPath, transform);
+      bounds = clip ? intersect(bounds, clip) : undefined;
     }
     return bounds;
   }

@@ -79,6 +79,108 @@
       "expectedMode": "shape",
       "tags": ["circle", "geometry", "shape"]
     },
+    "clip-invalid-empty-cycle": {
+      "width": 128,
+      "height": 32,
+      "expectedMode": "view",
+      "tags": ["clip-path", "clipPath", "geometry", "rect", "view"]
+    },
+    "clip-mask-opacity-order": {
+      "width": 128,
+      "height": 85,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "clip-path",
+        "clipPath",
+        "g",
+        "geometry",
+        "linearGradient",
+        "mask",
+        "mask-type",
+        "mask-units",
+        "opacity",
+        "rect",
+        "stop",
+        "view"
+      ]
+    },
+    "clip-nested-group-gradient": {
+      "width": 128,
+      "height": 96,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "clip-path",
+        "clipPath",
+        "g",
+        "geometry",
+        "linearGradient",
+        "opacity",
+        "rect",
+        "stop",
+        "transform",
+        "view"
+      ]
+    },
+    "clip-nested-intersection": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": ["circle", "clip-path", "clipPath", "g", "geometry", "rect", "transform", "view"]
+    },
+    "clip-object-bbox-transform": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": ["clip-path", "clip-path-units", "clipPath", "geometry", "rect", "stroke", "transform", "view"]
+    },
+    "clip-rule-holes": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": ["clip-path", "clip-rule", "clipPath", "geometry", "path", "rect", "view"]
+    },
+    "clip-simple-overlap-paint": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "clip-path",
+        "clipPath",
+        "geometry",
+        "linearGradient",
+        "opacity",
+        "rect",
+        "stop",
+        "stroke",
+        "view"
+      ]
+    },
+    "clip-units-transforms": {
+      "width": 128,
+      "height": 128,
+      "expectedMode": "view",
+      "tags": ["circle", "clip-path", "clipPath", "g", "geometry", "rect", "transform", "view"]
+    },
+    "clip-use-css": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "clip-path",
+        "clipPath",
+        "geometry",
+        "linearGradient",
+        "path",
+        "rect",
+        "stop",
+        "transform",
+        "use",
+        "view"
+      ]
+    },
     "compositing-display-none": {
       "width": 128,
       "height": 75,
