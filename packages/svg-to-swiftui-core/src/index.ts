@@ -23,7 +23,7 @@ function parseRenderDocument(rawSVGString: string, config: SwiftUIGeneratorConfi
   const svgElement = getSVGElement(ast);
   if (!svgElement) throw new Error("Could not find SVG element, please provide full SVG source!");
   const resolution = resolveSVGProperties(svgElement, config);
-  return buildRenderDocument(svgElement, resolution.properties, resolution.diagnostics);
+  return buildRenderDocument(svgElement, resolution.properties, resolution.diagnostics, config);
 }
 
 function inspectComputedStyles(rawSVGString: string, config: SwiftUIGeneratorConfig = {}) {
@@ -60,10 +60,13 @@ function swiftUIGenerator(svgElement: ElementNode, config: SwiftUIGeneratorConfi
   const configWithDefaults: SwiftUIGeneratorConfig = { ...DEFAULT_CONFIG, ...config };
   const resolution = resolveSVGProperties(svgElement, configWithDefaults);
   const svgProperties = resolution.properties;
-  const document = buildRenderDocument(svgElement, svgProperties, resolution.diagnostics);
+  const document = buildRenderDocument(svgElement, svgProperties, resolution.diagnostics, configWithDefaults);
   const decision = analyzeCapabilities(document, config);
 
-  if (config.strict && document.diagnostics.length > 0) {
+  if (
+    document.diagnostics.some((diagnostic) => diagnostic.severity === "error") ||
+    (config.strict && document.diagnostics.length > 0)
+  ) {
     throw new Error(document.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
   }
 

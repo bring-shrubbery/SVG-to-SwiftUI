@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 100">
+  <defs>
+    <linearGradient id="letters" gradientUnits="userSpaceOnUse" x1="18" y1="0" x2="242" y2="0">
+      <stop stop-color="#7c3aed"/>
+      <stop offset="0.55" stop-color="#db2777" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="260" height="100" fill="#fffbeb"/>
+  <text x="130" y="67" text-anchor="middle" font-family="Poppins" font-size="43" font-weight="700" fill="url(#letters)" stroke="#4c1d95" stroke-opacity="0.55" stroke-width="1.5" paint-order="stroke fill">Gradient</text>
+</svg>

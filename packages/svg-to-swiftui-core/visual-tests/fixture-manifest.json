@@ -11618,6 +11618,46 @@
         "viewport"
       ]
     },
+    "text-anchor-baseline": {
+      "width": 240,
+      "height": 100,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["baseline", "font", "text", "text-anchor", "view", "viewBox"]
+    },
+    "text-basic-nested": {
+      "width": 240,
+      "height": 80,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["font", "font-weight", "text", "tspan", "view"]
+    },
+    "text-gradient-stroke": {
+      "width": 260,
+      "height": 100,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["font", "gradient", "linearGradient", "opacity", "paint-order", "stop", "stroke", "text", "view"]
+    },
+    "text-spacing-decoration-transform": {
+      "width": 260,
+      "height": 100,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["dx", "dy", "font", "spacing", "text", "text-decoration", "transform", "tspan", "view"]
+    },
+    "text-unicode-whitespace": {
+      "width": 280,
+      "height": 110,
+      "fonts": ["fonts/NotoSans.ttf"],
+      "fontFamilies": ["Noto Sans"],
+      "expectedMode": "view",
+      "tags": ["bidi", "font", "text", "tspan", "unicode", "view", "whitespace"]
+    },
     "viewport-nonzero-origin": {
       "width": 180,
       "height": 100,

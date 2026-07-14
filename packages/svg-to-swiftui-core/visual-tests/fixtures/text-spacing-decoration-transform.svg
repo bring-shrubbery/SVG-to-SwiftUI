@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 100">
+  <rect width="260" height="100" rx="10" fill="#eff6ff"/>
+  <g transform="translate(8 4)">
+    <text x="10" y="42" font-family="Poppins" font-size="25" letter-spacing="1.5" word-spacing="5" text-decoration="underline" fill="#1d4ed8">Spaced words</text>
+    <text x="10" y="78" font-family="Poppins" font-size="22" fill="#111827">A<tspan dx="8" dy="-4" font-style="italic" text-decoration="line-through">shifted</tspan></text>
+  </g>
+</svg>

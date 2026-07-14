@@ -29,6 +29,7 @@ export interface BatchTestItem {
   scale: number;
   background: string | null;
   fonts: string[];
+  fontFamilies: string[];
   expectedMode: ExpectedOutputMode;
   tags: string[];
   tolerance: RgbaTolerance;
@@ -129,10 +130,14 @@ async function compileAndRenderBatch(
       console.log(`  Compiling ${items.length} generated SwiftUI view(s)...`);
       const started = Date.now();
       try {
-        await execFile("xcrun", ["swiftc", sourcePath, "-o", binaryPath], {
-          timeout: 900_000,
-          maxBuffer: 100 * 1024 * 1024,
-        });
+        await execFile(
+          "xcrun",
+          ["swiftc", "-module-cache-path", join(cacheDir, "module-cache"), sourcePath, "-o", binaryPath],
+          {
+            timeout: 900_000,
+            maxBuffer: 100 * 1024 * 1024,
+          },
+        );
       } catch (error) {
         throw new Error(
           `Generated SwiftUI compilation failed. Compiler locations name the fixture.\n${compilerFailure(error)}`,
@@ -158,6 +163,7 @@ async function compileAndRenderBatch(
           scale: item.scale,
           background: item.background,
           fonts: item.fonts,
+          fontFamilies: item.fontFamilies,
           expectedMode: item.expectedMode,
         }),
         ...item.fonts.map((font) => readFileSync(resolve(__dirname, font))),
