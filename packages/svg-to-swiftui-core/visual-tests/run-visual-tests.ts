@@ -7,6 +7,7 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
 import { convert } from "../src/index";
+import type { ResolvedResource } from "../src/types";
 import { type BatchTestItem, type BatchTestResult, runBatchVisualTest } from "./batch-render";
 import { FIXTURES_DIR, loadFixtures, outputMode, validateManifest, withPixelViewport } from "./manifest";
 
@@ -105,6 +106,77 @@ function hash(...values: (string | Buffer)[]): string {
   return digest.digest("hex");
 }
 
+function imageMime(path: string): string | undefined {
+  const extension = path.split(/[?#]/, 1)[0]!.split(".").pop()?.toLowerCase();
+  return extension === "png"
+    ? "image/png"
+    : extension === "jpg" || extension === "jpeg"
+      ? "image/jpeg"
+      : extension === "webp"
+        ? "image/webp"
+        : extension === "gif"
+          ? "image/gif"
+          : extension === "svg"
+            ? "image/svg+xml"
+            : undefined;
+}
+
+function collectFixtureResources(
+  source: string,
+  sourceURL: URL,
+): {
+  supplied: Record<string, ResolvedResource>;
+  bytes: Buffer[];
+} {
+  const supplied: Record<string, ResolvedResource> = {};
+  const bytes: Buffer[] = [];
+  const visited = new Set<string>();
+  const visit = (document: string, documentURL: URL): void => {
+    for (const match of document.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
+      const href = match[1]!;
+      if (/^(?:data:|#)/i.test(href)) continue;
+      const resourceURL = new URL(href, documentURL);
+      const resourceBytes = readFileSync(fileURLToPath(resourceURL));
+      const resource: ResolvedResource = {
+        bytes: Uint8Array.from(resourceBytes),
+        mimeType: imageMime(resourceURL.pathname),
+        canonicalURL: resourceURL.href,
+      };
+      supplied[href] ??= resource;
+      supplied[resourceURL.href] = resource;
+      if (visited.has(resourceURL.href)) continue;
+      visited.add(resourceURL.href);
+      bytes.push(resourceBytes);
+      if (resource.mimeType === "image/svg+xml") visit(resourceBytes.toString("utf8"), resourceURL);
+    }
+  };
+  visit(source, sourceURL);
+  return { supplied, bytes };
+}
+
+function inlineFixtureImages(source: string, sourceURL: URL): string {
+  return source.replace(
+    /(<image\b[^>]*\b(?:href|xlink:href)\s*=\s*)(["'])([^"']+)\2/gi,
+    (match, prefix: string, quote: string, href: string) => {
+      if (/^(?:data:|#|https?:)/i.test(href)) return match;
+      const resourceURL = new URL(href, sourceURL);
+      let mimeType = imageMime(resourceURL.pathname);
+      if (!mimeType) return match;
+      let bytes = readFileSync(fileURLToPath(resourceURL));
+      if (mimeType === "image/webp") {
+        const pngURL = new URL(resourceURL.href.replace(/\.webp(?:[?#].*)?$/i, ".png"));
+        if (existsSync(fileURLToPath(pngURL))) {
+          bytes = readFileSync(fileURLToPath(pngURL));
+          mimeType = "image/png";
+        }
+      }
+      if (mimeType === "image/svg+xml")
+        bytes = Buffer.from(inlineFixtureImages(bytes.toString("utf8"), resourceURL), "utf8");
+      return `${prefix}${quote}data:${mimeType};base64,${bytes.toString("base64")}${quote}`;
+    },
+  );
+}
+
 function optionValue(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
@@ -190,11 +262,9 @@ async function main() {
 
   mkdirSync(RENDERS_DIR, { recursive: true });
   let referenceCache: Record<string, ReferenceCacheEntry> = {};
-  if (!fresh) {
-    try {
-      referenceCache = JSON.parse(readFileSync(REFERENCE_CACHE_PATH, "utf8"));
-    } catch {}
-  }
+  try {
+    referenceCache = JSON.parse(readFileSync(REFERENCE_CACHE_PATH, "utf8"));
+  } catch {}
 
   console.log(`Processing ${fixtures.length} deterministic RGBA fixture(s)...\n`);
   const items: BatchTestItem[] = [];
@@ -207,17 +277,20 @@ async function main() {
     try {
       mkdirSync(dirname(referencePath), { recursive: true });
       const source = readFileSync(fixture.sourcePath, "utf8");
+      const sourceURL = pathToFileURL(fixture.sourcePath);
+      const fixtureResources = collectFixtureResources(source, sourceURL);
+      const referenceSource = inlineFixtureImages(source, sourceURL);
       const pixelWidth = Math.round(fixture.width * fixture.scale);
       const pixelHeight = Math.round(fixture.height * fixture.scale);
       const resourceBytes = fixture.fonts.map((font) => readFileSync(resolve(__dirname, font)));
       const usesFirefoxReference = fixture.tags.includes("marker");
       const usesWebKitReference =
-        !usesFirefoxReference && (fixture.tags.includes("blend-mode") || fixture.tags.includes("vector-effect"));
+        !usesFirefoxReference &&
+        (fixture.tags.includes("blend-mode") ||
+          fixture.tags.includes("vector-effect") ||
+          fixture.tags.includes("webkit-reference"));
       if (usesWebKitReference) resourceBytes.push(readFileSync(WEBKIT_RENDERER_SOURCE));
-      for (const match of source.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
-        const href = match[1]!;
-        if (!/^(?:data:|#)/i.test(href)) resourceBytes.push(readFileSync(resolve(dirname(fixture.sourcePath), href)));
-      }
+      resourceBytes.push(...fixtureResources.bytes);
       const referenceHash = hash(
         source,
         JSON.stringify({
@@ -237,10 +310,10 @@ async function main() {
         referenceCacheHits++;
       } else {
         if (usesFirefoxReference) {
-          renderFirefoxReference(source, fixture.name, referencePath, pixelWidth, pixelHeight);
+          renderFirefoxReference(referenceSource, fixture.name, referencePath, pixelWidth, pixelHeight);
         } else if (usesWebKitReference) {
           renderWebKitReference(
-            source,
+            referenceSource,
             fixture.name,
             referencePath,
             fixture.width,
@@ -249,7 +322,7 @@ async function main() {
             pixelHeight,
           );
         } else {
-          const sizedSource = withPixelViewport(source, pixelWidth, pixelHeight);
+          const sizedSource = withPixelViewport(referenceSource, pixelWidth, pixelHeight);
           const resvg = new Resvg(sizedSource, {
             ...(fixture.background ? { background: fixture.background } : {}),
             font: {
@@ -257,10 +330,6 @@ async function main() {
               fontFiles: fixture.fonts.map((font) => resolve(__dirname, font)),
             },
           });
-          for (const href of resvg.imagesToResolve()) {
-            const resourcePath = resolve(dirname(fixture.sourcePath), href);
-            resvg.resolveImage(href, readFileSync(resourcePath));
-          }
           const rendered = resvg.render();
           if (rendered.width !== pixelWidth || rendered.height !== pixelHeight) {
             throw new Error(
@@ -278,6 +347,10 @@ async function main() {
         precision: 5,
         preserveColors: fixture.expectedMode === "view",
         fonts: { availableFamilies: fixture.fontFamilies, fallbackFamily: fixture.fontFamilies[0] ?? "Helvetica" },
+        resources: {
+          baseURL: sourceURL.href,
+          supplied: fixtureResources.supplied,
+        },
       });
       const actualMode = outputMode(swiftCode);
       if (actualMode !== fixture.expectedMode) {

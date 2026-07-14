@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="54" viewBox="0 0 160 54">
+  <rect width="160" height="54" fill="#252422"/>
+  <g transform="translate(5 7)">
+    <image href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2210%22%20viewBox%3D%220%200%2020%2010%22%3E%3Cpath%20fill%3D%22%23ff006e%22%20d%3D%22M0%200h14v10H0z%22%2F%3E%3Cpath%20fill%3D%22%233a86ff%22%20d%3D%22M14%200h6v10h-6z%22%2F%3E%3C%2Fsvg%3E"
+      width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <image href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2210%22%20viewBox%3D%220%200%2020%2010%22%3E%3Cpath%20fill%3D%22%23ff006e%22%20d%3D%22M0%200h14v10H0z%22%2F%3E%3Cpath%20fill%3D%22%233a86ff%22%20d%3D%22M14%200h6v10h-6z%22%2F%3E%3C%2Fsvg%3E"
+      x="39" width="34" height="34" preserveAspectRatio="xMaxYMin slice"/>
+    <image href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2210%22%20viewBox%3D%220%200%2020%2010%22%3E%3Cpath%20fill%3D%22%23ff006e%22%20d%3D%22M0%200h14v10H0z%22%2F%3E%3Cpath%20fill%3D%22%233a86ff%22%20d%3D%22M14%200h6v10h-6z%22%2F%3E%3C%2Fsvg%3E"
+      x="78" width="34" height="34" preserveAspectRatio="none"/>
+    <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGAgMAAACDazdoAAAADFBMVEXvIzwuxLY6hv//vguDbUNSAAAAEUlEQVQI12NgYGWAoNX/IQgAFs4FDsgSyo0AAAAASUVORK5CYII="
+      x="117" width="34" height="34" preserveAspectRatio="none" image-rendering="pixelated"/>
+  </g>
+  <path d="M4 6h36v36H4zm39 0h36v36H43zm39 0h36v36H82zm39 0h36v36h-36z" fill="none" stroke="white"/>
+</svg>

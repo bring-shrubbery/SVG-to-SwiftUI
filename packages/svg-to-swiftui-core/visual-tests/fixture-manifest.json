@@ -493,6 +493,33 @@
       "expectedMode": "shape",
       "tags": ["geometry", "path", "shape"]
     },
+    "image-data-par": {
+      "width": 160,
+      "height": 54,
+      "scale": 1,
+      "expectedMode": "view",
+      "tags": ["data-url", "image", "png", "preserve-aspect-ratio", "svg-image", "view"]
+    },
+    "image-external-svg-effects": {
+      "width": 120,
+      "height": 70,
+      "scale": 3,
+      "expectedMode": "view",
+      "tags": ["clip-path", "image", "image-blend", "mask", "opacity", "svg-image", "transform", "view"]
+    },
+    "image-raster-formats": {
+      "width": 180,
+      "height": 45,
+      "scale": 2,
+      "expectedMode": "view",
+      "tags": ["gif", "image", "image-rendering", "jpeg", "png", "raster", "view", "webp"],
+      "tolerance": {
+        "channel": 48,
+        "maxOutsidePercent": 12,
+        "maxMeanRgbError": 8
+      },
+      "toleranceReason": "JPEG decoding and nearest-neighbor sampling differ slightly between resvg and ImageIO at block and panel edges."
+    },
     "icon-anchor": {
       "width": 128,
       "height": 160,

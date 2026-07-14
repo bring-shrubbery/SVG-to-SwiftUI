@@ -98,6 +98,28 @@ convert(svg, {
 
 Permissive lookup emits a structured `missing-font-family` warning and uses the configured fallback. Font-strict lookup fails conversion. Advanced per-glyph position lists, rotation lists, `textLength`, vertical writing, and `textPath` remain part of the advanced text ticket.
 
+### Static images and deterministic resources
+
+`<image>` supports PNG, JPEG, WebP, the first GIF frame, and recursively converted SVG documents. It preserves `href`/`xlink:href`, intrinsic or explicit sizing, every `preserveAspectRatio` mode, viewport clipping, transforms, opacity, clip paths, masks, blend modes, and `image-rendering`. Raster bytes are embedded in generated Swift and decoded from `Data` with ImageIO; generated views never perform network or filesystem access.
+
+Data URLs work without configuration. The default `embeddedOnly` policy rejects every external URL and never invokes a resolver. Callers can also provide deterministic bytes directly:
+
+```ts
+const result = convertWithDiagnostics(svg, {
+  resources: {
+    supplied: {
+      "avatar.png": { bytes: avatarBytes, mimeType: "image/png" },
+    },
+  },
+});
+```
+
+Use `policy: "local"` with an approved `baseDirectory` and a resolver that reads the validated `request.canonicalURL`. Absolute paths and traversal outside that directory are rejected before the callback. Use `policy: "custom"` for caller-owned package, database, or optional network loading; the core has no built-in network client. `baseURL` scopes relative URLs, including resources inside external SVG images.
+
+Resolvers receive the raw/canonical URL, base URL, resource kind, source element/id, and active limits. They return bytes plus MIME/canonical metadata, or an `assetName` and intrinsic dimensions for an app-owned raster asset. Promise-based resolvers require `convertAsync()` or `convertAsyncWithDiagnostics()`; sync conversion records `async-resource-in-sync-convert`. `convertWithDiagnostics()` is the sync API for inspecting permissive resource failures.
+
+Default safety limits are 5 MiB per resource, 16 million decoded pixels per image, 20 MiB total, 128 resources, and eight nested SVG images. Override them under `resources.limits`. MIME signatures, dimensions, aggregate size, cycles, data URL encoding/charset, and nested depth are validated before Swift generation.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).
@@ -175,6 +197,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG markers, vertex placement, orientation, units, context paint, viewports, and painter order
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [x] Basic static SVG `<text>` and `<tspan>` rendering
+- [x] Static SVG `<image>` rendering with deterministic raster/SVG resource resolution
 - [ ] Advanced SVG text positioning and `<textPath>`
 - [ ] Automatic animation support
 

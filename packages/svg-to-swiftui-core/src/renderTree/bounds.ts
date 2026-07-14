@@ -242,6 +242,7 @@ function transformedShapeBounds(shape: RenderShape, transform: AffineTransform):
 /** Object bounding box before the target node's own transform. */
 export function objectBoundingBox(node: RenderNode): RenderBounds | undefined {
   if (node.type === "shape") return geometryBounds(node.geometry);
+  if (node.type === "image") return node.viewport;
   if (node.type === "group") {
     const geometricBounds = (candidate: RenderNode, parent = IDENTITY_TRANSFORM): RenderBounds | undefined => {
       if (candidate.style.display === "none") return undefined;
@@ -249,6 +250,10 @@ export function objectBoundingBox(node: RenderNode): RenderBounds | undefined {
       if (candidate.type === "shape") {
         const bounds = geometryBounds(candidate.geometry);
         return bounds ? transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform) : undefined;
+      }
+      if (candidate.type === "image") {
+        const bounds = candidate.viewport;
+        return transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform);
       }
       if (candidate.type === "group")
         return candidate.children.reduce<RenderBounds | undefined>(
@@ -337,6 +342,22 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
       const clipTransform = multiplyTransforms(parent, node.viewport.clipTransform);
       bounds = intersect(bounds, transformedRect(clip.x, clip.y, clip.width, clip.height, clipTransform));
     }
+    if (node.clipPath) {
+      const clip = clipPathInstanceBounds(node.clipPath, transform);
+      bounds = clip ? intersect(bounds, clip) : undefined;
+    }
+    return bounds;
+  }
+  if (node.type === "image") {
+    if (hidden(node.style.visibility) || !node.resource || node.viewport.width <= 0 || node.viewport.height <= 0)
+      return undefined;
+    let bounds: RenderBounds | undefined = transformedRect(
+      node.viewport.x,
+      node.viewport.y,
+      node.viewport.width,
+      node.viewport.height,
+      transform,
+    );
     if (node.clipPath) {
       const clip = clipPathInstanceBounds(node.clipPath, transform);
       bounds = clip ? intersect(bounds, clip) : undefined;
