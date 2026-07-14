@@ -1,5 +1,14 @@
 # svg-to-swiftui-core
 
+## Unreleased
+
+### Minor Changes
+
+- Add static `<image>` rendering for PNG, JPEG, WebP, first-frame GIF, and recursively scoped SVG resources.
+- Add deterministic embedded/local/custom resource policies, sync and async conversion APIs, structured diagnostics, traversal/cycle protection, and configurable byte/pixel/count/depth limits.
+- Embed resolved raster bytes or generated-app asset references in SwiftUI output so generated views perform no ambient I/O.
+- Add 1×/2×/3× RGBA fixtures that compile generated SwiftUI and compare data URLs, raster formats, SVG subdocuments, aspect-ratio modes, transforms, clipping, masks, opacity, and blending with the original SVG.
+
 ## 0.4.0
 
 ### Minor Changes

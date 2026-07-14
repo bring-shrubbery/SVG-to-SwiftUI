@@ -5,7 +5,8 @@ import { renderDocumentBounds, renderNodeBounds, renderNodesBounds } from "./ren
 import { buildRenderDocument } from "./renderTree/buildRenderTree";
 import { analyzeCapabilities } from "./renderTree/capabilities";
 import { generateShape, generateView } from "./renderTree/generateSwiftUI";
-import type { RenderNode } from "./renderTree/types";
+import type { RenderDiagnostic, RenderNode } from "./renderTree/types";
+import { type InternalGeneratorConfig, prepareImageResources, resourceState } from "./resources";
 import { createUsageCommentTemplate } from "./templates";
 import type { SwiftUIGeneratorConfig } from "./types";
 import { getSVGElement, resolveSVGProperties } from "./utils";
@@ -13,6 +14,11 @@ import { getSVGElement, resolveSVGProperties } from "./utils";
 export * from "./lengths";
 export * from "./types";
 export * from "./viewports";
+
+export interface ConversionResult {
+  swift: string;
+  diagnostics: readonly RenderDiagnostic[];
+}
 
 /**
  * Test and integration hooks for inspecting the semantic pipeline without
@@ -53,11 +59,38 @@ export function convert(rawSVGString: string, config?: SwiftUIGeneratorConfig): 
   const ast = parse(rawSVGString);
   const svgElement = getSVGElement(ast);
   if (!svgElement) throw new Error("Could not find SVG element, please provide full SVG source!");
+  return swiftUIGenerator(svgElement, config).swift;
+}
+
+/** Convert while retaining structured diagnostics in permissive mode. */
+export function convertWithDiagnostics(rawSVGString: string, config?: SwiftUIGeneratorConfig): ConversionResult {
+  const ast = parse(rawSVGString);
+  const svgElement = getSVGElement(ast);
+  if (!svgElement) throw new Error("Could not find SVG element, please provide full SVG source!");
   return swiftUIGenerator(svgElement, config);
 }
 
-function swiftUIGenerator(svgElement: ElementNode, config: SwiftUIGeneratorConfig = {}): string {
-  const configWithDefaults: SwiftUIGeneratorConfig = { ...DEFAULT_CONFIG, ...config };
+/** Resolve async caller resources before generating deterministic Swift source. */
+export async function convertAsync(rawSVGString: string, config: SwiftUIGeneratorConfig = {}): Promise<string> {
+  return (await convertAsyncWithDiagnostics(rawSVGString, config)).swift;
+}
+
+/** Async conversion variant that also returns structured diagnostics. */
+export async function convertAsyncWithDiagnostics(
+  rawSVGString: string,
+  config: SwiftUIGeneratorConfig = {},
+): Promise<ConversionResult> {
+  const ast = parse(rawSVGString);
+  const svgElement = getSVGElement(ast);
+  if (!svgElement) throw new Error("Could not find SVG element, please provide full SVG source!");
+  const internalConfig: InternalGeneratorConfig = { ...config };
+  internalConfig.__resourceState = resourceState(internalConfig);
+  await prepareImageResources(svgElement, internalConfig);
+  return swiftUIGenerator(svgElement, internalConfig);
+}
+
+function swiftUIGenerator(svgElement: ElementNode, config: InternalGeneratorConfig = {}): ConversionResult {
+  const configWithDefaults: InternalGeneratorConfig = { ...DEFAULT_CONFIG, ...config };
   const resolution = resolveSVGProperties(svgElement, configWithDefaults);
   const svgProperties = resolution.properties;
   const document = buildRenderDocument(svgElement, svgProperties, resolution.diagnostics, configWithDefaults);
@@ -75,11 +108,11 @@ function swiftUIGenerator(svgElement: ElementNode, config: SwiftUIGeneratorConfi
       ? generateView(document, svgProperties, configWithDefaults)
       : generateShape(document, svgProperties, configWithDefaults);
 
-  if (!config.usageCommentPrefix) return generated.lines.join("\n");
+  if (!config.usageCommentPrefix) return { swift: generated.lines.join("\n"), diagnostics: document.diagnostics };
   const usageComment = createUsageCommentTemplate({
     config: configWithDefaults,
     viewBox: svgProperties.viewBox,
     preservesColors: generated.preservesColors,
   });
-  return [...usageComment, "", ...generated.lines].join("\n");
+  return { swift: [...usageComment, "", ...generated.lines].join("\n"), diagnostics: document.diagnostics };
 }

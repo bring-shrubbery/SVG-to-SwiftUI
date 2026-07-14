@@ -381,6 +381,25 @@ export interface RenderTextRun {
 export interface RenderImage {
   type: "image";
   href: string;
+  viewport: ViewBoxData;
+  preserveAspectRatio: PreserveAspectRatio;
+  imageRendering: string;
+  resource?:
+    | {
+        type: "raster";
+        bytes?: Uint8Array;
+        mimeType: string;
+        canonicalURL: string;
+        assetName?: string;
+        intrinsicSize?: { width: number; height: number };
+      }
+    | {
+        type: "svg";
+        canonicalURL: string;
+        document: RenderDocument;
+        referencedPreserveAspectRatio: PreserveAspectRatio;
+        hasReferencedPreserveAspectRatio: boolean;
+      };
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;

@@ -22,6 +22,63 @@ export interface SwiftUIGeneratorConfig {
     /** Fail conversion when an authored family cannot be resolved. */
     strict?: boolean;
   };
+  /** Deterministic resource loading. The default embeddedOnly policy performs no filesystem or network I/O. */
+  resources?: ResourceConfiguration;
+}
+
+export type ResourcePolicy = "embeddedOnly" | "local" | "custom";
+export type ResourceKind = "image" | "external-use" | "css-url" | "filter-image" | "foreign-object";
+
+export interface ResourceLimits {
+  /** Maximum encoded bytes for one resource. Defaults to 5 MiB. */
+  maxResourceBytes?: number;
+  /** Maximum decoded raster pixels for one image. Defaults to 16 million. */
+  maxImagePixels?: number;
+  /** Maximum aggregate bytes across one conversion. Defaults to 20 MiB. */
+  maxTotalBytes?: number;
+  /** Maximum resolved resources across one conversion. Defaults to 128. */
+  maxResources?: number;
+  /** Maximum nested SVG image depth. Defaults to 8. */
+  maxNestingDepth?: number;
+}
+
+export interface ResourceRequest {
+  rawURL: string;
+  canonicalURL: string;
+  baseURL?: string;
+  kind: ResourceKind;
+  source: { element: string; id?: string };
+  limits: Required<ResourceLimits>;
+}
+
+export interface ResolvedResource {
+  bytes?: Uint8Array;
+  /** Required for bytes supplied by custom/local resolvers; validated against file signatures. */
+  mimeType?: string;
+  /** Stable canonical identity used for nested relative URLs and cycle detection. */
+  canonicalURL?: string;
+  /** Optional generated-app asset name. No bytes are embedded when this is selected. */
+  assetName?: string;
+  /** Required for asset references whose intrinsic size is not encoded in supplied bytes. */
+  intrinsicSize?: { width: number; height: number };
+  metadata?: Readonly<Record<string, string | number | boolean>>;
+}
+
+export type ResourceResolver = (
+  request: ResourceRequest,
+) => ResolvedResource | undefined | Promise<ResolvedResource | undefined>;
+
+export interface ResourceConfiguration {
+  policy?: ResourcePolicy;
+  /** Base URL for resolving relative custom resources and SVG subdocument URLs. */
+  baseURL?: string;
+  /** Approved root used by local policy. Relative URLs may not escape this directory. */
+  baseDirectory?: string;
+  /** Caller-supplied deterministic content, keyed by raw or canonical URL. */
+  supplied?: Readonly<Record<string, ResolvedResource>>;
+  /** Sync or async callback. embeddedOnly never invokes it; local invokes it only after traversal checks. */
+  resolver?: ResourceResolver;
+  limits?: ResourceLimits;
 }
 
 export interface TranspilerOptions {

@@ -5,6 +5,7 @@ import { lengthContext, type ParsedSVGLength, resolveSVGLength } from "../length
 import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
+import { viewBoxTransform } from "../viewports";
 import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
@@ -63,6 +64,10 @@ type GeneratedViewNode =
       helper: string;
     }
   | {
+      type: "image";
+      helper: string;
+    }
+  | {
       type: "group";
       children: GeneratedViewNode[];
       opacity: number;
@@ -95,6 +100,15 @@ interface ViewBuildContext {
   coordinateSpace: ViewBoxData;
   activePatterns: Set<string>;
   textHelpers: Array<{ name: string; node: RenderText; transform: RenderNode["transform"] }>;
+  imageHelpers: Array<{
+    name: string;
+    node: Extract<RenderNode, { type: "image" }>;
+    transform: RenderNode["transform"];
+    subdocumentName?: string;
+  }>;
+  subdocuments: string[][];
+  rootName: string;
+  config: SwiftUIGeneratorConfig;
 }
 
 function createOptions(
@@ -479,6 +493,63 @@ function buildViewNodes(
       generated.push({
         type: "group",
         children: [{ type: "text", helper: name }],
+        opacity: node.style.opacity,
+        isolated:
+          node.style.opacity !== 1 ||
+          node.style.isolation === "isolate" ||
+          node.style.blendMode !== "normal" ||
+          !!clipPath ||
+          !!mask,
+        blendMode: node.style.blendMode,
+        ...(clipPath ? { clipPath } : {}),
+        ...(mask ? { mask } : {}),
+      });
+      continue;
+    }
+    if (node.type === "image") {
+      if (
+        node.style.visibility === "hidden" ||
+        node.style.visibility === "collapse" ||
+        node.viewport.width <= 0 ||
+        node.viewport.height <= 0 ||
+        !node.resource
+      )
+        continue;
+      const completeTransform = [...ancestorTransforms, node.transform].reduce(multiplyTransforms);
+      const name = `ImageLayer${context.imageHelpers.length}`;
+      let subdocumentName: string | undefined;
+      if (node.resource.type === "svg") {
+        subdocumentName = `${context.rootName}ImageDocument${context.subdocuments.length}`;
+        const child = node.resource.document;
+        const childProperties: SVGElementProperties = {
+          width: child.viewport.width,
+          height: child.viewport.height,
+          viewBox: child.viewport.viewBox,
+          userViewport: child.viewport.userViewport,
+          preserveAspectRatio: child.viewport.preserveAspectRatio,
+          viewBoxTransform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
+          zeroSized: child.viewport.zeroSized,
+        };
+        const generatedChild = generateView(child, childProperties, {
+          ...context.config,
+          structName: subdocumentName,
+          preserveColors: true,
+          usageCommentPrefix: false,
+        });
+        context.subdocuments.push(generatedChild.lines);
+      }
+      context.imageHelpers.push({
+        name,
+        node,
+        transform: completeTransform,
+        ...(subdocumentName ? { subdocumentName } : {}),
+      });
+      const targetTransforms = [...ancestorTransforms, node.transform];
+      const clipPath = buildClipPath(node.clipPath, targetTransforms);
+      const mask = buildMask(node.mask, targetTransforms);
+      generated.push({
+        type: "group",
+        children: [{ type: "image", helper: name }],
         opacity: node.style.opacity,
         isolated:
           node.style.opacity !== 1 ||
@@ -1042,7 +1113,7 @@ function renderGeneratedCommands(
   const prefix = indentation.repeat(level);
   const inner = indentation.repeat(level + 1);
   for (const node of nodes) {
-    if (node.type === "text") continue;
+    if (node.type === "text" || node.type === "image") continue;
     if (node.type === "paint") {
       const color = node.cgColor;
       lines.push(
@@ -1277,7 +1348,7 @@ function renderPatternCommands(
 
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
-  if (node.type === "text") return [`${prefix}${node.helper}()`];
+  if (node.type === "text" || node.type === "image") return [`${prefix}${node.helper}()`];
   if (node.type === "paint") {
     if (!node.clipUnions) return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
     const inner = `${prefix}${indentation}`;
@@ -1405,6 +1476,99 @@ function containsGradientNode(nodes: GeneratedViewNode[]): boolean {
   );
 }
 
+function base64(bytes: Uint8Array): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let result = "";
+  for (let index = 0; index < bytes.length; index += 3) {
+    const combined = ((bytes[index] ?? 0) << 16) | ((bytes[index + 1] ?? 0) << 8) | (bytes[index + 2] ?? 0);
+    result += alphabet[(combined >> 18) & 63];
+    result += alphabet[(combined >> 12) & 63];
+    result += index + 1 < bytes.length ? alphabet[(combined >> 6) & 63] : "=";
+    result += index + 2 < bytes.length ? alphabet[combined & 63] : "=";
+  }
+  return result;
+}
+
+function createImageHelper(
+  helper: ViewBuildContext["imageHelpers"][number],
+  coordinateSpace: ViewBoxData,
+  indentationSize: number,
+): string[] {
+  const indentation = " ".repeat(indentationSize);
+  const i2 = indentation.repeat(2);
+  const i3 = indentation.repeat(3);
+  const i4 = indentation.repeat(4);
+  const node = helper.node;
+  const resource = node.resource!;
+  const intrinsic =
+    resource.type === "raster"
+      ? (resource.intrinsicSize ?? { width: node.viewport.width, height: node.viewport.height })
+      : { width: resource.document.viewport.width, height: resource.document.viewport.height };
+  const preserveAspectRatio =
+    resource.type === "svg" && node.preserveAspectRatio.defer && resource.hasReferencedPreserveAspectRatio
+      ? resource.referencedPreserveAspectRatio
+      : node.preserveAspectRatio;
+  const placement = viewBoxTransform(
+    { x: 0, y: 0, width: intrinsic.width, height: intrinsic.height },
+    node.viewport,
+    preserveAspectRatio,
+  );
+  const imageTransform = multiplyTransforms(helper.transform, placement);
+  const quality = /pixelated|crisp-edges/i.test(node.imageRendering)
+    ? "none"
+    : /optimizequality|high-quality/i.test(node.imageRendering)
+      ? "high"
+      : "default";
+  const body: string[] = [
+    `private struct ${helper.name}: View {`,
+    `${indentation}var body: some View {`,
+    `${i2}Canvas { context, size in`,
+    `${i3}context.clip(to: Path(CGRect(x: ${formatNumber(node.viewport.x)}, y: ${formatNumber(node.viewport.y)}, width: ${formatNumber(node.viewport.width)}, height: ${formatNumber(node.viewport.height)})).applying(${runtimeTransform(helper.transform, coordinateSpace)}))`,
+    `${i3}context.transform = ${runtimeTransform(imageTransform, coordinateSpace)}`,
+  ];
+  if (quality !== "default") body.push(`${i3}context.withCGContext { $0.interpolationQuality = .${quality} }`);
+  if (resource.type === "svg") {
+    body.push(
+      `${i3}if let image = context.resolveSymbol(id: 0) {`,
+      `${i4}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
+      `${i3}}`,
+      `${i2}} symbols: {`,
+      `${i3}${helper.subdocumentName!}()`,
+      `${i3}.frame(width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)})`,
+      `${i3}.tag(0)`,
+      `${i2}}`,
+    );
+  } else if (resource.assetName) {
+    body.push(
+      `${i3}let image = context.resolve(Image(${swiftString(resource.assetName)}))`,
+      `${i3}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
+      `${i2}}`,
+    );
+  } else {
+    body.push(
+      `${i3}if let source = Self.embeddedImage {`,
+      `${i4}let image = context.resolve(source)`,
+      `${i4}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
+      `${i3}}`,
+      `${i2}}`,
+    );
+  }
+  body.push(`${indentation}}`);
+  if (resource.type === "raster" && resource.bytes) {
+    body.push(
+      "",
+      `${indentation}private static let embeddedImage: Image? = {`,
+      `${i2}guard let data = Data(base64Encoded: ${swiftString(base64(resource.bytes!))}),`,
+      `${i2}${indentation}let source = CGImageSourceCreateWithData(data as CFData, nil),`,
+      `${i2}${indentation}let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }`,
+      `${i2}return Image(decorative: image, scale: 1, orientation: .up)`,
+      `${indentation}}()`,
+    );
+  }
+  body.push(`}`);
+  return body;
+}
+
 function gradientSupport(indentationSize: number): string[] {
   const indentation = " ".repeat(indentationSize);
   return [
@@ -1490,6 +1654,7 @@ function createView(
   nodes: GeneratedViewNode[],
   helpers: ShapeHelper[],
   textHelpers: ViewBuildContext["textHelpers"],
+  imageHelpers: ViewBuildContext["imageHelpers"],
   coordinateSpace: ViewBoxData,
   document: RenderDocument,
   indentationSize: number,
@@ -1521,6 +1686,7 @@ function createView(
   }
   for (const helper of textHelpers)
     body.push("", ...createTextHelper(helper, coordinateSpace, document, indentationSize));
+  for (const helper of imageHelpers) body.push("", ...createImageHelper(helper, coordinateSpace, indentationSize));
   if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
   return createStructTemplate({
     name,
@@ -1573,20 +1739,34 @@ export function generateView(
     coordinateSpace: document.viewport.coordinateSpace,
     activePatterns: new Set(),
     textHelpers: [],
+    imageHelpers: [],
+    subdocuments: [],
+    rootName: config.structName ?? "SVGView",
+    config,
   };
   const nodes = buildViewNodes(document.children, context);
+  const imports = new Set<string>();
+  if (context.textHelpers.length > 0) imports.add("CoreText");
+  if (context.imageHelpers.some((helper) => helper.node.resource?.type === "raster" && helper.node.resource.bytes)) {
+    imports.add("Foundation");
+    imports.add("ImageIO");
+  }
+  if (context.textHelpers.length > 0 || context.imageHelpers.length > 0) imports.add("SwiftUI");
   return {
     lines: [
-      ...(context.textHelpers.length > 0 ? ["import CoreText", "import SwiftUI", ""] : []),
+      ...[...imports].flatMap((name) => [`import ${name}`]),
+      ...(imports.size > 0 ? [""] : []),
       ...createView(
         config.structName ?? "SVGView",
         nodes,
         context.helpers,
         context.textHelpers,
+        context.imageHelpers,
         document.viewport.coordinateSpace,
         document,
         indentationSize,
       ),
+      ...context.subdocuments.flatMap((lines) => ["", ...lines]),
     ],
     preservesColors: true,
   };

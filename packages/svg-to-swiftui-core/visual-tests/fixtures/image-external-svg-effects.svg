@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="70" viewBox="0 0 120 70">
+  <defs>
+    <clipPath id="cut"><circle cx="60" cy="35" r="31"/></clipPath>
+    <mask id="fade"><rect width="120" height="70" fill="white"/><circle cx="87" cy="17" r="11" fill="#777"/></mask>
+  </defs>
+  <rect width="120" height="70" fill="#fb5607"/>
+  <image href="../assets/nested-image.svg" x="8" y="5" width="104" height="60"
+    preserveAspectRatio="xMidYMid slice" transform="rotate(-4 60 35)" opacity=".9"
+    clip-path="url(#cut)" mask="url(#fade)" style="mix-blend-mode:multiply"/>
+</svg>

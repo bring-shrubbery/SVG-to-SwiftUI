@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="180" height="45" viewBox="0 0 180 45">
+  <rect width="180" height="45" fill="#14213d"/>
+  <g transform="translate(5 6)" image-rendering="pixelated">
+    <image href="../assets/image-grid.png" width="36" height="27" preserveAspectRatio="none"/>
+    <image href="../assets/image-grid.jpg" x="44" width="36" height="27" preserveAspectRatio="none"/>
+    <image href="../assets/image-grid.webp" x="88" width="36" height="27" preserveAspectRatio="none"/>
+    <image xlink:href="../assets/image-grid.gif" x="132" width="36" height="27" preserveAspectRatio="none"/>
+  </g>
+  <path d="M4 5h38v29H4zm44 0h38v29H48zm44 0h38v29H92zm44 0h38v29h-38z" fill="none" stroke="white"/>
+</svg>

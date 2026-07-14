@@ -1,4 +1,5 @@
 import type { ElementNode } from "svg-parser";
+import { parse } from "svg-parser";
 import { parseOpacity } from "../colorUtils";
 import {
   defaultFontMetrics,
@@ -10,9 +11,17 @@ import {
   resolveSVGLength,
   SVGLengthError,
 } from "../lengths";
+import {
+  decodeUTF8,
+  type InternalGeneratorConfig,
+  resolveResourceSync,
+  resourceLimits,
+  resourceState,
+} from "../resources";
 import { type Presentation, type StyleResolution, SVGStyleResolver } from "../styleCascade";
 import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTransform } from "../transformUtils";
-import type { SVGElementProperties, SwiftUIGeneratorConfig, ViewBoxData } from "../types";
+import type { SVGElementProperties, ViewBoxData } from "../types";
+import { getSVGElement, resolveSVGProperties } from "../utils";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { resolvePaintServers } from "./gradients";
@@ -32,6 +41,7 @@ import type {
   RenderDiagnostic,
   RenderDocument,
   RenderGroup,
+  RenderImage,
   RenderNode,
   RenderShape,
   RenderText,
@@ -53,7 +63,7 @@ interface BuildContext {
   diagnostics: RenderDiagnostic[];
   activeReferences: Set<string>;
   styleResolver: SVGStyleResolver;
-  config: SwiftUIGeneratorConfig;
+  config: InternalGeneratorConfig;
 }
 
 const GEOMETRY_ELEMENTS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
@@ -1172,6 +1182,205 @@ function buildText(
   };
 }
 
+function buildImage(
+  element: ElementNode,
+  resolved: ReturnType<typeof resolvedPresentation>,
+  coordinate: CoordinateContext,
+  context: BuildContext,
+): RenderImage {
+  const properties = element.properties ?? {};
+  const href = String(properties.href ?? properties["xlink:href"] ?? "").trim();
+  let preserveAspectRatio = DEFAULT_PRESERVE_ASPECT_RATIO;
+  try {
+    preserveAspectRatio = parsePreserveAspectRatio(properties.preserveAspectRatio);
+  } catch (error) {
+    addDiagnostic(
+      context,
+      element,
+      error instanceof SVGLengthError ? error.code : "invalid-preserve-aspect-ratio",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  let imageResource: RenderImage["resource"];
+  let intrinsicSize: { width: number; height: number } | undefined;
+
+  if (!href) {
+    addDiagnostic(context, element, "missing-image-resource", "Image href is empty or missing.");
+  } else {
+    const resolution = resolveResourceSync(href, "image", element, context.config);
+    if ("failure" in resolution) {
+      addDiagnostic(context, element, resolution.failure.code, resolution.failure.message);
+    } else if (resolution.resource.mimeType === "image/svg+xml") {
+      const state = resourceState(context.config);
+      const limits = resourceLimits(context.config);
+      const canonicalURL = resolution.resource.canonicalURL;
+      if (state.activeCanonicalURLs.includes(canonicalURL)) {
+        addDiagnostic(
+          context,
+          element,
+          "recursive-svg-image",
+          `Recursive SVG image cycle detected: ${[...state.activeCanonicalURLs, canonicalURL].join(" -> ")}.`,
+        );
+      } else if (state.depth + 1 > limits.maxNestingDepth) {
+        addDiagnostic(
+          context,
+          element,
+          "resource-nesting-limit",
+          `SVG image '${href}' exceeds the nesting depth limit of ${limits.maxNestingDepth}.`,
+        );
+      } else if (!resolution.resource.bytes) {
+        addDiagnostic(
+          context,
+          element,
+          "svg-image-bytes-required",
+          `SVG image '${href}' requires bytes; generated asset references are only supported for raster images.`,
+        );
+      } else {
+        try {
+          const ast = parse(decodeUTF8(resolution.resource.bytes));
+          const svg = getSVGElement(ast);
+          if (!svg) throw new Error("resource does not contain an svg root element");
+          const childConfig: InternalGeneratorConfig = {
+            ...context.config,
+            fragment: undefined,
+            outerViewport: undefined,
+            __resourceState: state,
+            __resourceBaseURL: canonicalURL,
+          };
+          const referencedProperties = resolveSVGProperties(svg, childConfig);
+          const embeddedSVG: ElementNode = {
+            ...svg,
+            properties: { ...(svg.properties ?? {}), preserveAspectRatio: "none" },
+          };
+          const childProperties = resolveSVGProperties(embeddedSVG, childConfig);
+          state.activeCanonicalURLs.push(canonicalURL);
+          state.depth++;
+          let document: RenderDocument;
+          try {
+            document = buildRenderDocument(
+              embeddedSVG,
+              childProperties.properties,
+              childProperties.diagnostics,
+              childConfig,
+            );
+          } finally {
+            state.depth--;
+            state.activeCanonicalURLs.pop();
+          }
+          intrinsicSize = { width: document.viewport.width, height: document.viewport.height };
+          for (const diagnostic of document.diagnostics) {
+            context.diagnostics.push({
+              ...diagnostic,
+              message: `SVG image '${href}': ${diagnostic.message}`,
+            });
+          }
+          imageResource = {
+            type: "svg",
+            canonicalURL,
+            document,
+            referencedPreserveAspectRatio: referencedProperties.properties.preserveAspectRatio,
+            hasReferencedPreserveAspectRatio: svg.properties?.preserveAspectRatio !== undefined,
+          };
+        } catch (error) {
+          addDiagnostic(
+            context,
+            element,
+            "malformed-svg-image",
+            `SVG image '${href}' could not be parsed: ${error instanceof Error ? error.message : String(error)}.`,
+          );
+        }
+      }
+    } else {
+      intrinsicSize = resolution.resource.intrinsicSize;
+      imageResource = {
+        type: "raster",
+        ...(resolution.resource.bytes ? { bytes: resolution.resource.bytes } : {}),
+        mimeType: resolution.resource.mimeType,
+        canonicalURL: resolution.resource.canonicalURL,
+        ...(resolution.resource.assetName ? { assetName: resolution.resource.assetName } : {}),
+        ...(resolution.resource.intrinsicSize ? { intrinsicSize: resolution.resource.intrinsicSize } : {}),
+      };
+    }
+  }
+
+  const value = (name: string) =>
+    resolved.provenance[name] === undefined ? properties[name] : resolved.effective[name];
+  const dimension = (name: "width" | "height", axis: "horizontal" | "vertical") => {
+    const raw = value(name);
+    try {
+      const parsed = parseSVGLength(raw, { allowAuto: true });
+      if (parsed.kind === "missing" || parsed.kind === "auto") return undefined;
+    } catch {}
+    return lengthValue(
+      raw,
+      { ...coordinate, fontMetrics: resolved.fontMetrics },
+      axis === "horizontal" ? "viewport-width" : "viewport-height",
+      axis,
+      element,
+      context,
+      { fallback: 0, negative: "reject", label: `image-${name}`, css: resolved.provenance[name] },
+    );
+  };
+  let width = dimension("width", "horizontal");
+  let height = dimension("height", "vertical");
+  const ratio = intrinsicSize && intrinsicSize.height > 0 ? intrinsicSize.width / intrinsicSize.height : undefined;
+  if (width === undefined && height === undefined) {
+    width = intrinsicSize?.width;
+    height = intrinsicSize?.height;
+  } else if (width === undefined && height !== undefined && ratio) width = height * ratio;
+  else if (height === undefined && width !== undefined && ratio) height = width / ratio;
+  if (width === undefined || height === undefined) {
+    addDiagnostic(
+      context,
+      element,
+      "indeterminate-image-size",
+      `Image '${href || "(missing)"}' needs explicit width and height when intrinsic dimensions are unavailable.`,
+    );
+    width ??= 0;
+    height ??= 0;
+  }
+  if (width === 0 || height === 0)
+    addDiagnostic(context, element, "zero-image-size", "An image with zero width or height renders nothing.");
+
+  const x = lengthValue(
+    value("x"),
+    { ...coordinate, fontMetrics: resolved.fontMetrics },
+    "viewport-width",
+    "horizontal",
+    element,
+    context,
+    { fallback: 0, negative: "allow", label: "image-x", css: resolved.provenance.x },
+  )!;
+  const y = lengthValue(
+    value("y"),
+    { ...coordinate, fontMetrics: resolved.fontMetrics },
+    "viewport-height",
+    "vertical",
+    element,
+    context,
+    { fallback: 0, negative: "allow", label: "image-y", css: resolved.provenance.y },
+  )!;
+  return {
+    type: "image",
+    href,
+    viewport: { x, y, width, height },
+    preserveAspectRatio,
+    imageRendering: String(resolved.effective["image-rendering"] ?? "auto")
+      .trim()
+      .toLowerCase(),
+    ...(imageResource ? { resource: imageResource } : {}),
+    attributes: { ...properties } as Record<string, string | number>,
+    style: resolved.style,
+    transform: computedTransform(element, resolved, context),
+    source: sourceLocation(element),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...resolved.fontMetrics },
+    },
+  };
+}
+
 function safeViewBox(element: ElementNode, context: BuildContext): ViewBoxData | undefined {
   try {
     return parseViewBox(element.properties?.viewBox);
@@ -1470,23 +1679,7 @@ function buildNode(
     return [buildText(element, resolved, coordinate, context)];
   }
   if (tag === "image") {
-    const href = element.properties?.href ?? element.properties?.["xlink:href"] ?? "";
-    addDiagnostic(context, element, "unsupported-image-rendering", "Image rendering is deferred to the image ticket.");
-    return [
-      {
-        type: "image",
-        href: String(href),
-        attributes: { ...(element.properties ?? {}) } as Record<string, string | number>,
-        style: resolved.style,
-        transform,
-        source: sourceLocation(element),
-        paintContext: {
-          viewport: { ...coordinate.viewport },
-          rootViewport: { ...coordinate.rootViewport },
-          fontMetrics: { ...resolved.fontMetrics },
-        },
-      },
-    ];
+    return [buildImage(element, resolved, coordinate, context)];
   }
   addDiagnostic(context, element, "unsupported-element", `Element <${tag}> is not supported by the current renderer.`);
   return [];
@@ -1497,7 +1690,7 @@ export function buildRenderDocument(
   svg: ElementNode,
   properties: SVGElementProperties,
   initialDiagnostics: RenderDiagnostic[] = [],
-  config: SwiftUIGeneratorConfig = {},
+  config: InternalGeneratorConfig = {},
 ): RenderDocument {
   const resources = createRegistry(svg);
   const diagnostics = [...initialDiagnostics];

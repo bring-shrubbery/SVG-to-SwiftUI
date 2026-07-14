@@ -219,11 +219,9 @@ export async function runBatchVisualTest(
   const support = readFileSync(SUPPORT_PATH, "utf8");
   const swiftCachePath = join(rendersDir, ".swift-render-cache.json");
   let swiftCache: Record<string, SwiftRenderCacheEntry> = {};
-  if (!fresh) {
-    try {
-      swiftCache = JSON.parse(readFileSync(swiftCachePath, "utf8"));
-    } catch {}
-  }
+  try {
+    swiftCache = JSON.parse(readFileSync(swiftCachePath, "utf8"));
+  } catch {}
 
   const renderingErrors = new Map<string, string>();
   for (let start = 0; start < items.length; start += MAX_BATCH_SIZE) {
