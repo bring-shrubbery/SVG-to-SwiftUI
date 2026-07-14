@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 10 120 80">
+  <defs>
+    <clipPath id="clip"><circle cx="80" cy="50" r="34"/></clipPath>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="white"/>
+      <stop offset="1" stop-color="black"/>
+    </linearGradient>
+    <mask id="mask" mask-type="luminance" maskUnits="userSpaceOnUse" x="20" y="10" width="120" height="80">
+      <rect x="20" y="10" width="120" height="80" fill="url(#fade)"/>
+    </mask>
+  </defs>
+  <g clip-path="url(#clip)" mask="url(#mask)" opacity=".7">
+    <rect x="20" y="10" width="120" height="80" fill="#9c88ff"/>
+    <circle cx="62" cy="46" r="28" fill="#fbc531"/>
+    <circle cx="98" cy="54" r="28" fill="#e84118"/>
+  </g>
+</svg>

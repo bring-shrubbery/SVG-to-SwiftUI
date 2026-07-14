@@ -8,6 +8,7 @@ import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
 import type {
+  ClipPathInstance,
   ComputedStyle,
   Geometry,
   GradientStop,
@@ -36,6 +37,7 @@ type GeneratedViewNode =
       swiftColor: string;
       cgColor: RGBAColor;
       tileContained?: boolean;
+      clipUnions?: string[][];
     }
   | {
       type: "gradient";
@@ -60,7 +62,8 @@ type GeneratedViewNode =
       opacity: number;
       isolated: boolean;
       blendMode: SVGBlendMode;
-      clip?: string;
+      viewportClip?: string;
+      clipPath?: GeneratedClipPath;
       mask?: GeneratedMask;
       tileContained?: boolean;
     };
@@ -69,6 +72,10 @@ interface GeneratedMask {
   children: GeneratedViewNode[];
   clip: string;
   luminance: boolean;
+}
+
+interface GeneratedClipPath {
+  children: GeneratedViewNode[];
 }
 
 interface ViewBuildContext {
@@ -288,10 +295,114 @@ function buildViewNodes(
     return { children, clip, luminance: mask.maskType === "luminance" };
   };
 
+  let buildClipPath: (
+    clipPath: ClipPathInstance | undefined,
+    targetTransforms: RenderNode["transform"][],
+  ) => GeneratedClipPath | undefined;
+
+  const addCoverageClip = (node: GeneratedViewNode, helpers: string[]): GeneratedViewNode => {
+    if (node.type === "paint") return { ...node, clipUnions: [...(node.clipUnions ?? []), helpers] };
+    if (node.type === "group")
+      return { ...node, children: node.children.map((child) => addCoverageClip(child, helpers)) };
+    return node;
+  };
+
+  const buildClipCoverage = (
+    clipNodes: RenderNode[],
+    coverageTransforms: RenderNode["transform"][],
+  ): GeneratedViewNode[] => {
+    const coverage: GeneratedViewNode[] = [];
+    for (const clipNode of clipNodes) {
+      if (clipNode.style.display === "none") continue;
+      const targetTransforms = [...coverageTransforms, clipNode.transform];
+      if (clipNode.type === "group") {
+        const children = buildClipCoverage(clipNode.children, targetTransforms);
+        const nested = buildClipPath(clipNode.clipPath, targetTransforms);
+        if (nested) {
+          const helpers = simpleClipPathHelpers(nested);
+          // Intersection distributes over the clip subtree's logical union.
+          // Simple nested regions become GraphicsContext clips on each leaf;
+          // SwiftUI otherwise ignores nested view masks inside mask content.
+          if (helpers && helpers.length > 0) {
+            coverage.push(...children.map((child) => addCoverageClip(child, helpers)));
+          } else {
+            for (const child of children)
+              coverage.push({
+                type: "group",
+                children: [child],
+                opacity: 1,
+                isolated: true,
+                blendMode: "normal",
+                clipPath: nested,
+              });
+          }
+        } else if (children.length > 0) {
+          coverage.push({
+            type: "group",
+            children,
+            opacity: 1,
+            isolated: false,
+            blendMode: "normal",
+          });
+        }
+        continue;
+      }
+      if (
+        clipNode.type !== "shape" ||
+        clipNode.style.visibility === "hidden" ||
+        clipNode.style.visibility === "collapse"
+      )
+        continue;
+
+      // A clipPath consumes raw geometry. Convert clip-rule into the helper's
+      // non-zero-compatible path representation, independent of source paint.
+      const coverageShape: RenderShape = {
+        ...clipNode,
+        style: { ...clipNode.style, fillRule: clipNode.style.clipRule },
+      };
+      let lines = renderShape(coverageShape, context.options, { fill: "black", stroke: "none" });
+      for (let index = coverageTransforms.length - 1; index >= 0; index--)
+        lines = wrapWithTransform(lines, coverageTransforms[index]!, context.options);
+      if (lines.length === 0) continue;
+      const helper = addHelper(context, `ClipCoverage${context.nextClip++}`, lines);
+      const path: GeneratedViewNode = {
+        type: "paint",
+        helper,
+        swiftColor: "Color.white",
+        cgColor: { red: 1, green: 1, blue: 1, alpha: 1 },
+      };
+      const nested = buildClipPath(clipNode.clipPath, targetTransforms);
+      const helpers = nested ? simpleClipPathHelpers(nested) : undefined;
+      const clippedPath = helpers && helpers.length > 0 ? addCoverageClip(path, helpers) : path;
+      coverage.push({
+        type: "group",
+        children: [clippedPath],
+        opacity: 1,
+        isolated: !!nested && !helpers,
+        blendMode: "normal",
+        ...(nested && !helpers ? { clipPath: nested } : {}),
+      });
+    }
+    return coverage;
+  };
+
+  buildClipPath = (clipPath, targetTransforms) => {
+    if (!clipPath) return undefined;
+    const content = clipPath.children.map((node) =>
+      node.type === "group"
+        ? { ...node, transform: multiplyTransforms(node.transform, clipPath.contentTransform) }
+        : node,
+    );
+    // clipPath's transform operates outside the clipPathUnits mapping:
+    // target × resource-transform × object-bounding-box.
+    const children = clipPath.invalid ? [] : buildClipCoverage(content, targetTransforms);
+    return { children };
+  };
+
   for (const node of nodes) {
     if (node.style.display === "none") continue;
     if (node.type === "group") {
-      let clip: string | undefined;
+      let viewportClip: string | undefined;
       if (node.viewport?.clip) {
         const { rect, clipTransform } = node.viewport;
         let clipLines = handleElement(
@@ -314,11 +425,12 @@ function buildViewNodes(
         for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
           clipLines = wrapWithTransform(clipLines, ancestorTransforms[index]!, context.options);
         }
-        clip = addHelper(context, `Clip${context.nextClip++}`, clipLines);
+        viewportClip = addHelper(context, `Clip${context.nextClip++}`, clipLines);
       }
       const targetTransforms = [...ancestorTransforms, node.transform];
       const children = buildViewNodes(node.children, context, targetTransforms);
       if (children.length > 0) {
+        const clipPath = buildClipPath(node.clipPath, targetTransforms);
         const mask = buildMask(node.mask, targetTransforms);
         generated.push({
           type: "group",
@@ -328,9 +440,11 @@ function buildViewNodes(
             node.style.opacity !== 1 ||
             node.style.isolation === "isolate" ||
             node.style.blendMode !== "normal" ||
+            !!clipPath ||
             !!mask,
           blendMode: node.style.blendMode,
-          ...(clip ? { clip } : {}),
+          ...(viewportClip ? { viewportClip } : {}),
+          ...(clipPath ? { clipPath } : {}),
           ...(mask ? { mask } : {}),
         });
       }
@@ -451,14 +565,21 @@ function buildViewNodes(
       }
     }
     if (paints.length > 0) {
-      const mask = buildMask(node.mask, [...ancestorTransforms, node.transform]);
+      const targetTransforms = [...ancestorTransforms, node.transform];
+      const clipPath = buildClipPath(node.clipPath, targetTransforms);
+      const mask = buildMask(node.mask, targetTransforms);
       generated.push({
         type: "group",
         children: paints,
         opacity: node.style.opacity,
         isolated:
-          node.style.opacity !== 1 || node.style.isolation === "isolate" || node.style.blendMode !== "normal" || !!mask,
+          node.style.opacity !== 1 ||
+          node.style.isolation === "isolate" ||
+          node.style.blendMode !== "normal" ||
+          !!clipPath ||
+          !!mask,
         blendMode: node.style.blendMode,
+        ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
       });
     }
@@ -618,17 +739,31 @@ function renderGeneratedCommands(
       lines.push(...renderPatternCommands(node, graphicsName, level, indentation));
       continue;
     }
-    const needsLayer = node.isolated || node.clip !== undefined || node.blendMode !== "normal";
+    const commandClipHelpers = node.clipPath ? simpleClipPathHelpers(node.clipPath) : [];
+    const needsLayer =
+      node.isolated || node.viewportClip !== undefined || node.clipPath !== undefined || node.blendMode !== "normal";
     if (!needsLayer) {
       lines.push(...renderGeneratedCommands(node.children, graphicsName, level, indentation));
       continue;
     }
     lines.push(`${prefix}do {`, `${inner}${graphicsName}.saveGState()`);
-    if (node.clip)
+    if (node.viewportClip)
       lines.push(
-        `${inner}${graphicsName}.addPath(${node.clip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        `${inner}${graphicsName}.addPath(${node.viewportClip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
         `${inner}${graphicsName}.clip()`,
       );
+    if (commandClipHelpers && commandClipHelpers.length > 0) {
+      lines.push(`${inner}let clipUnion = CGMutablePath()`);
+      for (const helper of commandClipHelpers)
+        lines.push(`${inner}clipUnion.addPath(${helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`);
+      lines.push(`${inner}${graphicsName}.addPath(clipUnion)`, `${inner}${graphicsName}.clip()`);
+    } else if (node.clipPath) {
+      // Complex clip subtrees are rendered correctly by the SwiftUI view path.
+      // Command-mode pattern content currently has no Core Graphics path
+      // boolean operation for a nested clipped union, so an empty clip is the
+      // safe deterministic result instead of leaking unclipped paint.
+      lines.push(`${inner}${graphicsName}.clip(to: .zero)`);
+    }
     if (node.blendMode !== "normal")
       lines.push(`${inner}${graphicsName}.setBlendMode(.${swiftBlendMode(node.blendMode)})`);
     if (node.isolated) {
@@ -640,6 +775,32 @@ function renderGeneratedCommands(
     lines.push(`${inner}${graphicsName}.restoreGState()`, `${prefix}}`);
   }
   return lines;
+}
+
+function simpleClipPathHelpers(clipPath: GeneratedClipPath): string[] | undefined {
+  const helpers: string[] = [];
+  const visit = (nodes: GeneratedViewNode[]): boolean => {
+    for (const node of nodes) {
+      if (node.type === "paint") {
+        if (node.clipUnions) return false;
+        helpers.push(node.helper);
+        continue;
+      }
+      if (
+        node.type !== "group" ||
+        node.opacity !== 1 ||
+        node.isolated ||
+        node.blendMode !== "normal" ||
+        node.viewportClip ||
+        node.clipPath ||
+        node.mask ||
+        !visit(node.children)
+      )
+        return false;
+    }
+    return true;
+  };
+  return visit(clipPath.children) ? helpers : undefined;
 }
 
 interface PatternRepeatRuntime {
@@ -665,7 +826,8 @@ function canBatchPatternNode(node: GeneratedViewNode): boolean {
     node.type === "group" &&
     node.tileContained === true &&
     !node.isolated &&
-    !node.clip &&
+    !node.viewportClip &&
+    !node.clipPath &&
     !node.mask &&
     node.blendMode === "normal" &&
     node.children.every(canBatchPatternNode)
@@ -790,13 +952,62 @@ function renderPatternCommands(
 
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
-  if (node.type === "paint") return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
+  if (node.type === "paint") {
+    if (!node.clipUnions) return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
+    const inner = `${prefix}${indentation}`;
+    const deep = `${inner}${indentation}`;
+    const lines = [
+      `${prefix}Canvas { context, size in`,
+      `${inner}context.withCGContext { graphics in`,
+      `${deep}graphics.saveGState()`,
+    ];
+    for (const [index, helpers] of node.clipUnions.entries()) {
+      lines.push(`${deep}let clipUnion${index} = CGMutablePath()`);
+      for (const helper of helpers)
+        lines.push(`${deep}clipUnion${index}.addPath(${helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`);
+      lines.push(`${deep}graphics.addPath(clipUnion${index})`, `${deep}graphics.clip()`);
+    }
+    lines.push(
+      `${deep}graphics.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+      `${deep}graphics.setFillColor(CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [${formatNumber(node.cgColor.red)}, ${formatNumber(node.cgColor.green)}, ${formatNumber(node.cgColor.blue)}, ${formatNumber(node.cgColor.alpha)}])!)`,
+      `${deep}graphics.fillPath()`,
+      `${deep}graphics.restoreGState()`,
+      `${inner}}`,
+      `${prefix}}`,
+    );
+    return lines;
+  }
   if (node.type === "gradient") return renderGradientNode(node, level, indentation);
   if (node.type === "pattern") return renderPatternNode(node, level, indentation);
   const lines = [`${prefix}ZStack {`];
   for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
   lines.push(`${prefix}}`);
-  if (node.clip) lines.push(`${prefix}.clipShape(${node.clip}())`);
+  // Flatten the source subtree before applying SVG effects. SwiftUI otherwise
+  // distributes masks and opacity across ZStack children, which changes
+  // overlap colors and prevents nested clip-path intersections from composing.
+  if (node.isolated) lines.push(`${prefix}.compositingGroup()`);
+  if (node.viewportClip) lines.push(`${prefix}.clipShape(${node.viewportClip}())`);
+  if (node.clipPath) {
+    const simpleHelpers = simpleClipPathHelpers(node.clipPath);
+    if (simpleHelpers?.length === 1) {
+      lines.push(`${prefix}.clipShape(${simpleHelpers[0]}())`);
+    } else {
+      lines.push(
+        `${prefix}.mask {`,
+        `${prefix}${indentation}GeometryReader { proxy in`,
+        `${prefix}${indentation}${indentation}ZStack {`,
+      );
+      if (node.clipPath.children.length === 0)
+        lines.push(`${prefix}${indentation}${indentation}${indentation}Color.clear`);
+      else for (const child of node.clipPath.children) lines.push(...renderViewNode(child, level + 3, indentation));
+      lines.push(
+        `${prefix}${indentation}${indentation}}`,
+        `${prefix}${indentation}${indentation}.frame(width: proxy.size.width, height: proxy.size.height)`,
+        `${prefix}${indentation}}`,
+        `${prefix}}`,
+      );
+    }
+  }
   if (node.mask) {
     if (node.mask.luminance) {
       lines.push(
@@ -847,7 +1058,6 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       lines.push(`${prefix}${indentation}}`, `${prefix}${indentation}.clipShape(${node.mask.clip}())`, `${prefix}}`);
     }
   }
-  if (node.isolated) lines.push(`${prefix}.compositingGroup()`);
   if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
   if (node.blendMode !== "normal") lines.push(`${prefix}.blendMode(.${swiftBlendMode(node.blendMode)})`);
   return lines;
@@ -862,7 +1072,9 @@ function containsGradientNode(nodes: GeneratedViewNode[]): boolean {
     (node) =>
       node.type === "gradient" ||
       (node.type === "group" &&
-        (containsGradientNode(node.children) || (node.mask ? containsGradientNode(node.mask.children) : false))) ||
+        (containsGradientNode(node.children) ||
+          (node.clipPath ? containsGradientNode(node.clipPath.children) : false) ||
+          (node.mask ? containsGradientNode(node.mask.children) : false))) ||
       (node.type === "pattern" && containsGradientNode(node.contentNodes)),
   );
 }

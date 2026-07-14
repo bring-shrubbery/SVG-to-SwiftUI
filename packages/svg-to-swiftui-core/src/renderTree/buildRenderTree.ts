@@ -14,6 +14,7 @@ import { type Presentation, type StyleResolution, SVGStyleResolver } from "../st
 import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTransform } from "../transformUtils";
 import type { SVGElementProperties, ViewBoxData } from "../types";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
+import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { resolvePaintServers } from "./gradients";
 import { resolveMaskInstance, resolveMaskResources } from "./masks";
 import { resolvePatternPaintServers } from "./patterns";
@@ -292,6 +293,28 @@ function computedMask(value: unknown, element: ElementNode, context: BuildContex
   return { invalid: true };
 }
 
+function computedClipPath(value: unknown, element: ElementNode, context: BuildContext, css?: CSSDiagnosticContext) {
+  const normalized = String(value ?? "none").trim();
+  if (normalized.toLowerCase() === "none") return undefined;
+  const local = /^url\(\s*["']?#([^\s)"']+)["']?\s*\)$/i.exec(normalized);
+  if (local) return { id: local[1]!, invalid: false };
+
+  let code = "invalid-clip-path-reference";
+  if (/^url\(/i.test(normalized)) code = "external-clip-path-reference";
+  else if (/^(?:circle|ellipse|inset|polygon|path|rect|xywh)\s*\(/i.test(normalized))
+    code = "unsupported-clip-path-basic-shape";
+  addDiagnostic(
+    context,
+    element,
+    code,
+    code === "unsupported-clip-path-basic-shape"
+      ? `CSS basic-shape clip-path '${normalized}' is outside the current static profile; use a local <clipPath> URL.`
+      : `Only one local clip-path reference of the form url(#id) is supported; received '${normalized}'.`,
+    css,
+  );
+  return { invalid: true };
+}
+
 function computeStyle(
   effective: Presentation,
   provenance: StyleResolution["provenance"],
@@ -306,6 +329,8 @@ function computeStyle(
   const color = String(effective.color ?? "black");
   const fillRule = String(effective["fill-rule"] ?? effective.fillRule ?? "nonzero").toLowerCase();
   const clipRule = String(effective["clip-rule"] ?? "nonzero").toLowerCase();
+  if (clipRule !== "nonzero" && clipRule !== "evenodd")
+    addDiagnostic(context, element, "invalid-clip-rule", `Invalid clip-rule '${clipRule}'.`, provenance["clip-rule"]);
   const isolationValue = String(effective.isolation ?? "auto")
     .trim()
     .toLowerCase();
@@ -349,6 +374,7 @@ function computeStyle(
     if (resolved.length > 0 && resolved.every((value): value is number => value !== undefined)) dashArray = resolved;
   }
   const mask = computedMask(effective.mask, element, context, provenance.mask);
+  const clipPath = computedClipPath(effective["clip-path"], element, context, provenance["clip-path"]);
 
   return {
     fill: parsePaint(isLine ? "none" : (effective.fill ?? "black"), color),
@@ -378,6 +404,7 @@ function computeStyle(
     visibility: String(effective.visibility ?? "visible")
       .trim()
       .toLowerCase(),
+    ...(clipPath ? { clipPath } : {}),
     ...(mask ? { mask } : {}),
     blendMode: computedBlendMode(effective["mix-blend-mode"], element, context, provenance["mix-blend-mode"]),
     isolation: isolationValue === "isolate" ? "isolate" : "auto",
@@ -575,6 +602,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
     paints: new Map(),
     paintElements: new Map(),
     clips: new Map(),
+    clipElements: new Map(),
     masks: new Map(),
     maskElements: new Map(),
     markers: new Map(),
@@ -590,7 +618,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
       if (element.tagName === "view") registry.views.set(id, element);
       if (["linearGradient", "radialGradient", "pattern"].includes(element.tagName ?? ""))
         registry.paintElements.set(id, element);
-      if (element.tagName === "clipPath") registry.clips.set(id, element);
+      if (element.tagName === "clipPath") registry.clipElements.set(id, element);
       if (element.tagName === "mask") registry.maskElements.set(id, element);
       if (element.tagName === "marker") registry.markers.set(id, element);
       if (element.tagName === "filter") registry.filters.set(id, element);
@@ -990,6 +1018,13 @@ export function buildRenderDocument(
     resources.paints.set(id, paint);
   }
   resources.masks = resolveMaskResources(svg, resources.maskElements, styleResolver, resolved.effective, diagnostics);
+  resources.clips = resolveClipPathResources(
+    svg,
+    resources.clipElements,
+    styleResolver,
+    resolved.effective,
+    diagnostics,
+  );
   const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
@@ -1099,6 +1134,133 @@ export function buildRenderDocument(
   }
   materializeReferencedPatterns(children);
 
+  function diagnoseClipOnce(node: RenderNode, code: string, message: string): void {
+    if (
+      diagnostics.some(
+        (item) =>
+          item.code === code &&
+          item.source.element === node.source.element &&
+          item.source.id === node.source.id &&
+          item.message === message,
+      )
+    )
+      return;
+    diagnostics.push({ code, message, severity: "warning", source: node.source });
+  }
+
+  function emptyClip() {
+    return {
+      children: [],
+      contentTransform: IDENTITY_TRANSFORM,
+      invalid: true,
+    };
+  }
+
+  function materializeClipPaths(nodes: RenderNode[], stack: string[] = []): void {
+    for (const node of nodes) {
+      if (node.type === "group") materializeClipPaths(node.children, stack);
+      const reference = node.style.clipPath;
+      if (!reference || reference.invalid || !reference.id) continue;
+      const id = reference.id;
+      const resource = resources.clips.get(id);
+      if (!resource) {
+        const target = resources.definitions.get(id);
+        diagnoseClipOnce(
+          node,
+          target ? "wrong-clip-path-resource-type" : "missing-clip-path-resource",
+          target
+            ? `Clip-path reference #${id} targets <${target.tagName}> instead of a clipPath.`
+            : `Clip-path reference #${id} does not resolve to a local clipPath resource.`,
+        );
+        // CSS Masking specifies that an invalid URI reference applies no clipping.
+        // Strict conversion still fails because the diagnostic remains observable.
+        continue;
+      }
+      if (stack.includes(id)) {
+        const cycle = [...stack.slice(stack.indexOf(id)), id];
+        diagnoseClipOnce(
+          node,
+          "cyclic-clip-path-reference",
+          `Clip-path cycle detected: ${cycle.map((item) => `#${item}`).join(" -> ")}.`,
+        );
+        node.clipPath = emptyClip();
+        continue;
+      }
+
+      const viewport =
+        resource.units === "objectBoundingBox" ? { width: 1, height: 1 } : { ...node.paintContext.viewport };
+      const effective = { ...resource.presentation } as Presentation;
+      const inheritedFontSize = node.paintContext.fontMetrics.fontSize;
+      const resourceFontSize = typeof effective["font-size"] === "number" ? effective["font-size"] : inheritedFontSize;
+      const fontMetrics = defaultFontMetrics(resourceFontSize, node.paintContext.fontMetrics.rootFontSize);
+      const clipCoordinate: CoordinateContext = {
+        viewport,
+        rootViewport: { ...node.paintContext.rootViewport },
+        fontMetrics,
+      };
+      const resourceStyle = computeStyle(
+        effective,
+        resource.provenance,
+        clipCoordinate,
+        fontMetrics,
+        resource.element,
+        context,
+      );
+      const resourceResolved = {
+        effective,
+        fontMetrics,
+        style: resourceStyle,
+        provenance: resource.provenance,
+      };
+      const clipContext: BuildContext = {
+        ...context,
+        activeReferences: new Set(context.activeReferences).add(resource.id),
+      };
+      const built: RenderNode[] = [];
+      for (const content of resource.contentElements) {
+        try {
+          built.push(...buildNode(content, effective, clipCoordinate, clipContext));
+        } catch (error) {
+          diagnoseClipOnce(
+            node,
+            "invalid-clip-path-content-reference",
+            `ClipPath #${id} content could not be resolved: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+      const rootGroup: RenderGroup = {
+        type: "group",
+        children: built,
+        // display does not apply to the clipPath element itself. Other computed
+        // properties still inherit normally into its graphics children.
+        style: { ...resourceStyle, display: "inline" },
+        transform: computedTransform(resource.element, resourceResolved, context),
+        source: resource.source,
+        paintContext: {
+          viewport: { ...clipCoordinate.viewport },
+          rootViewport: { ...clipCoordinate.rootViewport },
+          fontMetrics: { ...fontMetrics },
+        },
+      };
+      materializeClipPaths([rootGroup], [...stack, id]);
+      const instance = resolveClipPathInstance(resource, node, [rootGroup]);
+      if (instance.invalid && resource.units === "objectBoundingBox")
+        diagnoseClipOnce(
+          node,
+          "degenerate-clip-path-object-bounding-box",
+          `ClipPath #${id} cannot resolve objectBoundingBox units against an empty or zero-sized target geometry.`,
+        );
+      resource.instances.set(node, instance);
+      if (resource.children.length === 0) resource.children = [rootGroup];
+      node.clipPath = instance;
+    }
+  }
+  materializeClipPaths(children);
+  for (const paint of resources.paints.values()) {
+    if (paint.type !== "pattern") continue;
+    for (const instance of paint.instances.values()) materializeClipPaths(instance.children);
+  }
+
   function diagnoseMaskOnce(node: RenderNode, code: string, message: string): void {
     if (diagnostics.some((item) => item.code === code && item.source === node.source && item.message === message))
       return;
@@ -1168,6 +1330,7 @@ export function buildRenderDocument(
         }
       }
       materializeReferencedPatterns(built);
+      materializeClipPaths(built);
       materializeMasks(built, [...stack, id]);
       const instance = resolveMaskInstance(resource, node, built);
       resource.instances.set(node, instance);

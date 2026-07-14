@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <defs>
+    <clipPath id="box" clipPathUnits="objectBoundingBox" transform="translate(.05 .05)">
+      <rect x=".1" y=".1" width=".7" height=".8"/>
+    </clipPath>
+  </defs>
+  <rect x="28" y="14" width="72" height="52" fill="#44bd32" stroke="black" stroke-width="12" transform="rotate(12 64 40)" clip-path="url(#box)"/>
+</svg>
