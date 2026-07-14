@@ -38,6 +38,8 @@ export interface TranspilerOptions {
   activeUseReferences: Set<string>;
   /** Precomputed semantic style supplied by the render-tree generator. */
   resolvedStyle?: import("./renderTree/types").ComputedStyle;
+  /** Apply the complete CTM to a centerline before constructing a non-scaling stroke outline. */
+  preStrokeTransform?: import("./transformUtils").AffineTransform;
 }
 
 export interface ViewBoxData {

@@ -163,7 +163,7 @@ async function main() {
       const pixelWidth = Math.round(fixture.width * fixture.scale);
       const pixelHeight = Math.round(fixture.height * fixture.scale);
       const resourceBytes = fixture.fonts.map((font) => readFileSync(resolve(__dirname, font)));
-      const usesWebKitReference = fixture.tags.includes("blend-mode");
+      const usesWebKitReference = fixture.tags.includes("blend-mode") || fixture.tags.includes("vector-effect");
       if (usesWebKitReference) resourceBytes.push(readFileSync(WEBKIT_RENDERER_SOURCE));
       for (const match of source.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
         const href = match[1]!;

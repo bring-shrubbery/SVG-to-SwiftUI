@@ -90,6 +90,13 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/<svg\b[\s\S]*<svg\b/i.test(source)) tags.add("nested-svg");
   if (/\boverflow\s*=/.test(source) || /<svg\b[\s\S]*<svg\b/i.test(source)) tags.add("overflow");
   if (/\bstroke\s*(?:=|:)/.test(source)) tags.add("stroke");
+  const advancedStrokeFixture = /(?:^|-)stroke(?:-|$)/.test(name);
+  if (advancedStrokeFixture && /\bstroke-dasharray\s*(?:=|:)/.test(source)) tags.add("stroke-dasharray");
+  if (advancedStrokeFixture && /\bstroke-dashoffset\s*(?:=|:)/.test(source)) tags.add("stroke-dashoffset");
+  if (advancedStrokeFixture && /\bstroke-linecap\s*(?:=|:)/.test(source)) tags.add("stroke-linecap");
+  if (advancedStrokeFixture && /\bstroke-linejoin\s*(?:=|:)/.test(source)) tags.add("stroke-linejoin");
+  if (advancedStrokeFixture && /\bstroke-miterlimit\s*(?:=|:)/.test(source)) tags.add("stroke-miterlimit");
+  if (advancedStrokeFixture && /\bvector-effect\s*(?:=|:)/.test(source)) tags.add("vector-effect");
   if (/\bopacity\s*(?:=|:)/.test(source)) tags.add("opacity");
   if (/\bvisibility\s*(?:=|:)/.test(source)) tags.add("visibility");
   if (/\bdisplay\s*(?:=|:)/.test(source)) tags.add("display");

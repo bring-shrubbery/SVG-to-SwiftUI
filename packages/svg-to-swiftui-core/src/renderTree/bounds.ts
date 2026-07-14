@@ -38,6 +38,63 @@ function transformedRect(x: number, y: number, width: number, height: number, ma
   return { x: minX, y: minY, width: Math.max(...xs) - minX, height: Math.max(...ys) - minY };
 }
 
+function transformedGeometryBounds(geometry: Geometry, matrix: AffineTransform): RenderBounds | undefined {
+  const transformedPoint = (x: number, y: number) => ({
+    x: matrix.a * x + matrix.c * y + matrix.e,
+    y: matrix.b * x + matrix.d * y + matrix.f,
+  });
+  const boundsForPoints = (points: Array<{ x: number; y: number }>): RenderBounds | undefined => {
+    if (points.length === 0) return undefined;
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+  };
+
+  switch (geometry.type) {
+    case "rect":
+      return transformedRect(geometry.x, geometry.y, geometry.width, geometry.height, matrix);
+    case "circle":
+    case "ellipse": {
+      const cx = geometry.cx;
+      const cy = geometry.cy;
+      const rx = geometry.type === "circle" ? geometry.r : geometry.rx;
+      const ry = geometry.type === "circle" ? geometry.r : geometry.ry;
+      const center = transformedPoint(cx, cy);
+      const radiusX = Math.hypot(matrix.a * rx, matrix.c * ry);
+      const radiusY = Math.hypot(matrix.b * rx, matrix.d * ry);
+      return { x: center.x - radiusX, y: center.y - radiusY, width: 2 * radiusX, height: 2 * radiusY };
+    }
+    case "line":
+      return boundsForPoints([transformedPoint(geometry.x1, geometry.y1), transformedPoint(geometry.x2, geometry.y2)]);
+    case "polyline":
+    case "polygon": {
+      const values = geometry.points
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map(Number);
+      if (values.length < 2 || values.some((value) => !Number.isFinite(value))) return undefined;
+      const points: Array<{ x: number; y: number }> = [];
+      for (let index = 0; index + 1 < values.length; index += 2)
+        points.push(transformedPoint(values[index]!, values[index + 1]!));
+      return boundsForPoints(points);
+    }
+    case "path": {
+      try {
+        const bounds = new SVGPathData(geometry.d)
+          .toAbs()
+          .matrix(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f)
+          .getBounds();
+        return { x: bounds.minX, y: bounds.minY, width: bounds.maxX - bounds.minX, height: bounds.maxY - bounds.minY };
+      } catch {
+        return undefined;
+      }
+    }
+  }
+}
+
 function pointsBounds(points: string): RenderBounds | undefined {
   const values = points
     .trim()
@@ -111,10 +168,75 @@ function expandForStroke(bounds: RenderBounds, shape: RenderShape): RenderBounds
   };
 }
 
-function localShapeBounds(shape: RenderShape): RenderBounds | undefined {
-  if (shape.style.fill.type === "none" && shape.style.stroke.type === "none") return undefined;
-  const bounds = geometryBounds(shape.geometry);
-  return bounds ? expandForStroke(bounds, shape) : undefined;
+function transformedShapeBounds(shape: RenderShape, transform: AffineTransform): RenderBounds | undefined {
+  const hasFill = shape.geometry.type !== "line" && shape.style.fill.type !== "none";
+  const hasStroke = shape.style.stroke.type !== "none" && shape.style.strokeStyle.width > 0;
+  if (!hasFill && !hasStroke) return undefined;
+  const bounds = transformedGeometryBounds(shape.geometry, transform);
+  if (!bounds || !hasStroke) return bounds;
+
+  const half = shape.style.strokeStyle.width / 2;
+  if (shape.geometry.type === "line" && !shape.style.strokeStyle.dashArray) {
+    const point = (x: number, y: number) => ({
+      x: transform.a * x + transform.c * y + transform.e,
+      y: transform.b * x + transform.d * y + transform.f,
+    });
+    const localStart = { x: shape.geometry.x1, y: shape.geometry.y1 };
+    const localEnd = { x: shape.geometry.x2, y: shape.geometry.y2 };
+    const start = point(localStart.x, localStart.y);
+    const end = point(localEnd.x, localEnd.y);
+    const nonScaling = shape.style.strokeStyle.vectorEffect === "non-scaling-stroke";
+    const dx = nonScaling ? end.x - start.x : localEnd.x - localStart.x;
+    const dy = nonScaling ? end.y - start.y : localEnd.y - localStart.y;
+    const length = Math.hypot(dx, dy);
+    if (length === 0 && shape.style.strokeStyle.lineCap === "butt") return undefined;
+
+    if (shape.style.strokeStyle.lineCap === "round") {
+      const expansionX = half * (nonScaling ? 1 : Math.hypot(transform.a, transform.c));
+      const expansionY = half * (nonScaling ? 1 : Math.hypot(transform.b, transform.d));
+      return {
+        x: bounds.x - expansionX,
+        y: bounds.y - expansionY,
+        width: bounds.width + 2 * expansionX,
+        height: bounds.height + 2 * expansionY,
+      };
+    }
+
+    const tangent = length === 0 ? { x: 1, y: 0 } : { x: dx / length, y: dy / length };
+    const normal = { x: -tangent.y, y: tangent.x };
+    const cap = shape.style.strokeStyle.lineCap === "square" ? half : 0;
+    const strokePoints = [
+      { x: -cap, y: -half },
+      { x: -cap, y: half },
+      { x: length + cap, y: -half },
+      { x: length + cap, y: half },
+    ].map(({ x, y }) => {
+      if (nonScaling) {
+        return { x: start.x + tangent.x * x + normal.x * y, y: start.y + tangent.y * x + normal.y * y };
+      }
+      return point(localStart.x + tangent.x * x + normal.x * y, localStart.y + tangent.y * x + normal.y * y);
+    });
+    const xs = strokePoints.map((item) => item.x);
+    const ys = strokePoints.map((item) => item.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+  }
+
+  const miterFactor =
+    (shape.geometry.type === "path" || shape.geometry.type === "polyline" || shape.geometry.type === "polygon") &&
+    shape.style.strokeStyle.lineJoin === "miter"
+      ? Math.max(1, shape.style.strokeStyle.miterLimit)
+      : 1;
+  const nonScaling = shape.style.strokeStyle.vectorEffect === "non-scaling-stroke";
+  const expansionX = half * miterFactor * (nonScaling ? 1 : Math.hypot(transform.a, transform.c));
+  const expansionY = half * miterFactor * (nonScaling ? 1 : Math.hypot(transform.b, transform.d));
+  return {
+    x: bounds.x - expansionX,
+    y: bounds.y - expansionY,
+    width: bounds.width + 2 * expansionX,
+    height: bounds.height + 2 * expansionY,
+  };
 }
 
 /** Object bounding box before the target node's own transform. */
@@ -145,6 +267,8 @@ export function objectBoundingBox(node: RenderNode): RenderBounds | undefined {
 
 /** Local bounds for one paint phase, including stroke expansion when requested. */
 export function shapePaintBounds(shape: RenderShape, kind: "fill" | "stroke"): RenderBounds | undefined {
+  if (kind === "stroke" && (shape.style.stroke.type === "none" || shape.style.strokeStyle.width <= 0)) return undefined;
+  if (kind === "fill" && (shape.geometry.type === "line" || shape.style.fill.type === "none")) return undefined;
   const bounds = geometryBounds(shape.geometry);
   if (!bounds) return undefined;
   return kind === "stroke" ? expandForStroke(bounds, shape) : bounds;
@@ -198,8 +322,7 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
   const transform = multiplyTransforms(parent, node.transform);
   if (node.type === "shape") {
     if (hidden(node.style.visibility)) return undefined;
-    const bounds = localShapeBounds(node);
-    let painted = bounds ? transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform) : undefined;
+    let painted = transformedShapeBounds(node, transform);
     if (node.clipPath) {
       const clip = clipPathInstanceBounds(node.clipPath, transform);
       painted = clip ? intersect(painted, clip) : undefined;

@@ -61,6 +61,16 @@ function containsIndependentCompositing(nodes: RenderNode[]): boolean {
   });
 }
 
+function containsNonScalingStroke(nodes: RenderNode[]): boolean {
+  return nodes.some(
+    (node) =>
+      (node.type === "shape" &&
+        node.style.stroke.type !== "none" &&
+        node.style.strokeStyle.vectorEffect === "non-scaling-stroke") ||
+      (node.type === "group" && containsNonScalingStroke(node.children)),
+  );
+}
+
 function solidColor(paint: Paint, opacity: number): string | undefined {
   if (paint.type === "solid") return swiftUIColor(paint.value, opacity);
   if (paint.type === "reference" && paint.fallback) return swiftUIColor(paint.fallback, opacity);
@@ -90,12 +100,14 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   const hasPaintServer = hasGradientPaint || hasPatternPaint;
   const needsIndependentCompositing =
     containsIndependentCompositing(document.children) || paints.some(({ paint }) => hasIntrinsicAlpha(paint));
+  const needsNonScalingStroke = containsNonScalingStroke(document.children);
 
   if (
     config.preserveColors === false &&
     !needsViewportClip &&
     !hasPaintServer &&
     !needsIndependentCompositing &&
+    !needsNonScalingStroke &&
     !containsGeneralViewContent(document.children)
   ) {
     return {
@@ -110,6 +122,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   if (hasGradientPaint) reasons.push("document uses an SVG gradient paint server");
   if (hasPatternPaint) reasons.push("document uses an SVG pattern paint server");
   if (needsIndependentCompositing) reasons.push("document uses independent paint or group opacity");
+  if (needsNonScalingStroke) reasons.push("document uses non-scaling stroke geometry");
 
   const colors = paints.map(({ paint, opacity }) => {
     if (paint.type === "reference") {

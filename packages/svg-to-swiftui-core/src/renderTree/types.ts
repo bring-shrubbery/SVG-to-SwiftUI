@@ -202,11 +202,12 @@ export type PaintServer = GradientPaint | PatternPaint | InvalidPaintServer;
 
 export interface StrokeStyle {
   width: number;
-  lineCap: string;
-  lineJoin: string;
+  lineCap: "butt" | "round" | "square";
+  lineJoin: "miter" | "round" | "bevel";
   miterLimit: number;
   dashArray?: number[];
   dashOffset: number;
+  vectorEffect: "none" | "non-scaling-stroke";
 }
 
 export type PaintOrderPhase = "fill" | "stroke" | "markers";

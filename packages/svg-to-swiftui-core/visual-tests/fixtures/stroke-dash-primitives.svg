@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <g fill="none" stroke="#111" stroke-width="5" stroke-linecap="round">
+    <line x1="8" y1="12" x2="152" y2="12" stroke-dasharray="16 7"/>
+    <line x1="8" y1="28" x2="152" y2="28" stroke-dasharray="16 7" stroke-dashoffset="9"/>
+    <rect x="8" y="42" width="52" height="30" rx="8" stroke-dasharray="9, 4, 2"/>
+    <circle cx="94" cy="57" r="19" stroke-dasharray="5 4" stroke-dashoffset="-7"/>
+    <ellipse cx="137" cy="57" rx="16" ry="11" stroke-dasharray="7 3"/>
+    <polyline points="8,106 28,83 47,106 66,83 84,106" stroke-dasharray="8 4"/>
+    <polygon points="112,83 130,106 94,106" stroke-dasharray="6 3"/>
+  </g>
+</svg>

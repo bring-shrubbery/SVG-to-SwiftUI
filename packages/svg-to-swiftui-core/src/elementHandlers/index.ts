@@ -1,6 +1,6 @@
 import type { ElementNode } from "svg-parser";
 import { extractStyle } from "../styleUtils";
-import { getSVGTransform, wrapWithSVGTransform } from "../transformUtils";
+import { getSVGTransform, wrapWithSVGTransform, wrapWithTransform } from "../transformUtils";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct, formatRoundedNumber } from "../utils";
 import handleCircleElement from "./circleElementHandler";
@@ -40,6 +40,8 @@ interface PresentationStyle {
   strokeLinecap: string;
   strokeLinejoin: string;
   strokeMiterlimit: number;
+  strokeDasharray?: number[];
+  strokeDashoffset: number;
   fillRule: string;
 }
 
@@ -59,6 +61,8 @@ function extractPresentationStyle(
       strokeLinecap: resolved.strokeStyle.lineCap,
       strokeLinejoin: resolved.strokeStyle.lineJoin,
       strokeMiterlimit: resolved.strokeStyle.miterLimit,
+      ...(resolved.strokeStyle.dashArray ? { strokeDasharray: resolved.strokeStyle.dashArray } : {}),
+      strokeDashoffset: resolved.strokeStyle.dashOffset,
       fillRule: resolved.fillRule,
     };
   }
@@ -77,6 +81,7 @@ function extractPresentationStyle(
       strokeLinecap: (style["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (style["stroke-linejoin"] as string) || "miter",
       strokeMiterlimit: resolvedGeometryNumber(style["stroke-miterlimit"], 4), // SVG default is 4
+      strokeDashoffset: resolvedGeometryNumber(style["stroke-dashoffset"], 0),
       fillRule: (style["fill-rule"] as string) || (style.fillRule as string) || "nonzero",
     };
   } catch {
@@ -92,6 +97,7 @@ function extractPresentationStyle(
       strokeLinecap: (parentStyle["stroke-linecap"] as string) || "butt",
       strokeLinejoin: (parentStyle["stroke-linejoin"] as string) || "miter",
       strokeMiterlimit: resolvedGeometryNumber(parentStyle["stroke-miterlimit"], 4),
+      strokeDashoffset: resolvedGeometryNumber(parentStyle["stroke-dashoffset"], 0),
       fillRule: (parentStyle["fill-rule"] as string) || (parentStyle.fillRule as string) || "nonzero",
     };
   }
@@ -110,8 +116,9 @@ const LINE_JOIN_MAP: Record<string, string> = {
 };
 
 function buildStrokeLines(lines: string[], style: PresentationStyle, options: TranspilerOptions): string[] {
-  const normalizedWidth = style.strokeWidth / options.viewBox.width;
-  const strokeWidthStr = clampNormalisedSizeProduct(formatRoundedNumber(normalizedWidth, options.precision), "width");
+  const normalizedStrokeValue = (value: number): string =>
+    clampNormalisedSizeProduct(formatRoundedNumber(value / options.viewBox.width, options.precision), "width");
+  const strokeWidthStr = normalizedStrokeValue(style.strokeWidth);
 
   const lineCap = LINE_CAP_MAP[style.strokeLinecap] || ".butt";
   const lineJoin = LINE_JOIN_MAP[style.strokeLinejoin] || ".miter";
@@ -121,12 +128,27 @@ function buildStrokeLines(lines: string[], style: PresentationStyle, options: Tr
 
   options.lastPathId++;
   const varName = `strokePath${options.lastPathId}`;
-  const strokeCall = `${varName}.strokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit}))`;
+  const dash = style.strokeDasharray;
+  const dashSum = dash?.reduce((sum, value) => sum + value, 0) ?? 0;
+  const normalizedPhase =
+    dashSum > 0
+      ? style.strokeDashoffset < 0
+        ? dashSum - (Math.abs(style.strokeDashoffset) % dashSum)
+        : style.strokeDashoffset % dashSum
+      : 0;
+  const dashArguments = dash
+    ? `, dash: [${dash.map(normalizedStrokeValue).join(", ")}], dashPhase: ${normalizedStrokeValue(normalizedPhase)}`
+    : "";
+  const strokeStyle = `StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit}${dashArguments})`;
+  const strokeCall = `${varName}.strokedPath(${strokeStyle})`;
+  const centerlineLines = options.preStrokeTransform
+    ? wrapWithTransform(lines, options.preStrokeTransform, options)
+    : lines;
 
   if (options.separatePaintLayer) {
     return [
       `var ${varName} = Path()`,
-      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      ...centerlineLines.map((l) => l.replace(/^path\./, `${varName}.`)),
       `path.addPath(${strokeCall})`,
     ];
   }
@@ -135,8 +157,8 @@ function buildStrokeLines(lines: string[], style: PresentationStyle, options: Tr
     // Light strokes use the opposite winding from the document's dark geometry.
     return [
       `var ${varName} = Path()`,
-      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
-      `path.addPath(${varName}.cwStrokedPath(StrokeStyle(lineWidth: ${strokeWidthStr}, lineCap: ${lineCap}, lineJoin: ${lineJoin}, miterLimit: ${style.strokeMiterlimit})))`,
+      ...centerlineLines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      `path.addPath(${varName}.cwStrokedPath(${strokeStyle}))`,
     ];
   }
 
@@ -144,7 +166,7 @@ function buildStrokeLines(lines: string[], style: PresentationStyle, options: Tr
     // Keep CoreGraphics' natural stroke winding so it matches primitive paths.
     return [
       `var ${varName} = Path()`,
-      ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+      ...centerlineLines.map((l) => l.replace(/^path\./, `${varName}.`)),
       `path.addPath(${strokeCall})`,
     ];
   }
@@ -152,7 +174,7 @@ function buildStrokeLines(lines: string[], style: PresentationStyle, options: Tr
   // All-stroke SVG: use normal strokedPath
   return [
     `var ${varName} = Path()`,
-    ...lines.map((l) => l.replace(/^path\./, `${varName}.`)),
+    ...centerlineLines.map((l) => l.replace(/^path\./, `${varName}.`)),
     `path.addPath(${strokeCall})`,
   ];
 }

@@ -3,6 +3,7 @@ import type { ElementNode } from "svg-parser";
 import type { SVGRectAttributes } from "../svgTypes";
 import type { TranspilerOptions } from "../types";
 import { clampNormalisedSizeProduct, formatRoundedNumber, normaliseRectValues, stringifyRectValues } from "../utils";
+import handlePathElement from "./pathElementHandler";
 import { resolvedGeometryNumber } from "./resolvedGeometry";
 
 export default function handleRectElement(element: ElementNode, options: TranspilerOptions): string[] {
@@ -30,8 +31,28 @@ export default function handleRectElement(element: ElementNode, options: Transpi
     // Parse corner radii. SVG spec: rx defaults to ry and vice versa.
     const rxRaw = rectProps.rx === undefined ? undefined : resolvedGeometryNumber(rectProps.rx);
     const ryRaw = rectProps.ry === undefined ? undefined : resolvedGeometryNumber(rectProps.ry);
-    const rx = rxRaw ?? ryRaw ?? 0;
-    const ry = ryRaw ?? rxRaw ?? 0;
+    const rx = Math.min(Math.abs(rxRaw ?? ryRaw ?? 0), width / 2);
+    const ry = Math.min(Math.abs(ryRaw ?? rxRaw ?? 0), height / 2);
+
+    if (options.resolvedStyle?.strokeStyle.dashArray) {
+      const right = x + width;
+      const bottom = y + height;
+      const d =
+        rx > 0 && ry > 0
+          ? [
+              `M${x + rx} ${y}`,
+              `H${right - rx}`,
+              `A${rx} ${ry} 0 0 1 ${right} ${y + ry}`,
+              `V${bottom - ry}`,
+              `A${rx} ${ry} 0 0 1 ${right - rx} ${bottom}`,
+              `H${x + rx}`,
+              `A${rx} ${ry} 0 0 1 ${x} ${bottom - ry}`,
+              `V${y + ry}`,
+              `A${rx} ${ry} 0 0 1 ${x + rx} ${y}Z`,
+            ].join(" ")
+          : `M${x} ${y}H${right}V${bottom}H${x}Z`;
+      return handlePathElement({ ...element, tagName: "path", properties: { ...element.properties, d } }, options);
+    }
 
     // Normalise all values to be based on fraction of width/height.
     const normalisedRect = normaliseRectValues({ x, y, width, height }, options.viewBox);

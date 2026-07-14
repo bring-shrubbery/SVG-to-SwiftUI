@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 120">
+  <g fill="none" stroke-width="10">
+    <path d="M12 16h42" stroke="#e63946" stroke-linecap="butt"/>
+    <path d="M69 16h42" stroke="#457b9d" stroke-linecap="round"/>
+    <path d="M126 16h42" stroke="#2a9d8f" stroke-linecap="square"/>
+    <path d="M12 66l22-30 22 30" stroke="#e63946" stroke-linejoin="miter" stroke-miterlimit="8"/>
+    <path d="M68 66l22-30 22 30" stroke="#457b9d" stroke-linejoin="round"/>
+    <path d="M124 66l22-30 22 30" stroke="#2a9d8f" stroke-linejoin="bevel"/>
+    <path d="M18 110l18-34 18 34" stroke="#8338ec" stroke-linejoin="miter" stroke-miterlimit="1"/>
+    <path d="M72 110l18-34 18 34" stroke="#ff9f1c" stroke-linejoin="miter" stroke-miterlimit="3"/>
+    <path d="M126 110l18-34 18 34" stroke="#111" stroke-linejoin="miter" stroke-miterlimit="10"/>
+  </g>
+</svg>
