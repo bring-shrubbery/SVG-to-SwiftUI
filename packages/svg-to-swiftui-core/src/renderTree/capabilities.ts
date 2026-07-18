@@ -68,6 +68,7 @@ function containsIndependentCompositing(nodes: RenderNode[]): boolean {
       node.style.isolation === "isolate" ||
       node.clipPath !== undefined ||
       node.style.mask !== undefined ||
+      node.filter !== undefined ||
       node.style.blendMode !== "normal"
     )
       return true;
@@ -94,6 +95,15 @@ function containsMarkers(nodes: RenderNode[]): boolean {
     (node) =>
       (node.type === "shape" && (node.markers?.length ?? 0) > 0) ||
       (node.type === "group" && containsMarkers(node.children)),
+  );
+}
+
+function containsFilters(nodes: RenderNode[]): boolean {
+  return nodes.some(
+    (node) =>
+      node.filter !== undefined ||
+      (node.type === "shape" && node.markers !== undefined && containsFilters(node.markers)) ||
+      (node.type === "group" && containsFilters(node.children)),
   );
 }
 
@@ -129,6 +139,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   const needsNonScalingStroke = containsNonScalingStroke(document.children);
   const needsMarkers = containsMarkers(document.children);
   const needsAccessibility = containsAccessibility(document.children);
+  const hasFilters = containsFilters(document.children);
 
   if (
     config.preserveColors === false &&
@@ -155,6 +166,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   if (needsIndependentCompositing) reasons.push("document uses independent paint or group opacity");
   if (needsNonScalingStroke) reasons.push("document uses non-scaling stroke geometry");
   if (needsMarkers) reasons.push("document uses SVG marker shadow content");
+  if (hasFilters) reasons.push("document uses an SVG filter graph");
 
   const colors = paints.map(({ paint, opacity }) => {
     if (paint.type === "reference") {

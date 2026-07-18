@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 90">
+  <defs>
+    <filter id="object" x="-30%" y="-40%" width="170%" height="190%" primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation=".05 .025" edgeMode="duplicate" x="-20%" y="-30%" width="150%" height="170%"/>
+    </filter>
+    <filter id="user" filterUnits="userSpaceOnUse" x="72" y="7" width="70" height="70" color-interpolation-filters="sRGB">
+      <feOffset dx="8.5" dy="-4.25"/>
+    </filter>
+    <filter id="zero"><feGaussianBlur stdDeviation="0" edgeMode="wrap"/></filter>
+  </defs>
+  <rect width="150" height="90" fill="#f8fafc"/>
+  <g transform="translate(18 17) rotate(-12 24 20)">
+    <rect width="48" height="40" rx="8" fill="#0ea5e9" filter="url(#object)"/>
+  </g>
+  <g transform="rotate(9 105 40)">
+    <path d="M83 17h44v42H83z" fill="#f59e0b" filter="url(#user)"/>
+  </g>
+  <circle cx="126" cy="75" r="8" fill="#ef4444" filter="url(#zero)"/>
+</svg>

@@ -13,6 +13,9 @@ import type {
   AccessibilityMetadata,
   ClipPathInstance,
   ComputedStyle,
+  FilterInput,
+  FilterInstance,
+  FilterPrimitive,
   Geometry,
   GradientStop,
   MaskInstance,
@@ -77,6 +80,7 @@ type GeneratedViewNode =
       viewportClip?: string;
       clipPath?: GeneratedClipPath;
       mask?: GeneratedMask;
+      filter?: GeneratedFilter;
       tileContained?: boolean;
       accessibility?: AccessibilityMetadata;
     };
@@ -85,6 +89,11 @@ interface GeneratedMask {
   children: GeneratedViewNode[];
   clip: string;
   luminance: boolean;
+}
+
+interface GeneratedFilter {
+  instance: FilterInstance;
+  canvas: ViewBoxData;
 }
 
 interface GeneratedClipPath {
@@ -306,6 +315,63 @@ function buildViewNodes(
 ): GeneratedViewNode[] {
   const generated: GeneratedViewNode[] = [];
 
+  const buildFilter = (
+    filter: FilterInstance | undefined,
+    targetTransforms: RenderNode["transform"][],
+  ): GeneratedFilter | undefined => {
+    if (!filter || filter.invalid) return undefined;
+    const transform = targetTransforms.reduce(multiplyTransforms);
+    const transformRegion = (region: FilterInstance["region"]): FilterInstance["region"] => {
+      const points = [
+        [region.x, region.y],
+        [region.x + region.width, region.y],
+        [region.x, region.y + region.height],
+        [region.x + region.width, region.y + region.height],
+      ].map(([x, y]) => ({
+        x: transform.a * x! + transform.c * y! + transform.e,
+        y: transform.b * x! + transform.d * y! + transform.f,
+      }));
+      const xs = points.map((point) => point.x);
+      const ys = points.map((point) => point.y);
+      const x = Math.min(...xs);
+      const y = Math.min(...ys);
+      return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+    };
+    const transformPrimitive = (primitive: FilterPrimitive): FilterPrimitive => {
+      const subregion = transformRegion(primitive.subregion);
+      if (primitive.type === "offset")
+        return {
+          ...primitive,
+          subregion,
+          dx: transform.a * primitive.dx + transform.c * primitive.dy,
+          dy: transform.b * primitive.dx + transform.d * primitive.dy,
+        };
+      if (primitive.type === "gaussianBlur" || primitive.type === "dropShadow") {
+        const stdDeviationX = Math.hypot(transform.a * primitive.stdDeviationX, transform.c * primitive.stdDeviationY);
+        const stdDeviationY = Math.hypot(transform.b * primitive.stdDeviationX, transform.d * primitive.stdDeviationY);
+        return primitive.type === "gaussianBlur"
+          ? { ...primitive, subregion, stdDeviationX, stdDeviationY }
+          : {
+              ...primitive,
+              subregion,
+              stdDeviationX,
+              stdDeviationY,
+              dx: transform.a * primitive.dx + transform.c * primitive.dy,
+              dy: transform.b * primitive.dx + transform.d * primitive.dy,
+            };
+      }
+      return { ...primitive, subregion };
+    };
+    return {
+      instance: {
+        ...filter,
+        region: transformRegion(filter.region),
+        primitives: filter.primitives.map(transformPrimitive),
+      },
+      canvas: context.coordinateSpace,
+    };
+  };
+
   const buildMask = (
     mask: MaskInstance | undefined,
     targetTransforms: RenderNode["transform"][],
@@ -466,6 +532,7 @@ function buildViewNodes(
       if (children.length > 0) {
         const clipPath = buildClipPath(node.clipPath, targetTransforms);
         const mask = buildMask(node.mask, targetTransforms);
+        const filter = buildFilter(node.filter, targetTransforms);
         generated.push({
           type: "group",
           children,
@@ -475,11 +542,13 @@ function buildViewNodes(
             node.style.isolation === "isolate" ||
             node.style.blendMode !== "normal" ||
             !!clipPath ||
-            !!mask,
+            !!mask ||
+            !!filter,
           blendMode: node.style.blendMode,
           ...(viewportClip ? { viewportClip } : {}),
           ...(clipPath ? { clipPath } : {}),
           ...(mask ? { mask } : {}),
+          ...(filter ? { filter } : {}),
           ...(node.accessibility ? { accessibility: node.accessibility } : {}),
         });
       }
@@ -493,6 +562,7 @@ function buildViewNodes(
       const targetTransforms = [...ancestorTransforms, node.transform];
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
+      const filter = buildFilter(node.filter, targetTransforms);
       generated.push({
         type: "group",
         children: [{ type: "text", helper: name }],
@@ -502,10 +572,12 @@ function buildViewNodes(
           node.style.isolation === "isolate" ||
           node.style.blendMode !== "normal" ||
           !!clipPath ||
-          !!mask,
+          !!mask ||
+          !!filter,
         blendMode: node.style.blendMode,
         ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
+        ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
       });
       continue;
@@ -551,6 +623,7 @@ function buildViewNodes(
       const targetTransforms = [...ancestorTransforms, node.transform];
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
+      const filter = buildFilter(node.filter, targetTransforms);
       generated.push({
         type: "group",
         children: [{ type: "image", helper: name }],
@@ -560,10 +633,12 @@ function buildViewNodes(
           node.style.isolation === "isolate" ||
           node.style.blendMode !== "normal" ||
           !!clipPath ||
-          !!mask,
+          !!mask ||
+          !!filter,
         blendMode: node.style.blendMode,
         ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
+        ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
       });
       continue;
@@ -696,6 +771,7 @@ function buildViewNodes(
       const targetTransforms = [...ancestorTransforms, node.transform];
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
+      const filter = buildFilter(node.filter, targetTransforms);
       generated.push({
         type: "group",
         children: paints,
@@ -705,10 +781,12 @@ function buildViewNodes(
           node.style.isolation === "isolate" ||
           node.style.blendMode !== "normal" ||
           !!clipPath ||
-          !!mask,
+          !!mask ||
+          !!filter,
         blendMode: node.style.blendMode,
         ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
+        ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
       });
     }
@@ -730,6 +808,43 @@ function swiftString(value: string): string {
 
 function swiftTransform(matrix: RenderNode["transform"]): string {
   return `CGAffineTransform(a: ${formatNumber(matrix.a)}, b: ${formatNumber(matrix.b)}, c: ${formatNumber(matrix.c)}, d: ${formatNumber(matrix.d)}, tx: ${formatNumber(matrix.e)}, ty: ${formatNumber(matrix.f)})`;
+}
+
+function filterInputLiteral(input: FilterInput): string {
+  return input.type === "result" ? `.result(${input.index})` : `.${input.type}`;
+}
+
+function filterColorLiteral(color: RGBAColor): string {
+  return `SVGFilterColor(red: ${formatNumber(color.red)}, green: ${formatNumber(color.green)}, blue: ${formatNumber(color.blue)}, alpha: ${formatNumber(color.alpha)})`;
+}
+
+function filterRegionLiteral(region: FilterInstance["region"]): string {
+  return `SVGFilterRegion(x: ${formatNumber(region.x)}, y: ${formatNumber(region.y)}, width: ${formatNumber(region.width)}, height: ${formatNumber(region.height)})`;
+}
+
+function filterPrimitiveLiteral(primitive: FilterPrimitive): string {
+  const region = filterRegionLiteral(primitive.subregion);
+  const linear = primitive.colorInterpolation === "linearRGB" ? "true" : "false";
+  const result = primitive.result ? swiftString(primitive.result) : "nil";
+  switch (primitive.type) {
+    case "gaussianBlur":
+      return `.gaussianBlur(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, edge: .${primitive.edgeMode}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "offset":
+      return `.offset(input: ${filterInputLiteral(primitive.input)}, dx: ${formatNumber(primitive.dx)}, dy: ${formatNumber(primitive.dy)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "flood":
+      return `.flood(color: ${filterColorLiteral(primitive.color)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "merge":
+      return `.merge(inputs: [${primitive.inputs.map(filterInputLiteral).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "dropShadow":
+      return `.dropShadow(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, dx: ${formatNumber(primitive.dx)}, dy: ${formatNumber(primitive.dy)}, color: ${filterColorLiteral(primitive.color)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "passthrough":
+      return `.passthrough(input: ${filterInputLiteral(primitive.input)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+  }
+}
+
+function filterDefinitionLiteral(filter: GeneratedFilter): string {
+  const instance = filter.instance;
+  return `SVGFilterDefinition(region: ${filterRegionLiteral(instance.region)}, primitives: [${instance.primitives.map(filterPrimitiveLiteral).join(", ")}], fillPaint: ${filterColorLiteral(instance.fillPaint)}, strokePaint: ${filterColorLiteral(instance.strokePaint)})`;
 }
 
 function textGradientLength(
@@ -1588,9 +1703,17 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   }
   if (node.type === "gradient") return renderGradientNode(node, level, indentation);
   if (node.type === "pattern") return renderPatternNode(node, level, indentation);
-  const lines = [`${prefix}ZStack {`];
-  for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
-  lines.push(`${prefix}}`);
+  const lines = node.filter
+    ? [
+        `${prefix}SVGFilteredCanvas(definition: ${filterDefinitionLiteral(node.filter)}, canvas: CGSize(width: ${formatNumber(node.filter.canvas.width)}, height: ${formatNumber(node.filter.canvas.height)})) { graphics, size in`,
+        ...renderGeneratedCommands(node.children, "graphics", level + 1, indentation),
+        `${prefix}}`,
+      ]
+    : [`${prefix}ZStack {`];
+  if (!node.filter) {
+    for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
+    lines.push(`${prefix}}`);
+  }
   // Flatten the source subtree before applying SVG effects. SwiftUI otherwise
   // distributes masks and opacity across ZStack children, which changes
   // overlap colors and prevents nested clip-path intersections from composing.
@@ -1687,6 +1810,406 @@ function containsGradientNode(nodes: GeneratedViewNode[]): boolean {
           (node.mask ? containsGradientNode(node.mask.children) : false))) ||
       (node.type === "pattern" && containsGradientNode(node.contentNodes)),
   );
+}
+
+function containsFilterNode(nodes: GeneratedViewNode[]): boolean {
+  return nodes.some(
+    (node) =>
+      (node.type === "group" &&
+        (node.filter !== undefined ||
+          containsFilterNode(node.children) ||
+          (node.clipPath ? containsFilterNode(node.clipPath.children) : false) ||
+          (node.mask ? containsFilterNode(node.mask.children) : false))) ||
+      (node.type === "pattern" && containsFilterNode(node.contentNodes)),
+  );
+}
+
+function filterSupport(indentationSize: number): string[] {
+  const source = `private struct SVGFilterColor {
+    let red: CGFloat
+    let green: CGFloat
+    let blue: CGFloat
+    let alpha: CGFloat
+
+}
+
+private struct SVGFilterRegion {
+    let x: CGFloat
+    let y: CGFloat
+    let width: CGFloat
+    let height: CGFloat
+
+}
+
+private enum SVGFilterInput {
+    case sourceGraphic
+    case sourceAlpha
+    case backgroundImage
+    case backgroundAlpha
+    case fillPaint
+    case strokePaint
+    case result(Int)
+}
+
+private enum SVGFilterEdgeMode {
+    case none
+    case duplicate
+    case wrap
+}
+
+private enum SVGFilterPrimitive {
+    case gaussianBlur(input: SVGFilterInput, sigmaX: CGFloat, sigmaY: CGFloat, edge: SVGFilterEdgeMode, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case offset(input: SVGFilterInput, dx: CGFloat, dy: CGFloat, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case flood(color: SVGFilterColor, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case merge(inputs: [SVGFilterInput], region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case dropShadow(input: SVGFilterInput, sigmaX: CGFloat, sigmaY: CGFloat, dx: CGFloat, dy: CGFloat, color: SVGFilterColor, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case passthrough(input: SVGFilterInput, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+
+    var region: SVGFilterRegion {
+        switch self {
+        case let .gaussianBlur(_, _, _, _, region, _, _),
+             let .offset(_, _, _, region, _, _),
+             let .flood(_, region, _, _),
+             let .merge(_, region, _, _),
+             let .dropShadow(_, _, _, _, _, _, region, _, _),
+             let .passthrough(_, region, _, _):
+            return region
+        }
+    }
+
+    var linearRGB: Bool {
+        switch self {
+        case let .gaussianBlur(_, _, _, _, _, value, _),
+             let .offset(_, _, _, _, value, _),
+             let .flood(_, _, value, _),
+             let .merge(_, _, value, _),
+             let .dropShadow(_, _, _, _, _, _, _, value, _),
+             let .passthrough(_, _, value, _):
+            return value
+        }
+    }
+}
+
+private struct SVGFilterDefinition {
+    let region: SVGFilterRegion
+    let primitives: [SVGFilterPrimitive]
+    let fillPaint: SVGFilterColor
+    let strokePaint: SVGFilterColor
+}
+
+private struct SVGFilteredCanvas: View {
+    let definition: SVGFilterDefinition
+    let canvas: CGSize
+    let drawSource: (CGContext, CGSize) -> Void
+    @Environment(\\.displayScale) private var displayScale
+
+    var body: some View {
+        Canvas { context, size in
+            if let image = render(size: size) {
+                context.draw(Image(decorative: image, scale: displayScale), in: CGRect(origin: .zero, size: size))
+            }
+        }
+    }
+
+    @MainActor
+    private func render(size: CGSize) -> CGImage? {
+        guard size.width > 0, size.height > 0, canvas.width > 0, canvas.height > 0 else { return nil }
+        let pixelWidth = max(1, Int((size.width * displayScale).rounded()))
+        let pixelHeight = max(1, Int((size.height * displayScale).rounded()))
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let graphics = CGContext(
+            data: nil,
+            width: pixelWidth,
+            height: pixelHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: pixelWidth * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        graphics.translateBy(x: 0, y: CGFloat(pixelHeight))
+        graphics.scaleBy(x: displayScale, y: -displayScale)
+        drawSource(graphics, size)
+        guard let sourceImage = graphics.makeImage() else { return nil }
+        return SVGFilterBitmapRuntime.render(definition, sourceImage: sourceImage, canvas: canvas)
+    }
+}
+
+private struct SVGFilterBitmap {
+    let width: Int
+    let height: Int
+    var values: [Float]
+
+    init(width: Int, height: Int, values: [Float]? = nil) {
+        self.width = width
+        self.height = height
+        self.values = values ?? Array(repeating: 0, count: width * height * 4)
+    }
+
+    func component(_ x: Int, _ y: Int, _ channel: Int) -> Float {
+        guard x >= 0, y >= 0, x < width, y < height else { return 0 }
+        return values[(y * width + x) * 4 + channel]
+    }
+}
+
+private struct SVGFilterPixelRect {
+    let minX: Int
+    let minY: Int
+    let maxX: Int
+    let maxY: Int
+
+    func contains(_ x: Int, _ y: Int) -> Bool {
+        x >= minX && x < maxX && y >= minY && y < maxY
+    }
+}
+
+private enum SVGFilterBitmapRuntime {
+    static func render(_ definition: SVGFilterDefinition, sourceImage: CGImage, canvas: CGSize) -> CGImage? {
+        guard let data = sourceImage.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return nil }
+        let width = sourceImage.width
+        let height = sourceImage.height
+        var source = SVGFilterBitmap(width: width, height: height)
+        for y in 0..<height {
+            for x in 0..<width {
+                let byte = y * sourceImage.bytesPerRow + x * 4
+                let value = (y * width + x) * 4
+                source.values[value] = Float(bytes[byte]) / 255
+                source.values[value + 1] = Float(bytes[byte + 1]) / 255
+                source.values[value + 2] = Float(bytes[byte + 2]) / 255
+                source.values[value + 3] = Float(bytes[byte + 3]) / 255
+            }
+        }
+        let scaleX = CGFloat(width) / canvas.width
+        let scaleY = CGFloat(height) / canvas.height
+        let output = apply(definition, source: source, scaleX: scaleX, scaleY: scaleY)
+        let outputBytes = output.values.map { UInt8((min(1, max(0, $0)) * 255).rounded()) }
+        let outputData = Data(outputBytes)
+        guard let provider = CGDataProvider(data: outputData as CFData) else { return nil }
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        return CGImage(
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: true,
+            intent: .defaultIntent
+        )
+    }
+
+    private static func pixelRect(_ region: SVGFilterRegion, scaleX: CGFloat, scaleY: CGFloat, height: Int) -> SVGFilterPixelRect {
+        SVGFilterPixelRect(
+            minX: max(0, Int(floor(region.x * scaleX))),
+            minY: max(0, Int(floor(region.y * scaleY))),
+            maxX: min(Int(ceil((region.x + region.width) * scaleX)), Int.max),
+            maxY: min(Int(ceil((region.y + region.height) * scaleY)), height)
+        )
+    }
+
+    private static func cropped(_ image: SVGFilterBitmap, to rect: SVGFilterPixelRect) -> SVGFilterBitmap {
+        var result = image
+        for y in 0..<image.height {
+            for x in 0..<image.width where !rect.contains(x, y) {
+                let index = (y * image.width + x) * 4
+                result.values[index] = 0
+                result.values[index + 1] = 0
+                result.values[index + 2] = 0
+                result.values[index + 3] = 0
+            }
+        }
+        return result
+    }
+
+    private static func constant(_ color: SVGFilterColor, width: Int, height: Int) -> SVGFilterBitmap {
+        let alpha = Float(color.alpha)
+        let pixel: [Float] = [Float(color.red) * alpha, Float(color.green) * alpha, Float(color.blue) * alpha, alpha]
+        return SVGFilterBitmap(width: width, height: height, values: Array(repeating: pixel, count: width * height).flatMap { $0 })
+    }
+
+    private static func alpha(_ image: SVGFilterBitmap) -> SVGFilterBitmap {
+        var result = image
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            result.values[index] = 0
+            result.values[index + 1] = 0
+            result.values[index + 2] = 0
+        }
+        return result
+    }
+
+    private static func converted(_ image: SVGFilterBitmap, linear: Bool, encode: Bool) -> SVGFilterBitmap {
+        guard linear else { return image }
+        var result = image
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            let alpha = result.values[index + 3]
+            guard alpha > 0 else { continue }
+            for channel in 0..<3 {
+                let value = min(1, max(0, result.values[index + channel] / alpha))
+                let converted: Float
+                if encode {
+                    converted = value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1 / 2.4) - 0.055
+                } else {
+                    converted = value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+                }
+                result.values[index + channel] = converted * alpha
+            }
+        }
+        return result
+    }
+
+    private static func gaussianKernel(_ sigma: CGFloat) -> [Float] {
+        guard sigma > 0 else { return [1] }
+        let radius = max(1, Int(ceil(sigma * 3)))
+        var kernel = (-radius...radius).map { offset in Float(exp(-CGFloat(offset * offset) / (2 * sigma * sigma))) }
+        let total = kernel.reduce(0, +)
+        for index in kernel.indices { kernel[index] /= total }
+        return kernel
+    }
+
+    private static func sample(_ image: SVGFilterBitmap, x: Int, y: Int, channel: Int, edge: SVGFilterEdgeMode, bounds: SVGFilterPixelRect) -> Float {
+        if bounds.contains(x, y) { return image.component(x, y, channel) }
+        switch edge {
+        case .none: return 0
+        case .duplicate:
+            return image.component(min(bounds.maxX - 1, max(bounds.minX, x)), min(bounds.maxY - 1, max(bounds.minY, y)), channel)
+        case .wrap:
+            let width = max(1, bounds.maxX - bounds.minX)
+            let height = max(1, bounds.maxY - bounds.minY)
+            let wrappedX = bounds.minX + ((x - bounds.minX) % width + width) % width
+            let wrappedY = bounds.minY + ((y - bounds.minY) % height + height) % height
+            return image.component(wrappedX, wrappedY, channel)
+        }
+    }
+
+    private static func blur(_ image: SVGFilterBitmap, sigmaX: CGFloat, sigmaY: CGFloat, edge: SVGFilterEdgeMode, bounds: SVGFilterPixelRect) -> SVGFilterBitmap {
+        var horizontal = image
+        let kernelX = gaussianKernel(sigmaX)
+        let radiusX = kernelX.count / 2
+        if radiusX > 0 {
+            for y in 0..<image.height {
+                for x in 0..<image.width {
+                    for channel in 0..<4 {
+                        var value: Float = 0
+                        for offset in -radiusX...radiusX {
+                            value += sample(image, x: x + offset, y: y, channel: channel, edge: edge, bounds: bounds) * kernelX[offset + radiusX]
+                        }
+                        horizontal.values[(y * image.width + x) * 4 + channel] = value
+                    }
+                }
+            }
+        }
+        var vertical = horizontal
+        let kernelY = gaussianKernel(sigmaY)
+        let radiusY = kernelY.count / 2
+        if radiusY > 0 {
+            for y in 0..<image.height {
+                for x in 0..<image.width {
+                    for channel in 0..<4 {
+                        var value: Float = 0
+                        for offset in -radiusY...radiusY {
+                            value += sample(horizontal, x: x, y: y + offset, channel: channel, edge: edge, bounds: bounds) * kernelY[offset + radiusY]
+                        }
+                        vertical.values[(y * image.width + x) * 4 + channel] = value
+                    }
+                }
+            }
+        }
+        return vertical
+    }
+
+    private static func offset(_ image: SVGFilterBitmap, dx: CGFloat, dy: CGFloat) -> SVGFilterBitmap {
+        var result = SVGFilterBitmap(width: image.width, height: image.height)
+        for y in 0..<image.height {
+            for x in 0..<image.width {
+                let sourceX = CGFloat(x) - dx
+                let sourceY = CGFloat(y) - dy
+                let x0 = Int(floor(sourceX))
+                let y0 = Int(floor(sourceY))
+                let fractionX = Float(sourceX - CGFloat(x0))
+                let fractionY = Float(sourceY - CGFloat(y0))
+                for channel in 0..<4 {
+                    let top = image.component(x0, y0, channel) * (1 - fractionX) + image.component(x0 + 1, y0, channel) * fractionX
+                    let bottom = image.component(x0, y0 + 1, channel) * (1 - fractionX) + image.component(x0 + 1, y0 + 1, channel) * fractionX
+                    result.values[(y * image.width + x) * 4 + channel] = top * (1 - fractionY) + bottom * fractionY
+                }
+            }
+        }
+        return result
+    }
+
+    private static func over(_ source: SVGFilterBitmap, _ destination: SVGFilterBitmap) -> SVGFilterBitmap {
+        var result = source
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            let inverseAlpha = 1 - source.values[index + 3]
+            result.values[index] = source.values[index] + destination.values[index] * inverseAlpha
+            result.values[index + 1] = source.values[index + 1] + destination.values[index + 1] * inverseAlpha
+            result.values[index + 2] = source.values[index + 2] + destination.values[index + 2] * inverseAlpha
+            result.values[index + 3] = source.values[index + 3] + destination.values[index + 3] * inverseAlpha
+        }
+        return result
+    }
+
+    private static func apply(_ definition: SVGFilterDefinition, source unboundedSource: SVGFilterBitmap, scaleX: CGFloat, scaleY: CGFloat) -> SVGFilterBitmap {
+        let filterRect = pixelRect(definition.region, scaleX: scaleX, scaleY: scaleY, height: unboundedSource.height)
+        let source = cropped(unboundedSource, to: filterRect)
+        let sourceAlpha = alpha(source)
+        let transparent = SVGFilterBitmap(width: source.width, height: source.height)
+        let fillPaint = cropped(constant(definition.fillPaint, width: source.width, height: source.height), to: filterRect)
+        let strokePaint = cropped(constant(definition.strokePaint, width: source.width, height: source.height), to: filterRect)
+        var results: [SVGFilterBitmap] = []
+
+        func input(_ value: SVGFilterInput) -> SVGFilterBitmap {
+            switch value {
+            case .sourceGraphic: return source
+            case .sourceAlpha: return sourceAlpha
+            case .backgroundImage, .backgroundAlpha: return transparent
+            case .fillPaint: return fillPaint
+            case .strokePaint: return strokePaint
+            case let .result(index): return results.indices.contains(index) ? results[index] : source
+            }
+        }
+
+        for primitive in definition.primitives {
+            let linear = primitive.linearRGB
+            let region = pixelRect(primitive.region, scaleX: scaleX, scaleY: scaleY, height: source.height)
+            let output: SVGFilterBitmap
+            switch primitive {
+            case let .gaussianBlur(value, sigmaX, sigmaY, edge, _, _, _):
+                output = converted(blur(converted(input(value), linear: linear, encode: false), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: edge, bounds: region), linear: linear, encode: true)
+            case let .offset(value, dx, dy, _, _, _):
+                output = offset(input(value), dx: dx * scaleX, dy: dy * scaleY)
+            case let .flood(color, _, _, _):
+                output = constant(color, width: source.width, height: source.height)
+            case let .merge(inputs, _, _, _):
+                var merged = transparent
+                for value in inputs { merged = over(input(value), merged) }
+                output = merged
+            case let .dropShadow(value, sigmaX, sigmaY, dx, dy, color, _, _, _):
+                let shadowAlpha = offset(blur(alpha(input(value)), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: .none, bounds: region), dx: dx * scaleX, dy: dy * scaleY)
+                var shadow = constant(color, width: source.width, height: source.height)
+                for index in stride(from: 0, to: shadow.values.count, by: 4) {
+                    let mask = shadowAlpha.values[index + 3]
+                    shadow.values[index] *= mask
+                    shadow.values[index + 1] *= mask
+                    shadow.values[index + 2] *= mask
+                    shadow.values[index + 3] *= mask
+                }
+                output = over(input(value), shadow)
+            case let .passthrough(value, _, _, _):
+                output = input(value)
+            }
+            results.append(cropped(output, to: region))
+        }
+        return cropped(results.last ?? source, to: filterRect)
+    }
+}`;
+  const indentation = " ".repeat(indentationSize);
+  return source.split("\n").map((line) => {
+    const leading = /^ */.exec(line)?.[0].length ?? 0;
+    return `${indentation.repeat(Math.floor(leading / 4))}${line.slice(leading)}`;
+  });
 }
 
 function base64(bytes: Uint8Array): string {
@@ -1904,6 +2427,7 @@ function createView(
     body.push("", ...createTextHelper(helper, coordinateSpace, document, indentationSize));
   for (const helper of imageHelpers) body.push("", ...createImageHelper(helper, coordinateSpace, indentationSize));
   if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
+  if (containsFilterNode(nodes)) body.push("", ...filterSupport(indentationSize));
   return createStructTemplate({
     name,
     indent: indentationSize,
@@ -1962,6 +2486,10 @@ export function generateView(
   };
   const nodes = buildViewNodes(document.children, context);
   const imports = new Set<string>();
+  if (containsFilterNode(nodes)) {
+    imports.add("Foundation");
+    imports.add("SwiftUI");
+  }
   if (context.textHelpers.length > 0) imports.add("CoreText");
   if (context.imageHelpers.some((helper) => helper.node.resource?.type === "raster" && helper.node.resource.bytes)) {
     imports.add("Foundation");

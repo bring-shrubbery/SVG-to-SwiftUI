@@ -88,6 +88,8 @@ export interface RadialGradientPaint extends GradientPaintBase {
 export type PatternUnits = "objectBoundingBox" | "userSpaceOnUse";
 export type MaskUnits = "objectBoundingBox" | "userSpaceOnUse";
 export type ClipPathUnits = "objectBoundingBox" | "userSpaceOnUse";
+export type FilterUnits = "objectBoundingBox" | "userSpaceOnUse";
+export type FilterColorInterpolation = "sRGB" | "linearRGB";
 export type MaskType = "alpha" | "luminance";
 export type SVGBlendMode =
   | "normal"
@@ -140,6 +142,114 @@ export interface MaskInstance {
 }
 
 export interface MaskReference {
+  id?: string;
+  invalid: boolean;
+}
+
+export type FilterInput =
+  | { type: "sourceGraphic" }
+  | { type: "sourceAlpha" }
+  | { type: "backgroundImage" }
+  | { type: "backgroundAlpha" }
+  | { type: "fillPaint" }
+  | { type: "strokePaint" }
+  | { type: "result"; index: number };
+
+export interface FilterPrimitiveRegionSpec {
+  x?: ParsedSVGLength;
+  y?: ParsedSVGLength;
+  width?: ParsedSVGLength;
+  height?: ParsedSVGLength;
+}
+
+interface FilterPrimitiveSpecBase {
+  input?: FilterInput;
+  input2?: FilterInput;
+  result?: string;
+  region: FilterPrimitiveRegionSpec;
+  colorInterpolation: FilterColorInterpolation;
+  source: SourceLocation;
+}
+
+export type FilterPrimitiveSpec =
+  | (FilterPrimitiveSpecBase & {
+      type: "gaussianBlur";
+      input: FilterInput;
+      stdDeviationX: number;
+      stdDeviationY: number;
+      edgeMode: "none" | "duplicate" | "wrap";
+    })
+  | (FilterPrimitiveSpecBase & { type: "offset"; input: FilterInput; dx: number; dy: number })
+  | (FilterPrimitiveSpecBase & { type: "flood"; color: RGBAColor })
+  | (FilterPrimitiveSpecBase & { type: "merge"; inputs: FilterInput[] })
+  | (FilterPrimitiveSpecBase & {
+      type: "dropShadow";
+      input: FilterInput;
+      stdDeviationX: number;
+      stdDeviationY: number;
+      dx: number;
+      dy: number;
+      color: RGBAColor;
+    })
+  | (FilterPrimitiveSpecBase & { type: "passthrough"; input: FilterInput; element: string });
+
+interface FilterPrimitiveBase {
+  result?: string;
+  input2?: FilterInput;
+  subregion: RenderBounds;
+  colorInterpolation: FilterColorInterpolation;
+  source: SourceLocation;
+}
+
+export type FilterPrimitive =
+  | (FilterPrimitiveBase & {
+      type: "gaussianBlur";
+      input: FilterInput;
+      stdDeviationX: number;
+      stdDeviationY: number;
+      edgeMode: "none" | "duplicate" | "wrap";
+    })
+  | (FilterPrimitiveBase & { type: "offset"; input: FilterInput; dx: number; dy: number })
+  | (FilterPrimitiveBase & { type: "flood"; color: RGBAColor })
+  | (FilterPrimitiveBase & { type: "merge"; inputs: FilterInput[] })
+  | (FilterPrimitiveBase & {
+      type: "dropShadow";
+      input: FilterInput;
+      stdDeviationX: number;
+      stdDeviationY: number;
+      dx: number;
+      dy: number;
+      color: RGBAColor;
+    })
+  | (FilterPrimitiveBase & { type: "passthrough"; input: FilterInput; element: string });
+
+export interface FilterResource {
+  id: string;
+  x: ParsedSVGLength;
+  y: ParsedSVGLength;
+  width: ParsedSVGLength;
+  height: ParsedSVGLength;
+  units: FilterUnits;
+  primitiveUnits: FilterUnits;
+  colorInterpolation: FilterColorInterpolation;
+  href?: string;
+  source: SourceLocation;
+  element: ElementNode;
+  primitives: FilterPrimitiveSpec[];
+  instances: Map<RenderNode, FilterInstance>;
+  invalid: boolean;
+}
+
+export interface FilterInstance {
+  resource?: FilterResource;
+  region: RenderBounds;
+  primitives: FilterPrimitive[];
+  fillPaint: RGBAColor;
+  strokePaint: RGBAColor;
+  invalid: boolean;
+}
+
+export interface FilterReference {
   id?: string;
   invalid: boolean;
 }
@@ -274,6 +384,7 @@ export interface ComputedStyle {
   visibility: string;
   clipPath?: ClipPathReference;
   mask?: MaskReference;
+  filter?: FilterReference;
   blendMode: SVGBlendMode;
   isolation: "auto" | "isolate";
   strokeStyle: StrokeStyle;
@@ -303,6 +414,7 @@ export interface RenderShape {
   accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  filter?: FilterInstance;
   /** Materialized marker shadow trees in SVG vertex order. */
   markers?: RenderGroup[];
 }
@@ -328,6 +440,7 @@ export interface RenderGroup {
   accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  filter?: FilterInstance;
   /** Present only on a marker shadow-tree root. */
   markerPlacement?: MarkerPlacement;
   /** True when this group came from a referenced definition. */
@@ -357,6 +470,7 @@ export interface RenderText {
   accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  filter?: FilterInstance;
 }
 
 export interface RenderTextChunk {
@@ -465,6 +579,7 @@ export interface RenderImage {
   accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  filter?: FilterInstance;
 }
 
 export interface RenderForeignObject {
@@ -483,8 +598,6 @@ export interface RenderForeignObject {
     assetName?: string;
     intrinsicSize: { width: number; height: number };
   };
-  /** Retained until the filter runtime lands in issues #67-#71. */
-  filter: string;
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
@@ -493,6 +606,7 @@ export interface RenderForeignObject {
   accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
+  filter?: FilterInstance;
 }
 
 /** The union is intentionally extensible for clip, mask, filter, marker, and foreign-object nodes. */
@@ -513,7 +627,8 @@ export interface ResourceRegistry {
   maskElements: Map<string, ElementNode>;
   markers: Map<string, MarkerResource>;
   markerElements: Map<string, ElementNode>;
-  filters: Map<string, ElementNode>;
+  filters: Map<string, FilterResource>;
+  filterElements: Map<string, ElementNode>;
   views: Map<string, ElementNode>;
 }
 

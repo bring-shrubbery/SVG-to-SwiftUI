@@ -324,6 +324,89 @@
       "expectedMode": "view",
       "tags": ["geometry", "path", "rect", "view"]
     },
+    "filter-common-primitives": {
+      "width": 160,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": [
+        "clip-path",
+        "effect-order",
+        "feDropShadow",
+        "feFlood",
+        "feGaussianBlur",
+        "feMerge",
+        "feMergeNode",
+        "feOffset",
+        "filter",
+        "mask",
+        "opacity",
+        "view"
+      ],
+      "tolerance": {
+        "channel": 36,
+        "maxOutsidePercent": 8,
+        "maxMeanRgbError": 8,
+        "maxMeanAlphaError": 5
+      },
+      "toleranceReason": "The generated separable Gaussian kernel and SVG reference renderer use slightly different kernel truncation and edge sampling."
+    },
+    "filter-graph-branching": {
+      "width": 140,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "branching",
+        "feFlood",
+        "feGaussianBlur",
+        "feMerge",
+        "feMergeNode",
+        "feOffset",
+        "filter",
+        "FillPaint",
+        "SourceAlpha",
+        "StrokePaint",
+        "view"
+      ],
+      "tolerance": { "channel": 36, "maxOutsidePercent": 8, "maxMeanRgbError": 8, "maxMeanAlphaError": 5 },
+      "toleranceReason": "The generated separable Gaussian kernel has deterministic three-sigma truncation while the SVG reference kernel is implementation-defined."
+    },
+    "filter-shadow-equivalence": {
+      "width": 150,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "equivalence",
+        "feDropShadow",
+        "feFlood",
+        "feGaussianBlur",
+        "feMerge",
+        "feMergeNode",
+        "feOffset",
+        "filter",
+        "view"
+      ],
+      "tolerance": { "channel": 36, "maxOutsidePercent": 8, "maxMeanRgbError": 8, "maxMeanAlphaError": 5 },
+      "toleranceReason": "The generated separable Gaussian kernel has deterministic three-sigma truncation while the SVG reference kernel is implementation-defined."
+    },
+    "filter-units-regions-transforms": {
+      "width": 150,
+      "height": 90,
+      "expectedMode": "view",
+      "tags": [
+        "feGaussianBlur",
+        "feOffset",
+        "edge-mode",
+        "filter",
+        "filter-regions",
+        "filter-units",
+        "primitive-units",
+        "transform",
+        "view",
+        "zero-blur"
+      ],
+      "tolerance": { "channel": 44, "maxOutsidePercent": 10, "maxMeanRgbError": 10, "maxMeanAlphaError": 6 },
+      "toleranceReason": "Rotated anisotropic kernels are conservatively projected onto device axes and Gaussian edge truncation differs by renderer."
+    },
     "foreign-object-effects": {
       "width": 128,
       "height": 80,
