@@ -362,8 +362,8 @@
       "toleranceReason": "A one-pixel filter-subregion boundary and gradient quantization differ between the SVG and CoreGraphics rasterizers; interior transfer-function pixels match within default thresholds."
     },
     "filter-composite-operators": {
-      "width": 128,
-      "height": 37,
+      "width": 140,
+      "height": 40,
       "expectedMode": "view",
       "tags": [
         "feComposite",
