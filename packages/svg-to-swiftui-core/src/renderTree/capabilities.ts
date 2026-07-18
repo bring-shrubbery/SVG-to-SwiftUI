@@ -41,6 +41,15 @@ function containsGeneralViewContent(nodes: RenderNode[]): boolean {
   );
 }
 
+function containsAccessibility(nodes: RenderNode[]): boolean {
+  return nodes.some(
+    (node) =>
+      node.accessibility !== undefined ||
+      (node.type === "shape" && node.markers !== undefined && containsAccessibility(node.markers)) ||
+      (node.type === "group" && containsAccessibility(node.children)),
+  );
+}
+
 function containsViewportClip(nodes: RenderNode[]): boolean {
   return nodes.some(
     (node) =>
@@ -119,6 +128,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
     containsIndependentCompositing(document.children) || paints.some(({ paint }) => hasIntrinsicAlpha(paint));
   const needsNonScalingStroke = containsNonScalingStroke(document.children);
   const needsMarkers = containsMarkers(document.children);
+  const needsAccessibility = containsAccessibility(document.children);
 
   if (
     config.preserveColors === false &&
@@ -127,6 +137,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
     !needsIndependentCompositing &&
     !needsNonScalingStroke &&
     !needsMarkers &&
+    !needsAccessibility &&
     !containsGeneralViewContent(document.children)
   ) {
     return {
@@ -137,6 +148,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
   }
 
   if (containsGeneralViewContent(document.children)) reasons.push("document contains non-geometry view content");
+  if (needsAccessibility) reasons.push("document contains static accessibility semantics");
   if (needsViewportClip) reasons.push("document contains a clipped nested viewport");
   if (hasGradientPaint) reasons.push("document uses an SVG gradient paint server");
   if (hasPatternPaint) reasons.push("document uses an SVG pattern paint server");

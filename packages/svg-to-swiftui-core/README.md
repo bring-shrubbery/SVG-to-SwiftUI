@@ -140,6 +140,26 @@ Snapshots preserve transparent backgrounds, exact x/y/width/height, transforms, 
 
 Normal `convertAsync()` embeds PNG bytes. For large snapshots, use `convertAsyncWithArtifacts()` and `foreignObjects.inlineByteLimit`; its result contains Swift source plus deterministic content-addressed PNG assets for the generated app target.
 
+### Accessibility and conditional processing
+
+Static accessibility follows SVG-AAM naming precedence for `aria-labelledby`, `aria-label`, `<title>`, `<desc>`, and meaningful text. Multiple ID references, inherited `aria-hidden`, roles, and `lang`/`xml:lang` localized descriptive elements are resolved onto the closest generated SwiftUI view. Names use `.accessibilityLabel`, descriptions use `.accessibilityHint`, and recognized roles add matching traits. Named document/group containers retain their accessible children. Accessibility metadata automatically selects the `View` backend so the single-shape fast path cannot discard it. Broken or cyclic ARIA references produce structured diagnostics; `<title>`, `<desc>`, and `<metadata>` never draw pixels.
+
+`<switch>` and conditional attributes use an explicit static environment instead of the machine locale:
+
+```ts
+convert(svg, {
+  staticEnvironment: {
+    preferredLanguages: ["lt-LT", "en"],
+    accessibilityLocale: "lt-LT",
+    supportedExtensions: ["https://example.com/svg/extension"],
+    svgVersion: "1.1",
+    supportedFeatures: ["http://www.w3.org/TR/SVG11/feature#Shape"],
+  },
+});
+```
+
+Children are checked in document order. `requiredExtensions` requires every listed identifier, and `systemLanguage` uses BCP 47 prefix matching. Unknown extensions and SVG 1.1 features are unsupported. SVG 2 treats obsolete `requiredFeatures` as non-blocking and reports a diagnostic. Conditional attributes outside `<switch>` also suppress unmatched content, including referenced resources.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).

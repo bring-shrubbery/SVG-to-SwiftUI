@@ -10,6 +10,7 @@ import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
 import type {
+  AccessibilityMetadata,
   ClipPathInstance,
   ComputedStyle,
   Geometry,
@@ -77,6 +78,7 @@ type GeneratedViewNode =
       clipPath?: GeneratedClipPath;
       mask?: GeneratedMask;
       tileContained?: boolean;
+      accessibility?: AccessibilityMetadata;
     };
 
 interface GeneratedMask {
@@ -478,6 +480,7 @@ function buildViewNodes(
           ...(viewportClip ? { viewportClip } : {}),
           ...(clipPath ? { clipPath } : {}),
           ...(mask ? { mask } : {}),
+          ...(node.accessibility ? { accessibility: node.accessibility } : {}),
         });
       }
       continue;
@@ -503,6 +506,7 @@ function buildViewNodes(
         blendMode: node.style.blendMode,
         ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
+        ...(node.accessibility ? { accessibility: node.accessibility } : {}),
       });
       continue;
     }
@@ -560,6 +564,7 @@ function buildViewNodes(
         blendMode: node.style.blendMode,
         ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
+        ...(node.accessibility ? { accessibility: node.accessibility } : {}),
       });
       continue;
     }
@@ -704,6 +709,7 @@ function buildViewNodes(
         blendMode: node.style.blendMode,
         ...(clipPath ? { clipPath } : {}),
         ...(mask ? { mask } : {}),
+        ...(node.accessibility ? { accessibility: node.accessibility } : {}),
       });
     }
   }
@@ -845,8 +851,6 @@ function createTextHelper(
     `${i4}graphics.restoreGState()`,
     `${i3}}`,
     `${i2}}`,
-    `${i2}.accessibilityElement(children: .ignore)`,
-    `${i2}.accessibilityLabel(${swiftString(helper.node.text)})`,
     `${indentation}}`,
     "",
     `${indentation}private struct SVGTextColor { let red: CGFloat; let green: CGFloat; let blue: CGFloat; let alpha: CGFloat }`,
@@ -1523,6 +1527,37 @@ function renderPatternCommands(
   return lines;
 }
 
+function accessibilityTrait(role: string | undefined): string | undefined {
+  if (!role) return undefined;
+  if (["img", "graphics-document", "graphics-object", "graphics-symbol"].includes(role)) return "isImage";
+  if (role === "button") return "isButton";
+  if (role === "link") return "isLink";
+  if (role === "heading") return "isHeader";
+  if (role === "text") return "isStaticText";
+  return undefined;
+}
+
+function appendAccessibilityModifiers(
+  lines: string[],
+  accessibility: AccessibilityMetadata | undefined,
+  prefix: string,
+): void {
+  if (!accessibility) return;
+  if (accessibility.hidden) {
+    lines.push(`${prefix}.accessibilityHidden(true)`);
+    return;
+  }
+  const presentation = accessibility.role === "none" || accessibility.role === "presentation";
+  const semanticContainer = accessibility.role === "graphics-document" || accessibility.role === "graphics-object";
+  if ((accessibility.label || accessibility.description) && !semanticContainer)
+    lines.push(`${prefix}.accessibilityElement(children: .ignore)`);
+  else if (accessibility.role && !presentation) lines.push(`${prefix}.accessibilityElement(children: .contain)`);
+  if (accessibility.label) lines.push(`${prefix}.accessibilityLabel(${swiftString(accessibility.label)})`);
+  if (accessibility.description) lines.push(`${prefix}.accessibilityHint(${swiftString(accessibility.description)})`);
+  const trait = presentation ? undefined : accessibilityTrait(accessibility.role);
+  if (trait) lines.push(`${prefix}.accessibilityAddTraits(.${trait})`);
+}
+
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
   if (node.type === "text" || node.type === "image") return [`${prefix}${node.helper}()`];
@@ -1634,6 +1669,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   }
   if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
   if (node.blendMode !== "normal") lines.push(`${prefix}.blendMode(.${swiftBlendMode(node.blendMode)})`);
+  appendAccessibilityModifiers(lines, node.accessibility, prefix);
   return lines;
 }
 
@@ -1731,12 +1767,6 @@ function createImageHelper(
       `${i4}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
       `${i3}}`,
       `${i2}}`,
-    );
-  }
-  if (node.type === "foreignObject" && node.accessibilityLabel) {
-    body.push(
-      `${i2}.accessibilityElement(children: .ignore)`,
-      `${i2}.accessibilityLabel(${swiftString(node.accessibilityLabel)})`,
     );
   }
   body.push(`${indentation}}`);

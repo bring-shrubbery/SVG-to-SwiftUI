@@ -24,7 +24,9 @@ import { type AffineTransform, IDENTITY_TRANSFORM, multiplyTransforms, parseTran
 import type { SVGElementProperties, ViewBoxData } from "../types";
 import { getSVGElement, resolveSVGProperties } from "../utils";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
+import { SVGAccessibilityResolver } from "./accessibility";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
+import { SVGConditionalProcessor } from "./conditionalProcessing";
 import { resolvePaintServers } from "./gradients";
 import { markerVertices, orientedMarkerAngle, resolveMarkerResources } from "./markers";
 import { resolveMaskInstance, resolveMaskResources } from "./masks";
@@ -70,6 +72,9 @@ interface BuildContext {
   activeReferences: Set<string>;
   styleResolver: SVGStyleResolver;
   config: InternalGeneratorConfig;
+  conditional: SVGConditionalProcessor;
+  accessibility: SVGAccessibilityResolver;
+  includeAccessibility: boolean;
 }
 
 const GEOMETRY_ELEMENTS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
@@ -112,6 +117,11 @@ function addDiagnostic(
     source: sourceLocation(element),
     ...(css ? { css } : {}),
   });
+}
+
+function semanticProperties(element: ElementNode, context: BuildContext) {
+  const accessibility = context.includeAccessibility ? context.accessibility.resolve(element) : undefined;
+  return accessibility ? { accessibility } : {};
 }
 
 function parsePaint(value: unknown, currentColor: string): Paint {
@@ -1496,6 +1506,7 @@ function buildText(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...resolved.fontMetrics },
     },
+    ...semanticProperties(element, context),
   };
 }
 
@@ -1695,6 +1706,7 @@ function buildImage(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...resolved.fontMetrics },
     },
+    ...semanticProperties(element, context),
   };
 }
 
@@ -1708,6 +1720,12 @@ function buildForeignObject(
   const key = foreignObjectKey(element, context.resources.parents);
   const snapshot = foreignObjectSnapshotDocument(element, context.resources.parents, viewport, resolved.effective);
   const prepared = context.config.__foreignObjectSnapshots?.get(key);
+  const accessibility = context.includeAccessibility
+    ? (context.accessibility.resolve(element) ??
+      (snapshot.accessibilityLabel
+        ? { label: snapshot.accessibilityLabel, role: "graphics-symbol" as const }
+        : undefined))
+    : undefined;
 
   if (!context.config.__preparingForeignObjects && viewport.width > 0 && viewport.height > 0) {
     if (prepared) {
@@ -1751,6 +1769,7 @@ function buildForeignObject(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...resolved.fontMetrics },
     },
+    ...(accessibility ? { accessibility } : {}),
   };
 }
 
@@ -1844,6 +1863,7 @@ function buildGroup(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...resolved.fontMetrics },
     },
+    ...semanticProperties(element, context),
     ...(referenceId ? { referenceId } : {}),
   };
 }
@@ -1880,6 +1900,7 @@ function buildNestedSVG(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...resolved.fontMetrics },
     },
+    ...semanticProperties(element, context),
     viewport: {
       rect,
       ...(viewBox ? { viewBox } : {}),
@@ -1941,6 +1962,7 @@ function buildViewportUse(
       rootViewport: { ...childCoordinate.rootViewport },
       fontMetrics: { ...referencedResolved.fontMetrics },
     },
+    ...semanticProperties(referenced, childContext),
     referenceId: id,
   };
   return {
@@ -1954,6 +1976,7 @@ function buildViewportUse(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...useResolved.fontMetrics },
     },
+    ...semanticProperties(use, context),
     referenceId: id,
     viewport: {
       rect,
@@ -2006,6 +2029,7 @@ function buildUse(
         rootViewport: { ...coordinate.rootViewport },
         fontMetrics: { ...resolved.fontMetrics },
       },
+      ...semanticProperties(element, context),
       referenceId: id,
     },
   ];
@@ -2019,11 +2043,14 @@ function buildNode(
 ): RenderNode[] {
   const tag = element.tagName ?? "unknown";
   if (NON_RENDERING_ELEMENTS.has(tag)) return [];
+  if (!context.conditional.matches(element)) return [];
   if (tag === "use") return buildUse(element, inherited, coordinate, context);
   if (tag === "svg") return [buildNestedSVG(element, inherited, coordinate, context)];
   if (tag === "switch") {
-    const first = childElements(element)[0];
-    return [buildGroup(element, inherited, coordinate, context, undefined, first ? [first] : [])];
+    const selected = childElements(element).find(
+      (child) => !NON_RENDERING_ELEMENTS.has(child.tagName ?? "unknown") && context.conditional.matches(child),
+    );
+    return [buildGroup(element, inherited, coordinate, context, undefined, selected ? [selected] : [])];
   }
   if (CONTAINER_ELEMENTS.has(tag)) return [buildGroup(element, inherited, coordinate, context)];
 
@@ -2044,6 +2071,7 @@ function buildNode(
               rootViewport: { ...coordinate.rootViewport },
               fontMetrics: { ...resolved.fontMetrics },
             },
+            ...semanticProperties(element, context),
           },
         ]
       : [];
@@ -2071,7 +2099,26 @@ export function buildRenderDocument(
   const resources = createRegistry(svg);
   const diagnostics = [...initialDiagnostics];
   const styleResolver = new SVGStyleResolver(svg, diagnostics);
-  const context: BuildContext = { resources, diagnostics, activeReferences: new Set(), styleResolver, config };
+  const conditional = new SVGConditionalProcessor(config.staticEnvironment, diagnostics);
+  const accessibility = new SVGAccessibilityResolver(resources, conditional.environment, diagnostics);
+  const context: BuildContext = {
+    resources,
+    diagnostics,
+    activeReferences: new Set(),
+    styleResolver,
+    config,
+    conditional,
+    accessibility,
+    includeAccessibility: true,
+  };
+  const diagnoseDynamicContent = (element: ElementNode): void => {
+    const tag = (element.tagName ?? "").toLowerCase();
+    if (tag === "script")
+      addDiagnostic(context, element, "unsupported-script", "SVG scripts are not executed by the static renderer.");
+    if (tag === "foreignobject") return;
+    for (const child of childElements(element)) diagnoseDynamicContent(child);
+  };
+  diagnoseDynamicContent(svg);
   const coordinate: CoordinateContext = {
     viewport: properties.userViewport,
     rootViewport: { width: properties.width, height: properties.height },
@@ -2115,9 +2162,10 @@ export function buildRenderDocument(
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
     type: "group",
-    children: properties.zeroSized
-      ? []
-      : childElements(svg).flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
+    children:
+      properties.zeroSized || !conditional.matches(svg)
+        ? []
+        : childElements(svg).flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
     style: resolved.style,
     transform: rootTransform,
     source: sourceLocation(svg),
@@ -2126,6 +2174,7 @@ export function buildRenderDocument(
       rootViewport: { ...coordinate.rootViewport },
       fontMetrics: { ...resolved.fontMetrics },
     },
+    ...semanticProperties(svg, context),
   };
   const children: RenderNode[] = [root];
 
@@ -2267,6 +2316,7 @@ export function buildRenderDocument(
     const markerContext: BuildContext = {
       ...context,
       activeReferences: new Set(context.activeReferences).add(resource.id),
+      includeAccessibility: false,
     };
     const built: RenderNode[] = [];
     for (const content of resource.contentElements) {
@@ -2436,6 +2486,7 @@ export function buildRenderDocument(
     const patternContext: BuildContext = {
       ...context,
       activeReferences: new Set(context.activeReferences).add(pattern.id),
+      includeAccessibility: false,
     };
     const built: RenderNode[] = [];
     for (const content of pattern.contentElements) {
@@ -2592,6 +2643,7 @@ export function buildRenderDocument(
       const clipContext: BuildContext = {
         ...context,
         activeReferences: new Set(context.activeReferences).add(resource.id),
+        includeAccessibility: false,
       };
       const built: RenderNode[] = [];
       for (const content of resource.contentElements) {
@@ -2695,6 +2747,7 @@ export function buildRenderDocument(
       const maskContext: BuildContext = {
         ...context,
         activeReferences: new Set(context.activeReferences).add(resource.id),
+        includeAccessibility: false,
       };
       const built: RenderNode[] = [];
       for (const content of resource.contentElements) {

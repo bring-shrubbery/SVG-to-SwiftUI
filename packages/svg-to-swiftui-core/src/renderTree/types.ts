@@ -30,6 +30,15 @@ export interface RenderDiagnostic {
   css?: CSSDiagnosticContext;
 }
 
+/** Static accessibility semantics mapped onto the closest generated SwiftUI view. */
+export interface AccessibilityMetadata {
+  label?: string;
+  description?: string;
+  hidden?: boolean;
+  role?: string;
+  language?: string;
+}
+
 /** SVG paint is deliberately semantic; Swift source is only introduced by the generator. */
 export type Paint =
   | { type: "none" }
@@ -291,6 +300,7 @@ export interface RenderShape {
   source: SourceLocation;
   /** Coordinate context at the referencing element, retained for user-space paint percentages. */
   paintContext: NodeCoordinateContext;
+  accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
   /** Materialized marker shadow trees in SVG vertex order. */
@@ -315,6 +325,7 @@ export interface RenderGroup {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
   /** Present only on a marker shadow-tree root. */
@@ -343,6 +354,7 @@ export interface RenderText {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
 }
@@ -450,6 +462,7 @@ export interface RenderImage {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
 }
@@ -477,6 +490,7 @@ export interface RenderForeignObject {
   transform: AffineTransform;
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
+  accessibility?: AccessibilityMetadata;
   clipPath?: ClipPathInstance;
   mask?: MaskInstance;
 }

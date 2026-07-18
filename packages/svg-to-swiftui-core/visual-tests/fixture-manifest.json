@@ -12,6 +12,25 @@
     }
   },
   "fixtures": {
+    "accessibility-metadata-switch": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "accessibility",
+        "circle",
+        "conditional-processing",
+        "desc",
+        "g",
+        "geometry",
+        "metadata",
+        "path",
+        "rect",
+        "switch",
+        "title",
+        "view"
+      ]
+    },
     "arc-elliptical": {
       "width": 128,
       "height": 128,
@@ -11613,8 +11632,18 @@
     "structure-switch-link": {
       "width": 128,
       "height": 85,
-      "expectedMode": "shape",
-      "tags": ["circle", "geometry", "path", "rect", "shape", "structure", "switch"]
+      "expectedMode": "view",
+      "tags": [
+        "accessibility",
+        "circle",
+        "conditional-processing",
+        "geometry",
+        "path",
+        "rect",
+        "structure",
+        "switch",
+        "view"
+      ]
     },
     "structure-symbol-use": {
       "width": 128,
