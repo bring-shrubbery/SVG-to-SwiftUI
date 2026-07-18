@@ -4,6 +4,7 @@
 
 ### Minor Changes
 
+- Preserve SVG accessibility names, descriptions, hidden state, and roles in generated SwiftUI, and add deterministic static `<switch>`/conditional processing through an explicit environment.
 - Add secure async `<foreignObject>` snapshot rendering, deterministic artifacts, diagnostics, compositing, and accessibility metadata.
 - Add static `<image>` rendering for PNG, JPEG, WebP, first-frame GIF, and recursively scoped SVG resources.
 - Add deterministic embedded/local/custom resource policies, sync and async conversion APIs, structured diagnostics, traversal/cycle protection, and configurable byte/pixel/count/depth limits.

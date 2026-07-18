@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80" xml:lang="en">
+  <title>Accessible landscape card</title>
+  <desc>A blue sky above green hills and a yellow sun.</desc>
+  <metadata>Non-visual fixture metadata</metadata>
+  <switch>
+    <g role="img" aria-label="Landscape artwork">
+      <rect width="128" height="80" rx="10" fill="#dbeafe" />
+      <circle cx="98" cy="22" r="12" fill="#facc15" />
+      <path d="M0 64L38 30L72 58L94 42L128 70V80H0Z" fill="#22c55e" />
+      <path d="M0 71L42 48L78 68L105 55L128 67V80H0Z" fill="#15803d" />
+    </g>
+    <rect width="128" height="80" fill="#dc2626" />
+  </switch>
+</svg>

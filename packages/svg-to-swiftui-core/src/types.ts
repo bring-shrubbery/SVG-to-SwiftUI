@@ -28,6 +28,21 @@ export interface SwiftUIGeneratorConfig {
   foreignObjectRenderer?: ForeignObjectRenderer;
   /** Bounded rasterization and artifact behavior for static <foreignObject> snapshots. */
   foreignObjects?: ForeignObjectConfiguration;
+  /** Deterministic language and capability inputs used by static SVG semantics. */
+  staticEnvironment?: StaticEnvironment;
+}
+
+export interface StaticEnvironment {
+  /** Ordered BCP 47 language preferences. No host-machine locale is read when omitted. */
+  preferredLanguages?: readonly string[];
+  /** Extension URL identifiers supported by the generated static environment. */
+  supportedExtensions?: readonly string[];
+  /** SVG language version used for legacy requiredFeatures policy. Defaults to SVG 2. */
+  svgVersion?: "1.1" | "2";
+  /** Explicitly supported SVG 1.1 requiredFeatures identifiers. */
+  supportedFeatures?: readonly string[];
+  /** Highest-priority locale for selecting accessible title/desc alternatives. */
+  accessibilityLocale?: string;
 }
 
 export interface ForeignObjectConfiguration {
