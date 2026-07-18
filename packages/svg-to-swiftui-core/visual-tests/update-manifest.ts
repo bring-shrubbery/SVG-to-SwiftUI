@@ -10,6 +10,7 @@ interface ExistingFixture {
   scale?: number;
   background?: string | null;
   fonts?: string[];
+  fontFamilies?: string[];
   tolerance?: Record<string, number>;
   toleranceReason?: string;
 }
@@ -61,6 +62,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (name.startsWith("marker-")) tags.add("marker");
   if (name.startsWith("clip-")) tags.add("clip-path");
   if (name.startsWith("blend-")) tags.add("blend-mode");
+  if (name.startsWith("foreign-object-")) tags.add("foreign-object");
   if (name.startsWith("viewport-")) tags.add("viewport");
   if (name.startsWith("viewport-realistic-")) tags.add("realistic");
   for (const element of [
@@ -82,6 +84,7 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
     "use",
     "symbol",
     "switch",
+    "foreignObject",
   ]) {
     if (new RegExp(`<${element}\\b`, "i").test(source)) tags.add(element);
   }
@@ -145,6 +148,7 @@ for (const sourcePath of findSvgFiles()) {
     ...(existing?.scale === undefined ? {} : { scale: existing.scale }),
     ...(existing?.background === undefined ? {} : { background: existing.background }),
     ...(existing?.fonts === undefined ? {} : { fonts: existing.fonts }),
+    ...(existing?.fontFamilies === undefined ? {} : { fontFamilies: existing.fontFamilies }),
     ...(existing?.tolerance === undefined ? {} : { tolerance: existing.tolerance }),
     ...(existing?.toleranceReason === undefined ? {} : { toleranceReason: existing.toleranceReason }),
   };

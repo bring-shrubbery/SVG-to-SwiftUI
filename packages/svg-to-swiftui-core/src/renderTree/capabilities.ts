@@ -35,6 +35,7 @@ function containsGeneralViewContent(nodes: RenderNode[]): boolean {
     (node) =>
       node.type === "text" ||
       node.type === "image" ||
+      node.type === "foreignObject" ||
       (node.type === "shape" && node.markers !== undefined && containsGeneralViewContent(node.markers)) ||
       (node.type === "group" && containsGeneralViewContent(node.children)),
   );

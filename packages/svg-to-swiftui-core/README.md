@@ -120,6 +120,26 @@ Resolvers receive the raw/canonical URL, base URL, resource kind, source element
 
 Default safety limits are 5 MiB per resource, 16 million decoded pixels per image, 20 MiB total, 128 resources, and eight nested SVG images. Override them under `resources.limits`. MIME signatures, dimensions, aggregate size, cycles, data URL encoding/charset, and nested depth are validated before Swift generation.
 
+### Static foreignObject snapshots
+
+`<foreignObject>` is preserved through an explicit conversion-time RGBA snapshot. The core recognizes and models the element but does not bundle a browser. Use async conversion with the official pinned Chromium adapter:
+
+```ts
+import { convertAsync } from "svg-to-swiftui-core";
+import { createPlaywrightForeignObjectRenderer } from "@svg-to-swiftui/playwright";
+
+const swift = await convertAsync(svg, {
+  foreignObjectRenderer: createPlaywrightForeignObjectRenderer(),
+  foreignObjects: { scale: 2 },
+});
+```
+
+The core builds an isolated document, removes scripts, event handlers, navigation, active embeds, imports, keyframes, and unsafe URL schemes, adds a CSP/reset, and carries inherited SVG font/color/text styles into the foreign viewport. The official adapter additionally disables JavaScript and service workers and blocks every browser request unless `resources` resolves it. Approved images, fonts, and CSS use the same byte/count policy as SVG images.
+
+Snapshots preserve transparent backgrounds, exact x/y/width/height, transforms, viewport clipping, opacity, clip paths, masks, blend modes, and a text/ARIA accessibility label. SVG filters are retained but diagnosed until the filter runtime in issues #67–#71 is complete. Without an adapter, permissive conversion emits a typed omission diagnostic; strict conversion fails. Content is static at the requested bounded scale (default 1, default maximum 4, hard maximum 8), not infinitely scalable HTML.
+
+Normal `convertAsync()` embeds PNG bytes. For large snapshots, use `convertAsyncWithArtifacts()` and `foreignObjects.inlineByteLimit`; its result contains Swift source plus deterministic content-addressed PNG assets for the generated app target.
+
 ## Before we start
 
 This package is written for JavaScript projects, so it's only meant to be used in a Node.js projects. If you just need to convert an SVG to SwiftUI Shape you should use [this tool](https://github.com/bring-shrubbery/SVG-to-SwiftUI).
@@ -199,6 +219,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] Basic static SVG `<text>` and `<tspan>` rendering
 - [x] Static SVG `<image>` rendering with deterministic raster/SVG resource resolution
 - [x] Advanced SVG text positioning, bidi/vertical layout, `textLength`, and `<textPath>`
+- [x] Static SVG `<foreignObject>` rendering through secure conversion-time snapshots
 - [ ] Automatic animation support
 
 ## Built With

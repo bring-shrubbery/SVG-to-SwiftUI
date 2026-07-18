@@ -1,5 +1,7 @@
 import { type ElementNode, parse } from "svg-parser";
+import type { PreparedForeignObjectSnapshot } from "./foreignObjects";
 import type {
+  ConversionArtifact,
   ResolvedResource,
   ResourceConfiguration,
   ResourceKind,
@@ -44,6 +46,10 @@ export interface ResourceState {
 export interface InternalGeneratorConfig extends SwiftUIGeneratorConfig {
   __resourceState?: ResourceState;
   __resourceBaseURL?: string;
+  __foreignObjectSnapshots?: Map<string, PreparedForeignObjectSnapshot>;
+  __conversionArtifacts?: Map<string, ConversionArtifact>;
+  __preparingForeignObjects?: boolean;
+  __extractForeignObjectArtifacts?: boolean;
 }
 
 export function resourceState(config: InternalGeneratorConfig): ResourceState {
@@ -215,8 +221,8 @@ function canonicalURL(rawURL: string, config: InternalGeneratorConfig): string |
   }
 }
 
-function cacheKey(rawURL: string, config: InternalGeneratorConfig): string {
-  return `${config.__resourceBaseURL ?? config.resources?.baseURL ?? ""}\u0000${rawURL}`;
+function cacheKey(rawURL: string, kind: ResourceKind, config: InternalGeneratorConfig): string {
+  return `${kind}\u0000${config.__resourceBaseURL ?? config.resources?.baseURL ?? ""}\u0000${rawURL}`;
 }
 
 function sniffMime(bytes: Uint8Array): string | undefined {
@@ -285,11 +291,22 @@ export function rasterIntrinsicSize(
 }
 
 const IMAGE_MIMES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"]);
+const FOREIGN_OBJECT_MIMES = new Set([
+  ...IMAGE_MIMES,
+  "text/css",
+  "font/ttf",
+  "font/otf",
+  "font/woff",
+  "font/woff2",
+  "application/font-sfnt",
+  "application/vnd.ms-fontobject",
+]);
 
 function validateResolved(
   rawURL: string,
   canonical: string,
   input: ResolvedResource,
+  kind: ResourceKind,
   config: InternalGeneratorConfig,
   state: ResourceState,
 ): ResourceResolution {
@@ -307,20 +324,23 @@ function validateResolved(
       },
     };
   const declared = normalizedMime(input.mimeType);
-  const sniffed = bytes ? sniffMime(bytes) : declared;
-  if (!sniffed || !IMAGE_MIMES.has(sniffed))
+  const sniffedImage = bytes ? sniffMime(bytes) : undefined;
+  const sniffed = sniffedImage ?? declared;
+  const allowed = kind === "foreign-object" ? FOREIGN_OBJECT_MIMES : IMAGE_MIMES;
+  if (!sniffed || !allowed.has(sniffed))
     return {
       failure: { code: "unsupported-image-mime", message: `Resource '${rawURL}' is not a supported static image.` },
     };
-  if (declared && declared !== sniffed && !(declared === "image/jpg" && sniffed === "image/jpeg"))
+  if (sniffedImage && declared && declared !== sniffed && !(declared === "image/jpg" && sniffed === "image/jpeg"))
     return {
       failure: {
         code: "resource-mime-mismatch",
         message: `Resource '${rawURL}' declares '${declared}' but its bytes are '${sniffed}'.`,
       },
     };
-  const decodedSize = bytes && sniffed !== "image/svg+xml" ? rasterIntrinsicSize(bytes, sniffed) : undefined;
-  const intrinsicSize = bytes && sniffed !== "image/svg+xml" ? decodedSize : input.intrinsicSize;
+  const isRasterImage = IMAGE_MIMES.has(sniffed) && sniffed !== "image/svg+xml";
+  const decodedSize = bytes && isRasterImage ? rasterIntrinsicSize(bytes, sniffed) : undefined;
+  const intrinsicSize = bytes && isRasterImage ? decodedSize : input.intrinsicSize;
   if (
     intrinsicSize &&
     (!Number.isFinite(intrinsicSize.width) ||
@@ -334,7 +354,7 @@ function validateResolved(
         message: `Resource '${rawURL}' has invalid intrinsic dimensions ${intrinsicSize.width}×${intrinsicSize.height}.`,
       },
     };
-  if (bytes && sniffed !== "image/svg+xml" && !intrinsicSize)
+  if (bytes && isRasterImage && !intrinsicSize)
     return {
       failure: {
         code: "invalid-image-header",
@@ -401,9 +421,18 @@ function suppliedResource(rawURL: string, canonical: string, resources: Resource
   return resources?.supplied?.[rawURL] ?? resources?.supplied?.[canonical];
 }
 
-function remember(state: ResourceState, key: string, result: ResourceResolution): ResourceResolution {
+function canonicalCacheKey(kind: ResourceKind, canonical: string): string {
+  return `${kind}\u0000${canonical}`;
+}
+
+function remember(
+  state: ResourceState,
+  key: string,
+  kind: ResourceKind,
+  result: ResourceResolution,
+): ResourceResolution {
   state.cache.set(key, result);
-  if ("resource" in result) state.canonicalCache.set(result.resource.canonicalURL, result);
+  if ("resource" in result) state.canonicalCache.set(canonicalCacheKey(kind, result.resource.canonicalURL), result);
   return result;
 }
 
@@ -414,14 +443,16 @@ export function resolveResourceSync(
   config: InternalGeneratorConfig,
 ): ResourceResolution {
   const state = resourceState(config);
-  const key = cacheKey(rawURL, config);
+  const key = cacheKey(rawURL, kind, config);
   const cached = state.cache.get(key);
   if (cached) return cached;
   const data = parseDataURL(rawURL);
   if (data) {
     const result =
-      "failure" in data ? data : validateResolved(rawURL, data.resource.canonicalURL, data.resource, config, state);
-    return remember(state, key, result);
+      "failure" in data
+        ? data
+        : validateResolved(rawURL, data.resource.canonicalURL, data.resource, kind, config, state);
+    return remember(state, key, kind, result);
   }
   const canonical = canonicalURL(rawURL, config);
   if (typeof canonical !== "string") {
@@ -429,12 +460,12 @@ export function resolveResourceSync(
     state.cache.set(key, result);
     return result;
   }
-  const canonicalCached = state.canonicalCache.get(canonical);
-  if (canonicalCached) return remember(state, key, canonicalCached);
+  const canonicalCached = state.canonicalCache.get(canonicalCacheKey(kind, canonical));
+  if (canonicalCached) return remember(state, key, kind, canonicalCached);
   const supplied = suppliedResource(rawURL, canonical, config.resources);
   if (supplied) {
-    const result = validateResolved(rawURL, canonical, supplied, config, state);
-    return remember(state, key, result);
+    const result = validateResolved(rawURL, canonical, supplied, kind, config, state);
+    return remember(state, key, kind, result);
   }
   const policy = config.resources?.policy ?? "embeddedOnly";
   if (policy === "embeddedOnly") {
@@ -444,7 +475,7 @@ export function resolveResourceSync(
         message: `Default embeddedOnly policy denied image resource '${rawURL}'.`,
       },
     };
-    return remember(state, key, result);
+    return remember(state, key, kind, result);
   }
   if (!config.resources?.resolver) {
     const result: ResourceResolution = {
@@ -453,7 +484,7 @@ export function resolveResourceSync(
         message: `${policy} resource policy requires a resolver callback for '${rawURL}'.`,
       },
     };
-    return remember(state, key, result);
+    return remember(state, key, kind, result);
   }
   try {
     const value = config.resources.resolver(requestFor(rawURL, canonical, kind, element, config));
@@ -464,14 +495,14 @@ export function resolveResourceSync(
           message: `Resource '${rawURL}' requires asynchronous resolution; use convertAsync().`,
         },
       };
-      return remember(state, key, result);
+      return remember(state, key, kind, result);
     }
     const result = value
-      ? validateResolved(rawURL, canonical, value as ResolvedResource, config, state)
+      ? validateResolved(rawURL, canonical, value as ResolvedResource, kind, config, state)
       : ({
           failure: { code: "resource-not-found", message: `Resolver returned no content for '${rawURL}'.` },
         } as ResourceResolution);
-    return remember(state, key, result);
+    return remember(state, key, kind, result);
   } catch (error) {
     const result: ResourceResolution = {
       failure: {
@@ -479,7 +510,7 @@ export function resolveResourceSync(
         message: `Resolver failed for '${rawURL}': ${error instanceof Error ? error.message : String(error)}`,
       },
     };
-    return remember(state, key, result);
+    return remember(state, key, kind, result);
   }
 }
 
@@ -497,15 +528,15 @@ export async function resolveResourceAsync(
   if (!("failure" in immediate) || immediate.failure.code !== "missing-resource-resolver") return immediate;
   const canonical = canonicalURL(rawURL, config);
   if (typeof canonical !== "string") return { failure: canonical };
-  const key = cacheKey(rawURL, config);
+  const key = cacheKey(rawURL, kind, config);
   try {
     const value = await config.resources?.resolver?.(requestFor(rawURL, canonical, kind, element, config));
     const result = value
-      ? validateResolved(rawURL, canonical, value, config, resourceState(config))
+      ? validateResolved(rawURL, canonical, value, kind, config, resourceState(config))
       : ({
           failure: { code: "resource-not-found", message: `Resolver returned no content for '${rawURL}'.` },
         } as ResourceResolution);
-    return remember(resourceState(config), key, result);
+    return remember(resourceState(config), key, kind, result);
   } catch (error) {
     const result: ResourceResolution = {
       failure: {
@@ -513,7 +544,7 @@ export async function resolveResourceAsync(
         message: `Resolver failed for '${rawURL}': ${error instanceof Error ? error.message : String(error)}`,
       },
     };
-    return remember(resourceState(config), key, result);
+    return remember(resourceState(config), key, kind, result);
   }
 }
 

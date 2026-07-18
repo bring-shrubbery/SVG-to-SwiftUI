@@ -102,7 +102,7 @@ interface ViewBuildContext {
   textHelpers: Array<{ name: string; node: RenderText; transform: RenderNode["transform"] }>;
   imageHelpers: Array<{
     name: string;
-    node: Extract<RenderNode, { type: "image" }>;
+    node: Extract<RenderNode, { type: "image" | "foreignObject" }>;
     transform: RenderNode["transform"];
     subdocumentName?: string;
   }>;
@@ -506,7 +506,7 @@ function buildViewNodes(
       });
       continue;
     }
-    if (node.type === "image") {
+    if (node.type === "image" || node.type === "foreignObject") {
       if (
         node.style.visibility === "hidden" ||
         node.style.visibility === "collapse" ||
@@ -516,9 +516,9 @@ function buildViewNodes(
       )
         continue;
       const completeTransform = [...ancestorTransforms, node.transform].reduce(multiplyTransforms);
-      const name = `ImageLayer${context.imageHelpers.length}`;
+      const name = `${node.type === "foreignObject" ? "ForeignObject" : "Image"}Layer${context.imageHelpers.length}`;
       let subdocumentName: string | undefined;
-      if (node.resource.type === "svg") {
+      if (node.type === "image" && node.resource.type === "svg") {
         subdocumentName = `${context.rootName}ImageDocument${context.subdocuments.length}`;
         const child = node.resource.document;
         const childProperties: SVGElementProperties = {
@@ -1682,18 +1682,21 @@ function createImageHelper(
       ? (resource.intrinsicSize ?? { width: node.viewport.width, height: node.viewport.height })
       : { width: resource.document.viewport.width, height: resource.document.viewport.height };
   const preserveAspectRatio =
-    resource.type === "svg" && node.preserveAspectRatio.defer && resource.hasReferencedPreserveAspectRatio
-      ? resource.referencedPreserveAspectRatio
-      : node.preserveAspectRatio;
+    node.type === "foreignObject"
+      ? { defer: false, align: "none" as const, meetOrSlice: "meet" as const }
+      : resource.type === "svg" && node.preserveAspectRatio.defer && resource.hasReferencedPreserveAspectRatio
+        ? resource.referencedPreserveAspectRatio
+        : node.preserveAspectRatio;
   const placement = viewBoxTransform(
     { x: 0, y: 0, width: intrinsic.width, height: intrinsic.height },
     node.viewport,
     preserveAspectRatio,
   );
   const imageTransform = multiplyTransforms(helper.transform, placement);
-  const quality = /pixelated|crisp-edges/i.test(node.imageRendering)
+  const imageRendering = node.type === "image" ? node.imageRendering : "auto";
+  const quality = /pixelated|crisp-edges/i.test(imageRendering)
     ? "none"
-    : /optimizequality|high-quality/i.test(node.imageRendering)
+    : /optimizequality|high-quality/i.test(imageRendering)
       ? "high"
       : "default";
   const body: string[] = [
@@ -1728,6 +1731,12 @@ function createImageHelper(
       `${i4}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
       `${i3}}`,
       `${i2}}`,
+    );
+  }
+  if (node.type === "foreignObject" && node.accessibilityLabel) {
+    body.push(
+      `${i2}.accessibilityElement(children: .ignore)`,
+      `${i2}.accessibilityLabel(${swiftString(node.accessibilityLabel)})`,
     );
   }
   body.push(`${indentation}}`);

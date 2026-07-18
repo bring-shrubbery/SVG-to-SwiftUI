@@ -305,6 +305,46 @@
       "expectedMode": "view",
       "tags": ["geometry", "path", "rect", "view"]
     },
+    "foreign-object-effects": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": [
+        "blend-mode",
+        "clipPath",
+        "foreign-object",
+        "foreignObject",
+        "geometry",
+        "linearGradient",
+        "mask",
+        "opacity",
+        "rect",
+        "stop",
+        "transform",
+        "units",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 6
+      },
+      "toleranceReason": "WebKit and CoreGraphics use slightly different edge antialiasing when a rasterized XHTML layer is transformed, clipped, masked, and blended."
+    },
+    "foreign-object-styled-layout": {
+      "width": 128,
+      "height": 80,
+      "expectedMode": "view",
+      "tags": ["display", "foreign-object", "foreignObject", "g", "geometry", "rect", "units", "view"]
+    },
+    "foreign-object-transparent-nested": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["display", "foreign-object", "foreignObject", "geometry", "rect", "stroke", "units", "view"],
+      "tolerance": {
+        "maxOutsidePercent": 4
+      },
+      "toleranceReason": "The isolated WebKit XHTML snapshot is resampled once by CoreGraphics, producing small edge-antialiasing differences while retaining matching layout and color."
+    },
     "gradient-coordinate-units": {
       "width": 128,
       "height": 58,
@@ -493,33 +533,6 @@
       "expectedMode": "shape",
       "tags": ["geometry", "path", "shape"]
     },
-    "image-data-par": {
-      "width": 160,
-      "height": 54,
-      "scale": 1,
-      "expectedMode": "view",
-      "tags": ["data-url", "image", "png", "preserve-aspect-ratio", "svg-image", "view"]
-    },
-    "image-external-svg-effects": {
-      "width": 120,
-      "height": 70,
-      "scale": 3,
-      "expectedMode": "view",
-      "tags": ["clip-path", "image", "image-blend", "mask", "opacity", "svg-image", "transform", "view"]
-    },
-    "image-raster-formats": {
-      "width": 180,
-      "height": 45,
-      "scale": 2,
-      "expectedMode": "view",
-      "tags": ["gif", "image", "image-rendering", "jpeg", "png", "raster", "view", "webp"],
-      "tolerance": {
-        "channel": 48,
-        "maxOutsidePercent": 12,
-        "maxMeanRgbError": 8
-      },
-      "toleranceReason": "JPEG decoding and nearest-neighbor sampling differ slightly between resvg and ImageIO at block and panel edges."
-    },
     "icon-anchor": {
       "width": 128,
       "height": 160,
@@ -669,6 +682,33 @@
       "height": 102,
       "expectedMode": "view",
       "tags": ["circle", "geometry", "path", "stroke", "view"]
+    },
+    "image-data-par": {
+      "width": 160,
+      "height": 54,
+      "scale": 1,
+      "expectedMode": "view",
+      "tags": ["data-url", "image", "png", "preserve-aspect-ratio", "svg-image", "view"]
+    },
+    "image-external-svg-effects": {
+      "width": 120,
+      "height": 70,
+      "scale": 3,
+      "expectedMode": "view",
+      "tags": ["clip-path", "image", "image-blend", "mask", "opacity", "svg-image", "transform", "view"]
+    },
+    "image-raster-formats": {
+      "width": 180,
+      "height": 45,
+      "scale": 2,
+      "expectedMode": "view",
+      "tags": ["gif", "image", "image-rendering", "jpeg", "png", "raster", "view", "webp"],
+      "tolerance": {
+        "channel": 48,
+        "maxOutsidePercent": 12,
+        "maxMeanRgbError": 8
+      },
+      "toleranceReason": "JPEG decoding and nearest-neighbor sampling differ slightly between resvg and ImageIO at block and panel edges."
     },
     "line-simple": {
       "width": 128,
@@ -11594,57 +11634,6 @@
       "expectedMode": "view",
       "tags": ["circle", "geometry", "path", "structure", "view"]
     },
-    "transat": {
-      "width": 128,
-      "height": 128,
-      "expectedMode": "shape",
-      "tags": ["geometry", "path", "shape"]
-    },
-    "triangle": {
-      "width": 128,
-      "height": 128,
-      "expectedMode": "shape",
-      "tags": ["geometry", "path", "shape"]
-    },
-    "two-circles": {
-      "width": 128,
-      "height": 64,
-      "expectedMode": "shape",
-      "tags": ["circle", "geometry", "shape"]
-    },
-    "viewport-nested-percent": {
-      "width": 240,
-      "height": 120,
-      "expectedMode": "view",
-      "tags": [
-        "circle",
-        "geometry",
-        "nested-svg",
-        "overflow",
-        "preserve-aspect-ratio",
-        "rect",
-        "units",
-        "view",
-        "viewport"
-      ]
-    },
-    "viewport-nested-transforms": {
-      "width": 180,
-      "height": 120,
-      "expectedMode": "view",
-      "tags": [
-        "circle",
-        "g",
-        "geometry",
-        "nested-svg",
-        "overflow",
-        "preserve-aspect-ratio",
-        "rect",
-        "transform",
-        "view",
-        "viewport"
-      ]
-    },
     "text-anchor-baseline": {
       "width": 240,
       "height": 100,
@@ -11700,7 +11689,9 @@
       "fontFamilies": ["Poppins"],
       "expectedMode": "view",
       "tags": ["dx", "font", "grapheme", "rotate", "text", "view", "x", "y"],
-      "tolerance": { "maxMeanRgbError": 3.6 },
+      "tolerance": {
+        "maxMeanRgbError": 3.6
+      },
       "toleranceReason": "Resvg and CoreGraphics use slightly different antialias coverage for independently rotated glyph outlines."
     },
     "text-spacing-decoration-transform": {
@@ -11726,6 +11717,57 @@
       "fontFamilies": ["Poppins"],
       "expectedMode": "view",
       "tags": ["font", "text", "text-orientation", "vertical", "view", "writing-mode"]
+    },
+    "transat": {
+      "width": 128,
+      "height": 128,
+      "expectedMode": "shape",
+      "tags": ["geometry", "path", "shape"]
+    },
+    "triangle": {
+      "width": 128,
+      "height": 128,
+      "expectedMode": "shape",
+      "tags": ["geometry", "path", "shape"]
+    },
+    "two-circles": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "shape",
+      "tags": ["circle", "geometry", "shape"]
+    },
+    "viewport-nested-percent": {
+      "width": 240,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "geometry",
+        "nested-svg",
+        "overflow",
+        "preserve-aspect-ratio",
+        "rect",
+        "units",
+        "view",
+        "viewport"
+      ]
+    },
+    "viewport-nested-transforms": {
+      "width": 180,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "g",
+        "geometry",
+        "nested-svg",
+        "overflow",
+        "preserve-aspect-ratio",
+        "rect",
+        "transform",
+        "view",
+        "viewport"
+      ]
     },
     "viewport-nonzero-origin": {
       "width": 180,

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="80" viewBox="0 0 128 80">
+  <defs>
+    <clipPath id="roundClip"><rect x="22" y="16" width="82" height="48" rx="12"/></clipPath>
+    <mask id="fade"><linearGradient id="fadeGradient" x1="0" x2="1"><stop offset="0" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0.45"/></linearGradient><rect width="128" height="80" fill="url(#fadeGradient)"/></mask>
+  </defs>
+  <rect width="128" height="80" fill="#15334a"/>
+  <g transform="rotate(-5 62 38)" opacity="0.82" clip-path="url(#roundClip)" mask="url(#fade)" style="mix-blend-mode:screen">
+    <foreignObject x="18" y="12" width="88" height="52">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;box-sizing:border-box;padding:10px;background:rgba(255,120,48,.9);color:#201008;font:700 13px/16px Helvetica;border:4px solid rgba(255,255,255,.75)">
+        Composited<br/><span style="font-size:10px">outside snapshot</span>
+      </div>
+    </foreignObject>
+  </g>
+</svg>

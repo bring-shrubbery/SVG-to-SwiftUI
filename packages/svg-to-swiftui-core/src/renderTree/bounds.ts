@@ -242,7 +242,7 @@ function transformedShapeBounds(shape: RenderShape, transform: AffineTransform):
 /** Object bounding box before the target node's own transform. */
 export function objectBoundingBox(node: RenderNode): RenderBounds | undefined {
   if (node.type === "shape") return geometryBounds(node.geometry);
-  if (node.type === "image") return node.viewport;
+  if (node.type === "image" || node.type === "foreignObject") return node.viewport;
   if (node.type === "group") {
     const geometricBounds = (candidate: RenderNode, parent = IDENTITY_TRANSFORM): RenderBounds | undefined => {
       if (candidate.style.display === "none") return undefined;
@@ -251,7 +251,7 @@ export function objectBoundingBox(node: RenderNode): RenderBounds | undefined {
         const bounds = geometryBounds(candidate.geometry);
         return bounds ? transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform) : undefined;
       }
-      if (candidate.type === "image") {
+      if (candidate.type === "image" || candidate.type === "foreignObject") {
         const bounds = candidate.viewport;
         return transformedRect(bounds.x, bounds.y, bounds.width, bounds.height, transform);
       }
@@ -348,7 +348,7 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
     }
     return bounds;
   }
-  if (node.type === "image") {
+  if (node.type === "image" || node.type === "foreignObject") {
     if (hidden(node.style.visibility) || !node.resource || node.viewport.width <= 0 || node.viewport.height <= 0)
       return undefined;
     let bounds: RenderBounds | undefined = transformedRect(

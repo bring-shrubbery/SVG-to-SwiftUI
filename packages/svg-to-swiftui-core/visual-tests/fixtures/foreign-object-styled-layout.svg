@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="80" viewBox="0 0 128 80">
+  <style>
+    .card { width: 100%; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; padding: 8px 10px; background: #f7f2ff; border: 3px solid #6f3cc3; border-radius: 10px; }
+    .title { color: #32126a; font-size: 15px; font-weight: 700; line-height: 18px; }
+    .detail { color: #704f96; font-size: 10px; line-height: 14px; }
+  </style>
+  <rect width="128" height="80" rx="12" fill="#ded4ee"/>
+  <g font-family="Helvetica" color="#32126a">
+    <foreignObject x="12" y="10" width="104" height="60">
+      <div xmlns="http://www.w3.org/1999/xhtml" class="card">
+        <span class="title">Static XHTML</span>
+        <span class="detail">Flex, border and inherited font</span>
+      </div>
+    </foreignObject>
+  </g>
+</svg>

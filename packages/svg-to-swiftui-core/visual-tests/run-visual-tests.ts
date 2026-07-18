@@ -6,8 +6,9 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
-import { convert } from "../src/index";
-import type { ResolvedResource } from "../src/types";
+import { PNG } from "pngjs";
+import { convertAsync } from "../src/index";
+import type { ForeignObjectRenderer, ResolvedResource } from "../src/types";
 import { type BatchTestItem, type BatchTestResult, runBatchVisualTest } from "./batch-render";
 import { FIXTURES_DIR, loadFixtures, outputMode, validateManifest, withPixelViewport } from "./manifest";
 
@@ -24,6 +25,7 @@ const FIREFOX_RENDERER_BINARY = [
 ].find((candidate): candidate is string => !!candidate && existsSync(candidate));
 const FIREFOX_REFERENCE_VERSION = "rgba-firefox-developer-edition-v1";
 let webKitRendererReady = false;
+let foreignObjectSnapshotIndex = 0;
 
 function ensureWebKitRenderer(): void {
   if (webKitRendererReady) return;
@@ -57,7 +59,7 @@ function renderWebKitReference(
   pixelHeight: number,
 ): void {
   ensureWebKitRenderer();
-  const inputPath = resolve(RENDERS_DIR, ".cache", `${name}-webkit-source.svg`);
+  const inputPath = resolve(RENDERS_DIR, ".cache", `${name}-${hash(source).slice(0, 12)}-webkit-source.svg`);
   writeFileSync(inputPath, withPixelViewport(source, width, height));
   execFileSync(
     WEBKIT_RENDERER_BINARY,
@@ -65,6 +67,28 @@ function renderWebKitReference(
     { stdio: "pipe" },
   );
 }
+
+const webKitForeignObjectRenderer: ForeignObjectRenderer = async (request) => {
+  ensureWebKitRenderer();
+  const name = `foreign-object-${foreignObjectSnapshotIndex++}-${hash(request.document).slice(0, 12)}`;
+  const inputPath = resolve(RENDERS_DIR, ".cache", `${name}.html`);
+  const outputPath = resolve(RENDERS_DIR, ".cache", `${name}.png`);
+  writeFileSync(inputPath, request.document);
+  execFileSync(
+    WEBKIT_RENDERER_BINARY,
+    [
+      inputPath,
+      outputPath,
+      String(Math.max(1, Math.round(request.viewport.width))),
+      String(Math.max(1, Math.round(request.viewport.height))),
+      String(request.pixelWidth),
+      String(request.pixelHeight),
+    ],
+    { stdio: "pipe" },
+  );
+  const png = PNG.sync.read(readFileSync(outputPath));
+  return { rgba: Uint8Array.from(png.data), width: png.width, height: png.height, scale: request.scale };
+};
 
 function renderFirefoxReference(
   source: string,
@@ -288,6 +312,7 @@ async function main() {
         !usesFirefoxReference &&
         (fixture.tags.includes("blend-mode") ||
           fixture.tags.includes("vector-effect") ||
+          fixture.tags.includes("foreign-object") ||
           fixture.tags.includes("webkit-reference"));
       if (usesWebKitReference) resourceBytes.push(readFileSync(WEBKIT_RENDERER_SOURCE));
       resourceBytes.push(...fixtureResources.bytes);
@@ -342,11 +367,14 @@ async function main() {
       }
 
       const swiftTypeName = `VisualFixture${items.length}`;
-      const swiftCode = convert(source, {
+      const swiftCode = await convertAsync(source, {
         structName: swiftTypeName,
         precision: 5,
         preserveColors: fixture.expectedMode === "view",
         fonts: { availableFamilies: fixture.fontFamilies, fallbackFamily: fixture.fontFamilies[0] ?? "Helvetica" },
+        ...(fixture.tags.includes("foreign-object")
+          ? { foreignObjectRenderer: webKitForeignObjectRenderer, foreignObjects: { scale: fixture.scale } }
+          : {}),
         resources: {
           baseURL: sourceURL.href,
           supplied: fixtureResources.supplied,

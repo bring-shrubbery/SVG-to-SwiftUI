@@ -189,6 +189,7 @@ function declarationNodes(container: Container): Declaration[] {
  */
 export class SVGStyleResolver {
   private readonly rules: CompiledRule[] = [];
+  private readonly elements: ElementNode[] = [];
   private readonly parent = new WeakMap<object, ElementNode | null>();
   private readonly ownDeclarations = new WeakMap<
     ElementNode,
@@ -249,12 +250,39 @@ export class SVGStyleResolver {
   }
 
   private indexTree(element: ElementNode, parent: ElementNode | null): void {
+    this.elements.push(element);
     this.parent.set(element, parent);
     for (const child of element.children) {
       if (typeof child === "string") continue;
       this.parent.set(child, element);
       if (child.type === "element") this.indexTree(child, element);
     }
+  }
+
+  private insideForeignObject(element: ElementNode): boolean {
+    let current: ElementNode | null = element;
+    while (current) {
+      if (current.tagName === "foreignObject") return current !== element;
+      current = this.parent.get(current) ?? null;
+    }
+    return false;
+  }
+
+  private selectorsTargetOnlyForeignContent(selectors: Selector[]): boolean {
+    let matchedForeignContent = false;
+    for (const selector of selectors) {
+      try {
+        const matches = compile<StyleNode, ElementNode>(selector.toString(), this.selectorOptions);
+        for (const element of this.elements) {
+          if (!matches(element)) continue;
+          if (!this.insideForeignObject(element)) return false;
+          matchedForeignContent = true;
+        }
+      } catch {
+        return false;
+      }
+    }
+    return matchedForeignContent;
   }
 
   private diagnostic(element: ElementNode, code: string, message: string, css: CSSDiagnosticContext): void {
@@ -339,7 +367,13 @@ export class SVGStyleResolver {
       return;
     }
 
-    const declarations = this.parseDeclarations(rule, styleElement, "embedded-style", rule.selector);
+    const declarations = this.parseDeclarations(
+      rule,
+      styleElement,
+      "embedded-style",
+      rule.selector,
+      this.insideForeignObject(styleElement) || this.selectorsTargetOnlyForeignContent(selectors),
+    );
     for (const selector of selectors) {
       const selectorText = selector.toString();
       let dynamic = false;
@@ -377,6 +411,7 @@ export class SVGStyleResolver {
     sourceElement: ElementNode,
     source: CSSDiagnosticContext["source"],
     selector: string,
+    allowForeignObjectCSS = false,
   ): Omit<CascadedDeclaration, "specificity">[] {
     const result: Omit<CascadedDeclaration, "specificity">[] = [];
     for (const declaration of declarationNodes(container)) {
@@ -389,6 +424,7 @@ export class SVGStyleResolver {
         ...(declaration.source?.start?.column === undefined ? {} : { column: declaration.source.start.column }),
       };
       if (!property.startsWith("--") && !isStyleProperty(property) && property !== "marker") {
+        if (allowForeignObjectCSS) continue;
         this.diagnostic(
           sourceElement,
           "unsupported-css-property",
