@@ -65,6 +65,12 @@ Luminance masks use an offscreen `Canvas` color matrix with the SVG luminance co
 
 All Compositing Level 1 `mix-blend-mode` values map to native SwiftUI blend modes: `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `color-dodge`, `color-burn`, `hard-light`, `soft-light`, `difference`, `exclusion`, `hue`, `saturation`, `color`, and `luminosity`. `isolation: isolate`, masks, non-normal blending, and group opacity create explicit compositing boundaries. The generated backend requires SwiftUI `Canvas` support (iOS 15, macOS 12, tvOS 15, and watchOS 8 or newer); no older-platform fallback is emitted.
 
+### Static filter graphs
+
+Local `filter: url(#id)` references resolve into typed, target-specific directed graphs. The common runtime supports `feGaussianBlur`, `feOffset`, `feFlood`, `feMerge`/`feMergeNode`, and `feDropShadow`, including named `result` branches, default inputs, `SourceGraphic`, `SourceAlpha`, `FillPaint`, `StrokePaint`, href inheritance, both filter/primitive unit systems, primitive subregions, filter-region clipping, transforms, and `sRGB`/`linearRGB` processing. Unsupported background inputs resolve to transparent black with a diagnostic.
+
+Generated Swift uses the same deterministic premultiplied-RGBA image-buffer runtime as the visual regression host. Source vector commands are rasterized only at app render time and at the active display scale; conversion never snapshots the full SVG. Filters run before viewport/clip paths, masks, element opacity, and blending, and their regions contribute to reported painted bounds. Unsupported primitives remain typed pass-through graph nodes with diagnostics until their dedicated tickets land.
+
 ### Linear and radial gradients
 
 `linearGradient`, `radialGradient`, and `stop` definitions are resolved as typed paint resources for fills and strokes. The resolver supports `objectBoundingBox` and `userSpaceOnUse`, percentage or length coordinates, `gradientTransform`, `pad`/`reflect`/`repeat`, `href` and `xlink:href` inheritance, local stop replacement, focal circles, CSS-styled stops, `currentColor`, alpha, and fallback paints.
@@ -136,7 +142,7 @@ const swift = await convertAsync(svg, {
 
 The core builds an isolated document, removes scripts, event handlers, navigation, active embeds, imports, keyframes, and unsafe URL schemes, adds a CSP/reset, and carries inherited SVG font/color/text styles into the foreign viewport. The official adapter additionally disables JavaScript and service workers and blocks every browser request unless `resources` resolves it. Approved images, fonts, and CSS use the same byte/count policy as SVG images.
 
-Snapshots preserve transparent backgrounds, exact x/y/width/height, transforms, viewport clipping, opacity, clip paths, masks, blend modes, and a text/ARIA accessibility label. SVG filters are retained but diagnosed until the filter runtime in issues #67–#71 is complete. Without an adapter, permissive conversion emits a typed omission diagnostic; strict conversion fails. Content is static at the requested bounded scale (default 1, default maximum 4, hard maximum 8), not infinitely scalable HTML.
+Snapshots preserve transparent backgrounds, exact x/y/width/height, transforms, viewport clipping, opacity, clip paths, masks, filters, blend modes, and a text/ARIA accessibility label. Without an adapter, permissive conversion emits a typed omission diagnostic; strict conversion fails. Content is static at the requested bounded scale (default 1, default maximum 4, hard maximum 8), not infinitely scalable HTML.
 
 Normal `convertAsync()` embeds PNG bytes. For large snapshots, use `convertAsyncWithArtifacts()` and `foreignObjects.inlineByteLimit`; its result contains Swift source plus deterministic content-addressed PNG assets for the generated app target.
 

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 80">
+  <defs>
+    <filter id="native" x="-35%" y="-45%" width="180%" height="200%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="5" dy="6" stdDeviation="3" flood-color="#1e293b" flood-opacity="0.65"/>
+    </filter>
+    <filter id="expanded" x="-35%" y="-45%" width="180%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>
+      <feOffset in="blur" dx="5" dy="6" result="offset"/>
+      <feFlood flood-color="#1e293b" flood-opacity="0.65" result="color"/>
+      <feMerge><feMergeNode in="color"/><feMergeNode in="offset"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="150" height="80" fill="#f8fafc"/>
+  <rect x="20" y="20" width="42" height="34" rx="7" fill="#8b5cf6" filter="url(#native)"/>
+  <rect x="88" y="20" width="42" height="34" rx="7" fill="#8b5cf6" filter="url(#expanded)"/>
+</svg>

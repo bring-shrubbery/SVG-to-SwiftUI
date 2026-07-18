@@ -329,6 +329,16 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
     if (hidden(node.style.visibility)) return undefined;
     let painted = transformedShapeBounds(node, transform);
     if (node.markers) painted = union(painted, renderNodesBounds(node.markers, transform));
+    if (node.filter)
+      painted = node.filter.invalid
+        ? undefined
+        : transformedRect(
+            node.filter.region.x,
+            node.filter.region.y,
+            node.filter.region.width,
+            node.filter.region.height,
+            transform,
+          );
     if (node.clipPath) {
       const clip = clipPathInstanceBounds(node.clipPath, transform);
       painted = clip ? intersect(painted, clip) : undefined;
@@ -337,6 +347,16 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
   }
   if (node.type === "group") {
     let bounds = renderNodesBounds(node.children, transform);
+    if (node.filter)
+      bounds = node.filter.invalid
+        ? undefined
+        : transformedRect(
+            node.filter.region.x,
+            node.filter.region.y,
+            node.filter.region.width,
+            node.filter.region.height,
+            transform,
+          );
     if (node.viewport?.clip) {
       const clip = node.viewport.rect;
       const clipTransform = multiplyTransforms(parent, node.viewport.clipTransform);
@@ -358,6 +378,16 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
       node.viewport.height,
       transform,
     );
+    if (node.filter)
+      bounds = node.filter.invalid
+        ? undefined
+        : transformedRect(
+            node.filter.region.x,
+            node.filter.region.y,
+            node.filter.region.width,
+            node.filter.region.height,
+            transform,
+          );
     if (node.clipPath) {
       const clip = clipPathInstanceBounds(node.clipPath, transform);
       bounds = clip ? intersect(bounds, clip) : undefined;

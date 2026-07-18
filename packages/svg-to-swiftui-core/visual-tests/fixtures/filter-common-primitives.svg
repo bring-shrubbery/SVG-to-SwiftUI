@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <defs>
+    <filter id="blur" x="-30%" y="-40%" width="160%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="4 1.5"/>
+    </filter>
+    <filter id="merge" x="-20%" y="-30%" width="160%" height="180%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="7" dy="6" result="shifted"/>
+      <feFlood flood-color="#7c3aed" flood-opacity="0.72" result="purple"/>
+      <feMerge>
+        <feMergeNode in="purple"/>
+        <feMergeNode in="shifted"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-40%" y="-50%" width="190%" height="210%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="5" dy="6" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.7"/>
+    </filter>
+    <clipPath id="greenClip"><rect x="116" y="14" width="33" height="38" rx="3"/></clipPath>
+    <mask id="greenMask" maskUnits="userSpaceOnUse" x="116" y="14" width="33" height="38" mask-type="alpha">
+      <rect x="116" y="14" width="33" height="38" fill="white"/>
+    </mask>
+  </defs>
+  <rect width="160" height="100" fill="#f8fafc"/>
+  <rect x="18" y="18" width="30" height="28" rx="5" fill="#0284c7" filter="url(#blur)"/>
+  <circle cx="82" cy="34" r="16" fill="#f97316" filter="url(#merge)"/>
+  <path d="M120 18h25v28h-25z" fill="#22c55e" filter="url(#shadow)" clip-path="url(#greenClip)" mask="url(#greenMask)" opacity=".82"/>
+  <g transform="translate(18 68) rotate(-8)">
+    <rect width="52" height="12" rx="6" fill="#e11d48" filter="url(#shadow)"/>
+  </g>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 80">
+  <defs>
+    <filter id="branch" x="-20%" y="-30%" width="160%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="softAlpha"/>
+      <feOffset in="softAlpha" dx="6" dy="5" result="shiftedAlpha"/>
+      <feFlood flood-color="#0f172a" flood-opacity="0.7" result="shadowColor"/>
+      <feMerge>
+        <feMergeNode in="shadowColor"/>
+        <feMergeNode in="shiftedAlpha"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="paints" x="-10%" y="-30%" width="130%" height="160%" color-interpolation-filters="sRGB">
+      <feOffset in="FillPaint" dx="-2.5" result="fillPaint"/>
+      <feOffset in="StrokePaint" dx="3.5" result="strokePaint"/>
+      <feMerge><feMergeNode in="fillPaint"/><feMergeNode in="strokePaint"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="140" height="80" fill="#f1f5f9"/>
+  <path d="M24 55L42 19l18 36z" fill="#f43f5e" stroke="#7f1d1d" stroke-width="3" filter="url(#branch)"/>
+  <circle cx="98" cy="38" r="19" fill="#06b6d4" filter="url(#branch)"/>
+  <rect x="72" y="67" width="48" height="7" fill="#22c55e" stroke="#1d4ed8" stroke-width="2" filter="url(#paints)"/>
+</svg>

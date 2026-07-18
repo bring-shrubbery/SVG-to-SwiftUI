@@ -27,6 +27,7 @@ import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, 
 import { SVGAccessibilityResolver } from "./accessibility";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { SVGConditionalProcessor } from "./conditionalProcessing";
+import { resolveFilterInstance, resolveFilterResources } from "./filters";
 import { resolvePaintServers } from "./gradients";
 import { markerVertices, orientedMarkerAngle, resolveMarkerResources } from "./markers";
 import { resolveMaskInstance, resolveMaskResources } from "./masks";
@@ -420,6 +421,21 @@ function computedMask(value: unknown, element: ElementNode, context: BuildContex
   return { invalid: true };
 }
 
+function computedFilter(value: unknown, element: ElementNode, context: BuildContext, css?: CSSDiagnosticContext) {
+  const normalized = String(value ?? "none").trim();
+  if (normalized.toLowerCase() === "none") return undefined;
+  const local = /^url\(\s*["']?#([^\s)"']+)["']?\s*\)$/i.exec(normalized);
+  if (local) return { id: local[1]!, invalid: false };
+  addDiagnostic(
+    context,
+    element,
+    /^url\(/i.test(normalized) ? "external-filter-reference" : "invalid-filter-reference",
+    `Only one local filter reference of the form url(#id) is supported; received '${normalized}'.`,
+    css,
+  );
+  return { invalid: true };
+}
+
 function computedClipPath(value: unknown, element: ElementNode, context: BuildContext, css?: CSSDiagnosticContext) {
   const normalized = String(value ?? "none").trim();
   if (normalized.toLowerCase() === "none") return undefined;
@@ -514,6 +530,7 @@ function computeStyle(
     }
   }
   const mask = computedMask(effective.mask, element, context, provenance.mask);
+  const filter = computedFilter(effective.filter, element, context, provenance.filter);
   const clipPath = computedClipPath(effective["clip-path"], element, context, provenance["clip-path"]);
   const markerStart = computedMarkerReference(
     effective["marker-start"],
@@ -572,6 +589,7 @@ function computeStyle(
       .toLowerCase(),
     ...(clipPath ? { clipPath } : {}),
     ...(mask ? { mask } : {}),
+    ...(filter ? { filter } : {}),
     blendMode: computedBlendMode(effective["mix-blend-mode"], element, context, provenance["mix-blend-mode"]),
     isolation: isolationValue === "isolate" ? "isolate" : "auto",
     strokeStyle: {
@@ -769,6 +787,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
     markers: new Map(),
     markerElements: new Map(),
     filters: new Map(),
+    filterElements: new Map(),
     views: new Map(),
   };
   function visit(element: ElementNode): void {
@@ -783,7 +802,7 @@ function createRegistry(root: ElementNode): ResourceRegistry {
       if (element.tagName === "clipPath") registry.clipElements.set(id, element);
       if (element.tagName === "mask") registry.maskElements.set(id, element);
       if (element.tagName === "marker") registry.markerElements.set(id, element);
-      if (element.tagName === "filter") registry.filters.set(id, element);
+      if (element.tagName === "filter") registry.filterElements.set(id, element);
     }
     for (const child of element.children) {
       if (typeof child !== "string" && child.type === "element") {
@@ -1741,16 +1760,6 @@ function buildForeignObject(
     }
   }
 
-  const filter = String(resolved.effective.filter ?? "none").trim();
-  if (!context.config.__preparingForeignObjects && filter.toLowerCase() !== "none")
-    addDiagnostic(
-      context,
-      element,
-      "foreign-object-filter-deferred",
-      `foreignObject filter '${filter}' is retained for the filter runtime in issues #67-#71 but is not applied yet.`,
-      resolved.provenance.filter,
-    );
-
   return {
     type: "foreignObject",
     key,
@@ -1759,7 +1768,6 @@ function buildForeignObject(
     ...(snapshot.accessibilityLabel ? { accessibilityLabel: snapshot.accessibilityLabel } : {}),
     snapshotScale: prepared?.scale ?? context.config.foreignObjects?.scale ?? 1,
     ...(prepared?.resource ? { resource: prepared.resource } : {}),
-    filter,
     attributes: { ...(element.properties ?? {}) } as Record<string, string | number>,
     style: resolved.style,
     transform: computedTransform(element, resolved, context),
@@ -2154,6 +2162,14 @@ export function buildRenderDocument(
   resources.markers = resolveMarkerResources(
     svg,
     resources.markerElements,
+    styleResolver,
+    resolved.effective,
+    diagnostics,
+  );
+  resources.filters = resolveFilterResources(
+    svg,
+    resources.filterElements,
+    resources.definitions,
     styleResolver,
     resolved.effective,
     diagnostics,
@@ -2772,6 +2788,60 @@ export function buildRenderDocument(
     }
   }
   materializeMasks(children);
+
+  function diagnoseFilterOnce(node: RenderNode, code: string, message: string): void {
+    if (
+      diagnostics.some(
+        (item) =>
+          item.code === code &&
+          item.source.element === node.source.element &&
+          item.source.id === node.source.id &&
+          item.message === message,
+      )
+    )
+      return;
+    diagnostics.push({ code, message, severity: "warning", source: node.source });
+  }
+
+  const filteredNodes = new Set<RenderNode>();
+  function materializeFilters(nodes: RenderNode[]): void {
+    for (const node of nodes) {
+      if (filteredNodes.has(node)) continue;
+      filteredNodes.add(node);
+      if (node.type === "group") materializeFilters(node.children);
+      else if (node.type === "shape" && node.markers) materializeFilters(node.markers);
+      if (node.mask) materializeFilters(node.mask.children);
+      const reference = node.style.filter;
+      if (!reference || reference.invalid || !reference.id) continue;
+      const id = reference.id;
+      const resource = resources.filters.get(id);
+      if (!resource) {
+        const target = resources.definitions.get(id);
+        diagnoseFilterOnce(
+          node,
+          target ? "wrong-filter-resource-type" : "missing-filter-resource",
+          target
+            ? `Filter reference #${id} targets <${target.tagName}> instead of a filter; no filter was applied.`
+            : `Filter reference #${id} does not resolve to a local filter; no filter was applied.`,
+        );
+        continue;
+      }
+      const instance = resolveFilterInstance(resource, node);
+      if (instance.invalid)
+        diagnoseFilterOnce(
+          node,
+          "invalid-filter-region",
+          `Filter #${id} cannot render with an empty region or object bounding box.`,
+        );
+      resource.instances.set(node, instance);
+      node.filter = instance;
+    }
+  }
+  materializeFilters(children);
+  for (const paint of resources.paints.values()) {
+    if (paint.type !== "pattern") continue;
+    for (const instance of paint.instances.values()) materializeFilters(instance.children);
+  }
 
   function diagnosePaintReferences(nodes: RenderNode[]): void {
     for (const node of nodes) {
