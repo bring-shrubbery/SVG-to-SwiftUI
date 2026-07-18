@@ -15,6 +15,21 @@ export interface PreparedForeignObjectSnapshot {
 }
 
 const ACTIVE_ELEMENTS = new Set(["script", "iframe", "object", "embed", "audio", "video", "canvas"]);
+const HTML_VOID_ELEMENTS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
 const INHERITED_CSS = new Set([
   "color",
   "direction",
@@ -132,6 +147,7 @@ function serializeNode(node: Node | string): string {
     .join(" ");
   const children =
     tag === "style" ? sanitizeCSS(node.children.map(textValue).join("")) : node.children.map(serializeNode).join("");
+  if (HTML_VOID_ELEMENTS.has(tag)) return `<${tag}${properties ? ` ${properties}` : ""}>`;
   return `<${tag}${properties ? ` ${properties}` : ""}>${children}</${tag}>`;
 }
 

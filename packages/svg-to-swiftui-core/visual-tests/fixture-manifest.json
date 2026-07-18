@@ -323,7 +323,11 @@
         "transform",
         "units",
         "view"
-      ]
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 6
+      },
+      "toleranceReason": "WebKit and CoreGraphics use slightly different edge antialiasing when a rasterized XHTML layer is transformed, clipped, masked, and blended."
     },
     "foreign-object-styled-layout": {
       "width": 128,
@@ -335,7 +339,11 @@
       "width": 128,
       "height": 64,
       "expectedMode": "view",
-      "tags": ["display", "foreign-object", "foreignObject", "geometry", "rect", "stroke", "units", "view"]
+      "tags": ["display", "foreign-object", "foreignObject", "geometry", "rect", "stroke", "units", "view"],
+      "tolerance": {
+        "maxOutsidePercent": 4
+      },
+      "toleranceReason": "The isolated WebKit XHTML snapshot is resampled once by CoreGraphics, producing small edge-antialiasing differences while retaining matching layout and color."
     },
     "gradient-coordinate-units": {
       "width": 128,

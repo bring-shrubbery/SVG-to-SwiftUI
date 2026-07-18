@@ -59,7 +59,7 @@ function renderWebKitReference(
   pixelHeight: number,
 ): void {
   ensureWebKitRenderer();
-  const inputPath = resolve(RENDERS_DIR, ".cache", `${name}-webkit-source.svg`);
+  const inputPath = resolve(RENDERS_DIR, ".cache", `${name}-${hash(source).slice(0, 12)}-webkit-source.svg`);
   writeFileSync(inputPath, withPixelViewport(source, width, height));
   execFileSync(
     WEBKIT_RENDERER_BINARY,
@@ -70,7 +70,7 @@ function renderWebKitReference(
 
 const webKitForeignObjectRenderer: ForeignObjectRenderer = async (request) => {
   ensureWebKitRenderer();
-  const name = `foreign-object-${foreignObjectSnapshotIndex++}`;
+  const name = `foreign-object-${foreignObjectSnapshotIndex++}-${hash(request.document).slice(0, 12)}`;
   const inputPath = resolve(RENDERS_DIR, ".cache", `${name}.html`);
   const outputPath = resolve(RENDERS_DIR, ".cache", `${name}.png`);
   writeFileSync(inputPath, request.document);

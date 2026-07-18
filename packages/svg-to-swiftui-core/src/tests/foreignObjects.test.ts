@@ -75,6 +75,26 @@ describe("static foreignObject snapshots", () => {
     expect(result.swift).toContain('.accessibilityLabel("Account status")');
   });
 
+  test("serializes HTML void elements without creating duplicate layout nodes", async () => {
+    let request: ForeignObjectSnapshotRequest | undefined;
+    const source = svg(`
+      <foreignObject width="50" height="24">
+        <div xmlns="http://www.w3.org/1999/xhtml">First<br/><img src="data:image/png;base64,AA=="/>Last<wbr/></div>
+      </foreignObject>
+    `);
+
+    await convertAsync(source, {
+      foreignObjectRenderer: (value) => {
+        request = value;
+        return solid(value);
+      },
+    });
+
+    expect(request?.document).toContain("First<br><img");
+    expect(request?.document).toContain("Last<wbr>");
+    expect(request?.document).not.toMatch(/<\/(?:br|img|wbr)>/);
+  });
+
   test("keeps arbitrary CSS targeted exclusively at foreign content valid in strict mode", async () => {
     const source = svg(`
       <style>.card { display:grid; grid-template-columns:1fr 2fr; background:#fff; border:2px solid #333; padding:4px }</style>
@@ -103,6 +123,15 @@ describe("static foreignObject snapshots", () => {
     expect(output).toContain(".opacity(0.5)");
     expect(output).toContain(".blendMode(.multiply)");
     expect(output).toContain(".mask {");
+
+    const document = __testing.parseRenderDocument(source, { foreignObjectRenderer: solid });
+    const root = document.children[0];
+    const foreignObject = root?.type === "group" ? root.children.find((node) => node.type === "foreignObject") : root;
+    expect(foreignObject?.mask).toMatchObject({
+      invalid: false,
+      region: { x: 1, y: 4, width: 48, height: 24 },
+    });
+    expect(foreignObject?.mask?.children).toHaveLength(1);
   });
 
   test("validates renderer dimensions and reports adapter failures", async () => {
