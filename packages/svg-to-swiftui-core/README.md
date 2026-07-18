@@ -71,6 +71,8 @@ Local `filter: url(#id)` references resolve into typed, target-specific directed
 
 Color and compositing nodes support all 16 `feBlend` modes; `feColorMatrix` matrix, saturate, hue rotation, and luminance-to-alpha forms; every `feComponentTransfer` function for RGBA; and all Porter-Duff plus arithmetic `feComposite` operators. Their CPU implementation follows Filter Effects and Compositing Level 1 formulas with safe temporary unpremultiplication, output clamping, and re-premultiplication. Empty tables, exact table/discrete boundaries, missing transfer channels, malformed lists, invalid enums, transparent pixels, and arithmetic coefficients have deterministic tested behavior rather than native-framework-dependent fallbacks.
 
+Spatial and generated-image nodes support `feConvolveMatrix`, `feMorphology`, `feDisplacementMap`, `feTile`, `feTurbulence`, and `feImage`. This includes kernel targets/divisors/edge modes, anisotropic and fractional radii, channel-selected displacement, fractional tile regions, deterministic seeded and stitched noise, embedded raster data, resolved SVG documents, and local fragment `<use>` semantics with `preserveAspectRatio`. Generated code never fetches resources at runtime. Configurable kernel, octave, output-pixel, resource-byte, and nesting limits bound conversion and rendering work.
+
 Generated Swift uses the same deterministic premultiplied-RGBA image-buffer runtime as the visual regression host. Source vector commands are rasterized only at app render time and at the active display scale; conversion never snapshots the full SVG. Filters run before viewport/clip paths, masks, element opacity, and blending, and their regions contribute to reported painted bounds. Unsupported primitives remain typed pass-through graph nodes with diagnostics until their dedicated tickets land.
 
 ### Linear and radial gradients
@@ -243,6 +245,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG clipping paths, clip rules, coordinate systems, transforms, unions, and nested intersections
 - [x] SVG masks, Level 1 blend modes, group compositing, and isolation
 - [x] SVG markers, vertex placement, orientation, units, context paint, viewports, and painter order
+- [x] Static filter graphs, color/compositing, convolution, morphology, displacement, tiling, turbulence, and filter images
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [x] Basic static SVG `<text>` and `<tspan>` rendering
 - [x] Static SVG `<image>` rendering with deterministic raster/SVG resource resolution

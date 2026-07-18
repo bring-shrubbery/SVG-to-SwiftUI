@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40">
+  <defs>
+    <filter id="bounded" x="0" y="0" width="80" height="40" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feConvolveMatrix order="16 16" divisor="1" edgeMode="duplicate" result="limited" kernelMatrix="
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+        0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+      <feMorphology in="limited" radius="0" result="disabled"/>
+      <feTurbulence baseFrequency=".08" numOctaves="20" seed="4" result="boundedNoise"/>
+      <feBlend in="SourceGraphic" in2="boundedNoise" mode="normal"/>
+    </filter>
+  </defs>
+  <g filter="url(#bounded)">
+    <rect width="80" height="40" fill="#172a3a"/>
+    <circle cx="20" cy="20" r="12" fill="#f4d35e"/>
+    <rect x="40" y="8" width="30" height="24" rx="5" fill="#ee6352" fill-opacity=".8"/>
+  </g>
+</svg>

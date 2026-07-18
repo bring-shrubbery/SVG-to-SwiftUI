@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <defs>
+    <filter id="erode" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feMorphology operator="erode" radius="3 2"/>
+    </filter>
+    <filter id="dilate" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feMorphology operator="dilate" radius="3 2"/>
+    </filter>
+  </defs>
+  <rect width="120" height="60" fill="#101820"/>
+  <g fill="#66bb6a">
+    <path d="M10 25h15V10h10v15h15v10H35v15H25V35H10z" filter="url(#erode)"/>
+    <path d="M70 25h15V10h10v15h15v10H95v15H85V35H70z" filter="url(#dilate)" fill-opacity=".7"/>
+  </g>
+</svg>

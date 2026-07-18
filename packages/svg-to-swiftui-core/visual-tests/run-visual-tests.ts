@@ -156,7 +156,7 @@ function collectFixtureResources(
   const bytes: Buffer[] = [];
   const visited = new Set<string>();
   const visit = (document: string, documentURL: URL): void => {
-    for (const match of document.matchAll(/<image\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
+    for (const match of document.matchAll(/<(?:image|feImage)\b[^>]*\b(?:href|xlink:href)\s*=\s*["']([^"']+)["']/gi)) {
       const href = match[1]!;
       if (/^(?:data:|#)/i.test(href)) continue;
       const resourceURL = new URL(href, documentURL);
@@ -180,7 +180,7 @@ function collectFixtureResources(
 
 function inlineFixtureImages(source: string, sourceURL: URL): string {
   return source.replace(
-    /(<image\b[^>]*\b(?:href|xlink:href)\s*=\s*)(["'])([^"']+)\2/gi,
+    /(<(?:image|feImage)\b[^>]*\b(?:href|xlink:href)\s*=\s*)(["'])([^"']+)\2/gi,
     (match, prefix: string, quote: string, href: string) => {
       if (/^(?:data:|#|https?:)/i.test(href)) return match;
       const resourceURL = new URL(href, sourceURL);

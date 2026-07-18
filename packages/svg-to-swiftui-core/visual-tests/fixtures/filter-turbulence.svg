@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <defs>
+    <filter id="cloud" x="0" y="0" width="60" height="60" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".035 .07" numOctaves="3" seed="11" stitchTiles="stitch"/>
+    </filter>
+    <filter id="marble" x="60" y="0" width="60" height="60" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feTurbulence type="turbulence" baseFrequency=".04" numOctaves="4" seed="-5"/>
+    </filter>
+  </defs>
+  <rect width="60" height="60" filter="url(#cloud)"/>
+  <rect x="60" width="60" height="60" filter="url(#marble)"/>
+</svg>

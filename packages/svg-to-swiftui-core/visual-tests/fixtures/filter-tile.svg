@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <defs>
+    <filter id="tiles" x="0" y="0" width="120" height="60" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood x="2.5" y="2.5" width="15" height="15" flood-color="#ffca28" result="base"/>
+      <feTile in="base" x="0" y="0" width="120" height="60"/>
+    </filter>
+  </defs>
+  <rect width="120" height="60" fill="#263238"/>
+  <circle cx="10" cy="10" r="5" fill="#ef5350" filter="url(#tiles)"/>
+</svg>

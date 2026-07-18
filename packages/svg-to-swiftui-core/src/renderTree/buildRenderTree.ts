@@ -36,6 +36,7 @@ import { resolvePatternPaintServers } from "./patterns";
 import type {
   ComputedStyle,
   CSSDiagnosticContext,
+  FilterPrimitiveSpec,
   Geometry,
   MarkerRefCoordinate,
   MarkerReference,
@@ -2172,8 +2173,202 @@ export function buildRenderDocument(
     resources.definitions,
     styleResolver,
     resolved.effective,
+    config,
     diagnostics,
   );
+
+  const filterPrimitiveElements = (filter: ElementNode) =>
+    childElements(filter).filter((element) => {
+      const tag = element.tagName?.toLowerCase() ?? "";
+      return tag.startsWith("fe") && tag !== "femergenode";
+    });
+  const collectFilterDependencies = (nodes: RenderNode[], result = new Set<string>()): Set<string> => {
+    for (const node of nodes) {
+      const id = node.filter?.resource?.id ?? node.style.filter?.id;
+      if (id) result.add(id);
+      if (node.type === "group") collectFilterDependencies(node.children, result);
+      if (node.clipPath) collectFilterDependencies(node.clipPath.children, result);
+      if (node.mask) collectFilterDependencies(node.mask.children, result);
+    }
+    return result;
+  };
+
+  // External SVG feImage resources use the same bounded, cycle-safe nested-document path as <image>.
+  for (const filter of resources.filters.values()) {
+    const elements = filterPrimitiveElements(filter.element);
+    for (const [index, primitive] of filter.primitives.entries()) {
+      if (primitive.type !== "image" || !primitive.image.pendingSVG) continue;
+      const sourceElement = elements[index] ?? filter.element;
+      const pending = primitive.image.pendingSVG;
+      const state = resourceState(config);
+      const limits = resourceLimits(config);
+      if (state.activeCanonicalURLs.includes(pending.canonicalURL)) {
+        addDiagnostic(
+          context,
+          sourceElement,
+          "recursive-filter-image",
+          `Recursive SVG feImage cycle detected: ${[...state.activeCanonicalURLs, pending.canonicalURL].join(" -> ")}.`,
+        );
+        continue;
+      }
+      if (state.depth + 1 > limits.maxNestingDepth) {
+        addDiagnostic(
+          context,
+          sourceElement,
+          "resource-nesting-limit",
+          `SVG feImage '${primitive.image.href}' exceeds the nesting depth limit of ${limits.maxNestingDepth}.`,
+        );
+        continue;
+      }
+      try {
+        const ast = parse(decodeUTF8(pending.bytes));
+        const childSVG = getSVGElement(ast);
+        if (!childSVG) throw new Error("resource does not contain an svg root element");
+        const childConfig: InternalGeneratorConfig = {
+          ...config,
+          fragment: undefined,
+          outerViewport: undefined,
+          __resourceState: state,
+          __resourceBaseURL: pending.canonicalURL,
+        };
+        const referenced = resolveSVGProperties(childSVG, childConfig);
+        const embeddedSVG: ElementNode = {
+          ...childSVG,
+          properties: { ...(childSVG.properties ?? {}), preserveAspectRatio: "none" },
+        };
+        const embedded = resolveSVGProperties(embeddedSVG, childConfig);
+        state.activeCanonicalURLs.push(pending.canonicalURL);
+        state.depth++;
+        let document: RenderDocument;
+        try {
+          document = buildRenderDocument(embeddedSVG, embedded.properties, embedded.diagnostics, childConfig);
+        } finally {
+          state.depth--;
+          state.activeCanonicalURLs.pop();
+        }
+        for (const nested of document.diagnostics)
+          diagnostics.push({ ...nested, message: `SVG feImage '${primitive.image.href}': ${nested.message}` });
+        primitive.image.resource = {
+          type: "svg",
+          canonicalURL: pending.canonicalURL,
+          document,
+          referencedPreserveAspectRatio: referenced.properties.preserveAspectRatio,
+          hasReferencedPreserveAspectRatio: childSVG.properties?.preserveAspectRatio !== undefined,
+        };
+      } catch (error) {
+        addDiagnostic(
+          context,
+          sourceElement,
+          "malformed-svg-filter-image",
+          `SVG feImage '${primitive.image.href}' could not be parsed: ${error instanceof Error ? error.message : String(error)}.`,
+        );
+      }
+    }
+  }
+
+  // Local fragments are rendered with <use> semantics in the primitive coordinate system.
+  const localCandidates: Array<{
+    owner: string;
+    source: Extract<FilterPrimitiveSpec, { type: "image" }>;
+    sourceElement: ElementNode;
+    document: RenderDocument;
+    dependencies: Set<string>;
+  }> = [];
+  for (const filter of resources.filters.values()) {
+    const elements = filterPrimitiveElements(filter.element);
+    for (const [index, primitive] of filter.primitives.entries()) {
+      if (primitive.type !== "image" || !primitive.image.localElementId) continue;
+      const sourceElement = elements[index] ?? filter.element;
+      const id = primitive.image.localElementId;
+      const use: ElementNode = {
+        type: "element",
+        tagName: "use",
+        properties: { href: `#${id}` },
+        children: [],
+      };
+      const localCoordinate: CoordinateContext =
+        filter.primitiveUnits === "objectBoundingBox"
+          ? {
+              viewport: { width: 1, height: 1 },
+              rootViewport: coordinate.rootViewport,
+              fontMetrics: resolved.fontMetrics,
+            }
+          : { ...coordinate, fontMetrics: resolved.fontMetrics };
+      try {
+        const nodes = buildUse(use, resolved.effective, localCoordinate, context);
+        if (nodes.length === 0) {
+          addDiagnostic(
+            context,
+            sourceElement,
+            "non-rendering-filter-image-fragment",
+            `feImage fragment '#${id}' does not produce renderable content.`,
+          );
+          continue;
+        }
+        const box =
+          filter.primitiveUnits === "objectBoundingBox" ? { x: 0, y: 0, width: 1, height: 1 } : properties.viewBox;
+        const document: RenderDocument = {
+          viewport: {
+            width: box.width,
+            height: box.height,
+            viewBox: box,
+            userViewport: { width: box.width, height: box.height },
+            preserveAspectRatio: DEFAULT_PRESERVE_ASPECT_RATIO,
+            coordinateSpace: box,
+            zeroSized: box.width <= 0 || box.height <= 0,
+          },
+          resources,
+          children: nodes,
+          diagnostics: [],
+        };
+        localCandidates.push({
+          owner: filter.id,
+          source: primitive,
+          sourceElement,
+          document,
+          dependencies: collectFilterDependencies(nodes),
+        });
+      } catch (error) {
+        addDiagnostic(
+          context,
+          sourceElement,
+          "invalid-filter-image-fragment",
+          `feImage fragment '#${id}' could not be rendered: ${error instanceof Error ? error.message : String(error)}.`,
+        );
+      }
+    }
+  }
+  const dependencyGraph = new Map<string, Set<string>>();
+  for (const candidate of localCandidates) {
+    const existing = dependencyGraph.get(candidate.owner) ?? new Set<string>();
+    for (const dependency of candidate.dependencies) existing.add(dependency);
+    dependencyGraph.set(candidate.owner, existing);
+  }
+  const reaches = (current: string, target: string, visited: Set<string>): boolean => {
+    if (current === target) return true;
+    if (visited.has(current)) return false;
+    visited.add(current);
+    return [...(dependencyGraph.get(current) ?? [])].some((next) => reaches(next, target, visited));
+  };
+  for (const candidate of localCandidates) {
+    const recursive = [...candidate.dependencies].some((dependency) => reaches(dependency, candidate.owner, new Set()));
+    if (recursive) {
+      addDiagnostic(
+        context,
+        candidate.sourceElement,
+        "recursive-filter-image",
+        `Local feImage '${candidate.source.image.href}' recursively depends on filter #${candidate.owner}; rendering transparent black.`,
+      );
+      continue;
+    }
+    candidate.source.image.resource = {
+      type: "svg",
+      canonicalURL: candidate.source.image.href,
+      document: candidate.document,
+      referencedPreserveAspectRatio: DEFAULT_PRESERVE_ASPECT_RATIO,
+      hasReferencedPreserveAspectRatio: false,
+    };
+  }
   const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
