@@ -554,10 +554,11 @@ export async function prepareImageResources(root: ElementNode, config: InternalG
     currentConfig: InternalGeneratorConfig,
     active: string[],
   ): Promise<void> => {
-    if (element.tagName === "image") {
+    if (element.tagName === "image" || element.tagName?.toLowerCase() === "feimage") {
       const raw = String(element.properties?.href ?? element.properties?.["xlink:href"] ?? "").trim();
-      if (raw) {
-        const resolved = await resolveResourceAsync(raw, "image", element, currentConfig);
+      if (raw && !raw.startsWith("#")) {
+        const kind: ResourceKind = element.tagName === "image" ? "image" : "filter-image";
+        const resolved = await resolveResourceAsync(raw, kind, element, currentConfig);
         if (
           "resource" in resolved &&
           resolved.resource.mimeType === "image/svg+xml" &&

@@ -24,12 +24,23 @@ export interface SwiftUIGeneratorConfig {
   };
   /** Deterministic resource loading. The default embeddedOnly policy performs no filesystem or network I/O. */
   resources?: ResourceConfiguration;
+  /** Bounded deterministic CPU execution for SVG filter primitives. */
+  filters?: FilterConfiguration;
   /** Conversion-time renderer for static SVG <foreignObject> content. Async conversion is required. */
   foreignObjectRenderer?: ForeignObjectRenderer;
   /** Bounded rasterization and artifact behavior for static <foreignObject> snapshots. */
   foreignObjects?: ForeignObjectConfiguration;
   /** Deterministic language and capability inputs used by static SVG semantics. */
   staticEnvironment?: StaticEnvironment;
+}
+
+export interface FilterConfiguration {
+  /** Maximum number of coefficients in one feConvolveMatrix kernel. Defaults to 225 (15×15). */
+  maxKernelCells?: number;
+  /** Maximum accepted feTurbulence octave count. Defaults to 9. */
+  maxOctaves?: number;
+  /** Maximum generated filter bitmap area. Defaults to 16 million pixels. */
+  maxOutputPixels?: number;
 }
 
 export interface StaticEnvironment {

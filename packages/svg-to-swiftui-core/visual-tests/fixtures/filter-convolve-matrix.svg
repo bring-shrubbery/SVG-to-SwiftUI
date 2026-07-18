@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <defs>
+    <filter id="edge" x="-10%" y="-20%" width="120%" height="140%" color-interpolation-filters="sRGB">
+      <feConvolveMatrix order="3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" divisor="1" bias=".25" edgeMode="duplicate" preserveAlpha="true"/>
+    </filter>
+  </defs>
+  <rect width="120" height="60" fill="#18243c"/>
+  <g filter="url(#edge)">
+    <rect x="15" y="10" width="35" height="40" rx="8" fill="#ff7043"/>
+    <circle cx="78" cy="30" r="20" fill="#42a5f5" fill-opacity=".75"/>
+    <path d="M94 10L110 30 94 50Z" fill="#ffee58"/>
+  </g>
+</svg>

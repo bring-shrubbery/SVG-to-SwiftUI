@@ -340,6 +340,32 @@
       },
       "toleranceReason": "A one-pixel filter-subregion boundary differs between the SVG and CoreGraphics rasterizers; interior color-matrix pixels match within the default channel threshold."
     },
+    "filter-common-primitives": {
+      "width": 160,
+      "height": 100,
+      "expectedMode": "view",
+      "tags": [
+        "clip-path",
+        "effect-order",
+        "feDropShadow",
+        "feFlood",
+        "feGaussianBlur",
+        "feMerge",
+        "feMergeNode",
+        "feOffset",
+        "filter",
+        "mask",
+        "opacity",
+        "view"
+      ],
+      "tolerance": {
+        "channel": 36,
+        "maxOutsidePercent": 8,
+        "maxMeanRgbError": 8,
+        "maxMeanAlphaError": 5
+      },
+      "toleranceReason": "The generated separable Gaussian kernel and SVG reference renderer use slightly different kernel truncation and edge sampling."
+    },
     "filter-component-transfer": {
       "width": 128,
       "height": 26,
@@ -383,31 +409,31 @@
       },
       "toleranceReason": "WKWebView and CoreGraphics round one-pixel primitive-subregion boundaries differently; operator interiors match within the default channel threshold."
     },
-    "filter-common-primitives": {
-      "width": 160,
-      "height": 100,
+    "filter-convolve-matrix": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["circle", "feConvolveMatrix", "filter", "g", "geometry", "opacity", "path", "rect", "units", "view"]
+    },
+    "filter-displacement-map": {
+      "width": 128,
+      "height": 64,
       "expectedMode": "view",
       "tags": [
-        "clip-path",
-        "effect-order",
-        "feDropShadow",
+        "SourceGraphic",
+        "circle",
+        "feDisplacementMap",
         "feFlood",
-        "feGaussianBlur",
-        "feMerge",
-        "feMergeNode",
-        "feOffset",
         "filter",
-        "mask",
+        "g",
+        "geometry",
         "opacity",
+        "path",
+        "rect",
+        "stroke",
+        "units",
         "view"
-      ],
-      "tolerance": {
-        "channel": 36,
-        "maxOutsidePercent": 8,
-        "maxMeanRgbError": 8,
-        "maxMeanAlphaError": 5
-      },
-      "toleranceReason": "The generated separable Gaussian kernel and SVG reference renderer use slightly different kernel truncation and edge sampling."
+      ]
     },
     "filter-graph-branching": {
       "width": 140,
@@ -426,8 +452,36 @@
         "StrokePaint",
         "view"
       ],
-      "tolerance": { "channel": 36, "maxOutsidePercent": 8, "maxMeanRgbError": 8, "maxMeanAlphaError": 5 },
+      "tolerance": {
+        "channel": 36,
+        "maxOutsidePercent": 8,
+        "maxMeanRgbError": 8,
+        "maxMeanAlphaError": 5
+      },
       "toleranceReason": "The generated separable Gaussian kernel has deterministic three-sigma truncation while the SVG reference kernel is implementation-defined."
+    },
+    "filter-image": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "circle",
+        "feImage",
+        "feMerge",
+        "feMergeNode",
+        "filter",
+        "g",
+        "geometry",
+        "preserve-aspect-ratio",
+        "rect",
+        "view"
+      ]
+    },
+    "filter-morphology": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["feMorphology", "filter", "g", "geometry", "opacity", "path", "rect", "units", "view"]
     },
     "filter-shadow-equivalence": {
       "width": 150,
@@ -444,8 +498,44 @@
         "filter",
         "view"
       ],
-      "tolerance": { "channel": 36, "maxOutsidePercent": 8, "maxMeanRgbError": 8, "maxMeanAlphaError": 5 },
+      "tolerance": {
+        "channel": 36,
+        "maxOutsidePercent": 8,
+        "maxMeanRgbError": 8,
+        "maxMeanAlphaError": 5
+      },
       "toleranceReason": "The generated separable Gaussian kernel has deterministic three-sigma truncation while the SVG reference kernel is implementation-defined."
+    },
+    "filter-spatial-chain-limits": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "SourceGraphic",
+        "circle",
+        "feBlend",
+        "feConvolveMatrix",
+        "feMorphology",
+        "feTurbulence",
+        "filter",
+        "g",
+        "geometry",
+        "opacity",
+        "rect",
+        "view"
+      ]
+    },
+    "filter-tile": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["circle", "feFlood", "feTile", "filter", "geometry", "rect", "view"]
+    },
+    "filter-turbulence": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["feTurbulence", "filter", "geometry", "rect", "view"]
     },
     "filter-units-regions-transforms": {
       "width": 150,
@@ -463,7 +553,12 @@
         "view",
         "zero-blur"
       ],
-      "tolerance": { "channel": 44, "maxOutsidePercent": 10, "maxMeanRgbError": 10, "maxMeanAlphaError": 6 },
+      "tolerance": {
+        "channel": 44,
+        "maxOutsidePercent": 10,
+        "maxMeanRgbError": 10,
+        "maxMeanAlphaError": 6
+      },
       "toleranceReason": "Rotated anisotropic kernels are conservatively projected onto device axes and Gaussian edge truncation differs by renderer."
     },
     "foreign-object-effects": {
@@ -847,23 +942,23 @@
     "image-data-par": {
       "width": 160,
       "height": 54,
-      "scale": 1,
       "expectedMode": "view",
-      "tags": ["data-url", "image", "png", "preserve-aspect-ratio", "svg-image", "view"]
+      "tags": ["data-url", "image", "png", "preserve-aspect-ratio", "svg-image", "view"],
+      "scale": 1
     },
     "image-external-svg-effects": {
       "width": 120,
       "height": 70,
-      "scale": 3,
       "expectedMode": "view",
-      "tags": ["clip-path", "image", "image-blend", "mask", "opacity", "svg-image", "transform", "view"]
+      "tags": ["clip-path", "image", "image-blend", "mask", "opacity", "svg-image", "transform", "view"],
+      "scale": 3
     },
     "image-raster-formats": {
       "width": 180,
       "height": 45,
-      "scale": 2,
       "expectedMode": "view",
       "tags": ["gif", "image", "image-rendering", "jpeg", "png", "raster", "view", "webp"],
+      "scale": 2,
       "tolerance": {
         "channel": 48,
         "maxOutsidePercent": 12,
@@ -11808,58 +11903,58 @@
     "text-anchor-baseline": {
       "width": 240,
       "height": 100,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["baseline", "font", "text", "text-anchor", "view", "viewBox"]
+      "tags": ["baseline", "font", "text", "text-anchor", "view", "viewBox"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-basic-nested": {
       "width": 240,
       "height": 80,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["font", "font-weight", "text", "tspan", "view"]
+      "tags": ["font", "font-weight", "text", "tspan", "view"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-bidi-direction": {
       "width": 320,
       "height": 130,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["bidi", "direction", "font", "rtl", "text", "tspan", "unicode-bidi", "view"]
+      "tags": ["bidi", "direction", "font", "rtl", "text", "tspan", "unicode-bidi", "view"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-gradient-stroke": {
       "width": 260,
       "height": 100,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["font", "gradient", "linearGradient", "opacity", "paint-order", "stop", "stroke", "text", "view"]
+      "tags": ["font", "gradient", "linearGradient", "opacity", "paint-order", "stop", "stroke", "text", "view"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-length-adjust": {
       "width": 300,
       "height": 130,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["font", "lengthAdjust", "spacing", "text", "textLength", "view"]
+      "tags": ["font", "lengthAdjust", "spacing", "text", "textLength", "view"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-path-layout": {
       "width": 340,
       "height": 180,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["circle", "font", "path", "pathLength", "startOffset", "text", "textPath", "use", "view"]
+      "tags": ["circle", "font", "path", "pathLength", "startOffset", "text", "textPath", "use", "view"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-position-lists": {
       "width": 300,
       "height": 120,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
       "tags": ["dx", "font", "grapheme", "rotate", "text", "view", "x", "y"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
       "tolerance": {
         "maxMeanRgbError": 3.6
       },
@@ -11868,26 +11963,26 @@
     "text-spacing-decoration-transform": {
       "width": 260,
       "height": 100,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["dx", "dy", "font", "spacing", "text", "text-decoration", "transform", "tspan", "view"]
+      "tags": ["dx", "dy", "font", "spacing", "text", "text-decoration", "transform", "tspan", "view"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "text-unicode-whitespace": {
       "width": 280,
       "height": 110,
-      "fonts": ["fonts/NotoSans.ttf"],
-      "fontFamilies": ["Noto Sans"],
       "expectedMode": "view",
-      "tags": ["bidi", "font", "text", "tspan", "unicode", "view", "whitespace"]
+      "tags": ["bidi", "font", "text", "tspan", "unicode", "view", "whitespace"],
+      "fonts": ["fonts/NotoSans.ttf"],
+      "fontFamilies": ["Noto Sans"]
     },
     "text-vertical-writing": {
       "width": 220,
       "height": 180,
-      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
-      "fontFamilies": ["Poppins"],
       "expectedMode": "view",
-      "tags": ["font", "text", "text-orientation", "vertical", "view", "writing-mode"]
+      "tags": ["font", "text", "text-orientation", "vertical", "view", "writing-mode"],
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"]
     },
     "transat": {
       "width": 128,

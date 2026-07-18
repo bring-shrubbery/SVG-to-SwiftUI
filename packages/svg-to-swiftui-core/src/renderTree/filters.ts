@@ -8,7 +8,10 @@ import {
   resolveSVGLength,
   SVGLengthError,
 } from "../lengths";
+import { type InternalGeneratorConfig, resolveResourceSync } from "../resources";
 import type { Presentation, StyleResolution, SVGStyleResolver } from "../styleCascade";
+import type { FilterConfiguration } from "../types";
+import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio } from "../viewports";
 import { objectBoundingBox } from "./bounds";
 import type {
   FilterBlendMode,
@@ -16,6 +19,8 @@ import type {
   FilterComponentTransferFunction,
   FilterComponentTransferFunctions,
   FilterCompositeOperator,
+  FilterEdgeMode,
+  FilterImageSource,
   FilterInput,
   FilterInstance,
   FilterPrimitive,
@@ -29,6 +34,25 @@ import type {
   RenderNode,
   SourceLocation,
 } from "./types";
+
+export const DEFAULT_FILTER_LIMITS: Required<FilterConfiguration> = {
+  maxKernelCells: 225,
+  maxOctaves: 9,
+  maxOutputPixels: 16_000_000,
+};
+
+export function filterLimits(config: InternalGeneratorConfig): Required<FilterConfiguration> {
+  const configured = { ...DEFAULT_FILTER_LIMITS, ...(config.filters ?? {}) };
+  return {
+    maxKernelCells: positiveIntegerLimit(configured.maxKernelCells, DEFAULT_FILTER_LIMITS.maxKernelCells),
+    maxOctaves: positiveIntegerLimit(configured.maxOctaves, DEFAULT_FILTER_LIMITS.maxOctaves),
+    maxOutputPixels: positiveIntegerLimit(configured.maxOutputPixels, DEFAULT_FILTER_LIMITS.maxOutputPixels),
+  };
+}
+
+function positiveIntegerLimit(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? Math.max(1, Math.trunc(value)) : fallback;
+}
 
 const IDENTITY_COLOR_MATRIX = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0];
 const FILTER_BLEND_MODES = new Set<FilterBlendMode>([
@@ -187,14 +211,15 @@ function numberPair(
 ): [number, number] {
   const raw = attribute(element, name);
   if (raw === undefined || String(raw).trim() === "") return [fallback, fallback];
-  const tokens = String(raw).trim().split(/\s+/);
-  if (tokens.length < 1 || tokens.length > 2) {
+  const tokens = numberList(element, name, diagnostics);
+  if (!tokens || tokens.length < 1 || tokens.length > 2) {
+    if (!tokens) return [fallback, fallback];
     diagnostic(diagnostics, element, `invalid-filter-${name.toLowerCase()}`, `${name} requires one or two numbers.`);
     return [fallback, fallback];
   }
   try {
-    const first = parsePlainNumber(tokens[0], name);
-    const second = tokens.length === 2 ? parsePlainNumber(tokens[1], name) : first;
+    const first = tokens[0]!;
+    const second = tokens[1] ?? first;
     if (first < 0 || second < 0) {
       diagnostic(diagnostics, element, `negative-filter-${name.toLowerCase()}`, `${name} cannot be negative.`);
       return [0, 0];
@@ -209,6 +234,57 @@ function numberPair(
     );
     return [fallback, fallback];
   }
+}
+
+function integerPair(
+  element: ElementNode,
+  name: string,
+  fallback: number,
+  diagnostics: RenderDiagnostic[],
+): [number, number] | undefined {
+  const raw = attribute(element, name);
+  if (raw === undefined || String(raw).trim() === "") return [fallback, fallback];
+  const values = numberList(element, name, diagnostics);
+  if (!values || values.length < 1 || values.length > 2) {
+    if (values)
+      diagnostic(diagnostics, element, `invalid-filter-${name.toLowerCase()}`, `${name} requires one or two integers.`);
+    return undefined;
+  }
+  if (values.some((value) => !Number.isInteger(value))) {
+    diagnostic(diagnostics, element, `invalid-filter-${name.toLowerCase()}`, `${name} requires integer values.`);
+    return undefined;
+  }
+  const first = Math.trunc(values[0]!);
+  const second = Math.trunc(values[1] ?? values[0]!);
+  if (first <= 0 || second <= 0) {
+    diagnostic(
+      diagnostics,
+      element,
+      `invalid-filter-${name.toLowerCase()}`,
+      `${name} values must be greater than zero.`,
+    );
+    return undefined;
+  }
+  return [first, second];
+}
+
+function edgeMode(element: ElementNode, fallback: FilterEdgeMode, diagnostics: RenderDiagnostic[]): FilterEdgeMode {
+  const value = String(attribute(element, "edgeMode") ?? fallback)
+    .trim()
+    .toLowerCase();
+  if (value === "none" || value === "duplicate" || value === "wrap") return value;
+  diagnostic(diagnostics, element, "invalid-filter-edge-mode", `Invalid edgeMode '${value}'; using ${fallback}.`);
+  return fallback;
+}
+
+function booleanValue(element: ElementNode, name: string, fallback: boolean, diagnostics: RenderDiagnostic[]): boolean {
+  const raw = attribute(element, name);
+  if (raw === undefined || String(raw).trim() === "") return fallback;
+  const value = String(raw).trim().toLowerCase();
+  if (value === "true") return true;
+  if (value === "false") return false;
+  diagnostic(diagnostics, element, `invalid-filter-${name.toLowerCase()}`, `${name} must be true or false.`);
+  return fallback;
 }
 
 function numberList(element: ElementNode, name: string, diagnostics: RenderDiagnostic[]): number[] | undefined {
@@ -397,6 +473,68 @@ function floodColor(element: ElementNode, presentation: Presentation, diagnostic
   return { ...color, alpha: color.alpha * parseOpacity(rawOpacity) };
 }
 
+function filterImageSource(
+  element: ElementNode,
+  definitions: Map<string, ElementNode>,
+  config: InternalGeneratorConfig,
+  diagnostics: RenderDiagnostic[],
+): FilterImageSource {
+  const href = String(attribute(element, "href") ?? attribute(element, "xlink:href") ?? "").trim();
+  let preserveAspectRatio = DEFAULT_PRESERVE_ASPECT_RATIO;
+  try {
+    preserveAspectRatio = parsePreserveAspectRatio(attribute(element, "preserveAspectRatio"));
+  } catch (error) {
+    diagnostic(
+      diagnostics,
+      element,
+      "invalid-preserve-aspect-ratio",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const source: FilterImageSource = { href, preserveAspectRatio };
+  if (!href) {
+    diagnostic(diagnostics, element, "missing-filter-image-resource", "feImage href is empty or missing.");
+    return source;
+  }
+  if (href.startsWith("#")) {
+    const id = href.slice(1);
+    if (!id || !definitions.has(id)) {
+      diagnostic(diagnostics, element, "missing-filter-image-fragment", `feImage fragment '${href}' does not exist.`);
+      return source;
+    }
+    source.localElementId = id;
+    return source;
+  }
+  const resolution = resolveResourceSync(href, "filter-image", element, config);
+  if ("failure" in resolution) {
+    diagnostic(diagnostics, element, resolution.failure.code, resolution.failure.message);
+    return source;
+  }
+  const resource = resolution.resource;
+  if (resource.mimeType === "image/svg+xml") {
+    if (!resource.bytes) {
+      diagnostic(
+        diagnostics,
+        element,
+        "svg-filter-image-bytes-required",
+        `SVG feImage '${href}' requires resolved bytes.`,
+      );
+      return source;
+    }
+    source.pendingSVG = { bytes: resource.bytes, canonicalURL: resource.canonicalURL };
+    return source;
+  }
+  source.resource = {
+    type: "raster",
+    ...(resource.bytes ? { bytes: resource.bytes } : {}),
+    mimeType: resource.mimeType,
+    canonicalURL: resource.canonicalURL,
+    ...(resource.assetName ? { assetName: resource.assetName } : {}),
+    ...(resource.intrinsicSize ? { intrinsicSize: resource.intrinsicSize } : {}),
+  };
+  return source;
+}
+
 function localHref(element: ElementNode, diagnostics: RenderDiagnostic[]): string | undefined {
   const raw = attribute(element, "href") ?? attribute(element, "xlink:href");
   if (raw === undefined || String(raw).trim() === "") return undefined;
@@ -416,6 +554,8 @@ function buildPrimitiveSpecs(
   filter: ElementNode,
   filterPresentation: Presentation,
   styleResolver: SVGStyleResolver,
+  definitions: Map<string, ElementNode>,
+  config: InternalGeneratorConfig,
   diagnostics: RenderDiagnostic[],
 ): FilterPrimitiveSpec[] {
   const specs: FilterPrimitiveSpec[] = [];
@@ -501,15 +641,195 @@ function buildPrimitiveSpecs(
         k4: numberValue(element, "k4", 0, diagnostics),
         ...common,
       };
-    } else if (tag === "fegaussianblur") {
-      const [stdDeviationX, stdDeviationY] = numberPair(element, "stdDeviation", 0, diagnostics);
-      const rawEdge = String(attribute(element, "edgeMode") ?? "none")
+    } else if (tag === "feconvolvematrix") {
+      const order = integerPair(element, "order", 3, diagnostics);
+      const kernelMatrix = numberList(element, "kernelMatrix", diagnostics);
+      const kernelCells = order ? order[0] * order[1] : 0;
+      const limit = filterLimits(config).maxKernelCells;
+      let invalid = !order || !kernelMatrix || kernelMatrix.length !== kernelCells;
+      if (order && kernelMatrix && kernelMatrix.length !== kernelCells)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-kernel-matrix-size",
+          `kernelMatrix has ${kernelMatrix.length} values but order ${order[0]}×${order[1]} requires ${kernelCells}; using pass-through.`,
+        );
+      if (kernelCells > limit) {
+        diagnostic(
+          diagnostics,
+          element,
+          "filter-kernel-limit",
+          `feConvolveMatrix has ${kernelCells} coefficients, exceeding the ${limit}-coefficient limit; using pass-through.`,
+        );
+        invalid = true;
+      }
+      const defaultDivisor = kernelMatrix?.reduce((sum, value) => sum + value, 0) || 1;
+      const authoredDivisor = numberValue(element, "divisor", defaultDivisor, diagnostics);
+      if (authoredDivisor === 0)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-divisor",
+          `feConvolveMatrix divisor cannot be zero; using ${defaultDivisor}.`,
+        );
+      const divisor = authoredDivisor === 0 ? defaultDivisor : authoredDivisor;
+      const rawTargetX = numberValue(element, "targetX", Math.floor((order?.[0] ?? 1) / 2), diagnostics);
+      const rawTargetY = numberValue(element, "targetY", Math.floor((order?.[1] ?? 1) / 2), diagnostics);
+      const targetX = Math.trunc(rawTargetX);
+      const targetY = Math.trunc(rawTargetY);
+      if (!Number.isInteger(rawTargetX) || !Number.isInteger(rawTargetY)) {
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-convolution-target",
+          "targetX and targetY require integer values; using pass-through.",
+        );
+        invalid = true;
+      }
+      if (order && (targetX < 0 || targetX >= order[0] || targetY < 0 || targetY >= order[1])) {
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-convolution-target",
+          `targetX/targetY must lie inside the ${order[0]}×${order[1]} kernel; using pass-through.`,
+        );
+        invalid = true;
+      }
+      let kernelUnitLength: [number, number] | undefined;
+      if (hasAttribute(element, "kernelUnitLength")) {
+        const values = numberList(element, "kernelUnitLength", diagnostics);
+        if (values && values.length >= 1 && values.length <= 2 && values.every((value) => value > 0))
+          kernelUnitLength = [values[0]!, values[1] ?? values[0]!];
+        else
+          diagnostic(
+            diagnostics,
+            element,
+            "invalid-filter-kernel-unit-length",
+            "kernelUnitLength requires one or two positive numbers; using the device-pixel default.",
+          );
+      }
+      spec = invalid
+        ? { type: "passthrough", input, element: element.tagName ?? "feConvolveMatrix", ...common }
+        : {
+            type: "convolveMatrix",
+            input,
+            orderX: order![0],
+            orderY: order![1],
+            kernelMatrix: kernelMatrix!,
+            divisor,
+            bias: numberValue(element, "bias", 0, diagnostics),
+            targetX,
+            targetY,
+            edgeMode: edgeMode(element, "duplicate", diagnostics),
+            ...(kernelUnitLength
+              ? { kernelUnitLengthX: kernelUnitLength[0], kernelUnitLengthY: kernelUnitLength[1] }
+              : {}),
+            preserveAlpha: booleanValue(element, "preserveAlpha", false, diagnostics),
+            ...common,
+          };
+    } else if (tag === "femorphology") {
+      const [radiusX, radiusY] = numberPair(element, "radius", 0, diagnostics);
+      const rawOperator = String(attribute(element, "operator") ?? "erode")
         .trim()
         .toLowerCase();
-      const edgeMode = rawEdge === "duplicate" || rawEdge === "wrap" || rawEdge === "none" ? rawEdge : "none";
-      if (edgeMode !== rawEdge)
-        diagnostic(diagnostics, element, "invalid-filter-edge-mode", `Invalid edgeMode '${rawEdge}'; using none.`);
-      spec = { type: "gaussianBlur", input, stdDeviationX, stdDeviationY, edgeMode, ...common };
+      const operator = rawOperator === "dilate" ? "dilate" : "erode";
+      if (rawOperator !== "erode" && rawOperator !== "dilate")
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-morphology-operator",
+          `Invalid feMorphology operator '${rawOperator}'; using erode.`,
+        );
+      spec = { type: "morphology", input, operator, radiusX, radiusY, ...common };
+    } else if (tag === "fedisplacementmap") {
+      const channel = (name: "xChannelSelector" | "yChannelSelector") => {
+        const value = String(attribute(element, name) ?? "A")
+          .trim()
+          .toUpperCase();
+        if (value === "R" || value === "G" || value === "B" || value === "A") return value;
+        diagnostic(
+          diagnostics,
+          element,
+          `invalid-filter-${name.toLowerCase()}`,
+          `${name} must be R, G, B, or A; using A.`,
+        );
+        return "A" as const;
+      };
+      spec = {
+        type: "displacementMap",
+        input,
+        input2: input2 ?? previousInput(),
+        scale: numberValue(element, "scale", 0, diagnostics),
+        xChannel: channel("xChannelSelector"),
+        yChannel: channel("yChannelSelector"),
+        ...common,
+      };
+    } else if (tag === "fetile") {
+      spec = { type: "tile", input, ...common };
+    } else if (tag === "feturbulence") {
+      const [baseFrequencyX, baseFrequencyY] = numberPair(element, "baseFrequency", 0, diagnostics);
+      const parsedOctaves = numberValue(element, "numOctaves", 1, diagnostics);
+      const rawOctaves = Math.trunc(parsedOctaves);
+      if (!Number.isInteger(parsedOctaves))
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-num-octaves",
+          "numOctaves requires an integer; truncating toward zero.",
+        );
+      const maxOctaves = filterLimits(config).maxOctaves;
+      let numOctaves = Math.max(0, rawOctaves);
+      if (rawOctaves < 0)
+        diagnostic(diagnostics, element, "negative-filter-num-octaves", "numOctaves cannot be negative; using 0.");
+      if (numOctaves > maxOctaves) {
+        diagnostic(
+          diagnostics,
+          element,
+          "filter-octave-limit",
+          `feTurbulence requests ${numOctaves} octaves; clamping to the ${maxOctaves}-octave limit.`,
+        );
+        numOctaves = maxOctaves;
+      }
+      const rawStitch = String(attribute(element, "stitchTiles") ?? "noStitch").trim();
+      const stitchTiles = rawStitch === "stitch";
+      if (rawStitch !== "stitch" && rawStitch !== "noStitch")
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-stitch-tiles",
+          `Invalid stitchTiles '${rawStitch}'; using noStitch.`,
+        );
+      const rawType = String(attribute(element, "type") ?? "turbulence").trim();
+      const noiseType = rawType === "fractalNoise" ? "fractalNoise" : "turbulence";
+      if (rawType !== "turbulence" && rawType !== "fractalNoise")
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-turbulence-type",
+          `Invalid feTurbulence type '${rawType}'; using turbulence.`,
+        );
+      spec = {
+        type: "turbulence",
+        baseFrequencyX,
+        baseFrequencyY,
+        numOctaves,
+        seed: Math.trunc(numberValue(element, "seed", 0, diagnostics)),
+        stitchTiles,
+        noiseType,
+        ...common,
+      };
+    } else if (tag === "feimage") {
+      spec = { type: "image", image: filterImageSource(element, definitions, config, diagnostics), ...common };
+    } else if (tag === "fegaussianblur") {
+      const [stdDeviationX, stdDeviationY] = numberPair(element, "stdDeviation", 0, diagnostics);
+      spec = {
+        type: "gaussianBlur",
+        input,
+        stdDeviationX,
+        stdDeviationY,
+        edgeMode: edgeMode(element, "none", diagnostics),
+        ...common,
+      };
     } else if (tag === "feoffset") {
       spec = {
         type: "offset",
@@ -573,6 +893,7 @@ export function resolveFilterResources(
   definitions: Map<string, ElementNode>,
   styleResolver: SVGStyleResolver,
   rootPresentation: Presentation,
+  config: InternalGeneratorConfig,
   diagnostics: RenderDiagnostic[],
 ): Map<string, FilterResource> {
   const resolutions = new Map<ElementNode, StyleResolution>();
@@ -655,7 +976,7 @@ export function resolveFilterResources(
       element,
       primitives:
         primitiveElements.length > 0
-          ? buildPrimitiveSpecs(element, presentation, styleResolver, diagnostics)
+          ? buildPrimitiveSpecs(element, presentation, styleResolver, definitions, config, diagnostics)
           : (base?.primitives ?? []),
       instances: new Map(),
       invalid: href !== undefined && (!base || base.invalid),
@@ -786,6 +1107,47 @@ export function resolveFilterInstance(resource: FilterResource, node: RenderNode
         ...spec,
         stdDeviationX: spec.stdDeviationX * scaleX,
         stdDeviationY: spec.stdDeviationY * scaleY,
+        ...common,
+      });
+    else if (spec.type === "convolveMatrix")
+      primitives.push({
+        ...spec,
+        ...(spec.kernelUnitLengthX === undefined
+          ? {}
+          : {
+              kernelUnitLengthX: spec.kernelUnitLengthX * scaleX,
+              kernelUnitLengthY: spec.kernelUnitLengthY! * scaleY,
+            }),
+        ...common,
+      });
+    else if (spec.type === "morphology")
+      primitives.push({ ...spec, radiusX: spec.radiusX * scaleX, radiusY: spec.radiusY * scaleY, ...common });
+    else if (spec.type === "displacementMap") {
+      const { scale, ...displacement } = spec;
+      primitives.push({
+        ...displacement,
+        displacement: { a: scale * scaleX, b: 0, c: 0, d: scale * scaleY },
+        ...common,
+      });
+    } else if (spec.type === "tile")
+      primitives.push({ ...spec, tileRegion: inputRegion(spec.input, primitives, region), ...common });
+    else if (spec.type === "image" && spec.image.localElementId)
+      primitives.push({
+        ...spec,
+        image: {
+          ...spec.image,
+          contentTransform:
+            resource.primitiveUnits === "objectBoundingBox"
+              ? {
+                  a: bounds?.width ?? 0,
+                  b: 0,
+                  c: 0,
+                  d: bounds?.height ?? 0,
+                  e: bounds?.x ?? 0,
+                  f: bounds?.y ?? 0,
+                }
+              : { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
+        },
         ...common,
       });
     else if (spec.type === "offset")

@@ -111,6 +111,10 @@ export type SVGBlendMode =
 
 export type FilterBlendMode = SVGBlendMode;
 export type FilterCompositeOperator = "over" | "in" | "out" | "atop" | "xor" | "lighter" | "arithmetic";
+export type FilterEdgeMode = "none" | "duplicate" | "wrap";
+export type FilterChannelSelector = "R" | "G" | "B" | "A";
+export type FilterMorphologyOperator = "erode" | "dilate";
+export type FilterTurbulenceType = "turbulence" | "fractalNoise";
 
 export type FilterComponentTransferFunction =
   | { type: "identity" }
@@ -125,6 +129,37 @@ export type FilterComponentTransferFunctions = [
   FilterComponentTransferFunction,
   FilterComponentTransferFunction,
 ];
+
+export interface RasterImageResource {
+  type: "raster";
+  bytes?: Uint8Array;
+  mimeType: string;
+  canonicalURL: string;
+  assetName?: string;
+  intrinsicSize?: { width: number; height: number };
+}
+
+export interface SVGImageResource {
+  type: "svg";
+  canonicalURL: string;
+  document: RenderDocument;
+  referencedPreserveAspectRatio: PreserveAspectRatio;
+  hasReferencedPreserveAspectRatio: boolean;
+}
+
+export type ImageResource = RasterImageResource | SVGImageResource;
+
+export interface FilterImageSource {
+  href: string;
+  preserveAspectRatio: PreserveAspectRatio;
+  resource?: ImageResource;
+  /** Resolved SVG bytes awaiting render-document construction outside filters.ts to avoid a build-tree import cycle. */
+  pendingSVG?: { bytes: Uint8Array; canonicalURL: string };
+  /** Retained until buildRenderDocument materializes local fragment semantics through a synthesized use tree. */
+  localElementId?: string;
+  /** Local-fragment user space mapped into the referencing filter instance. */
+  contentTransform?: AffineTransform;
+}
 
 export interface NodeCoordinateContext {
   viewport: { width: number; height: number };
@@ -216,8 +251,49 @@ export type FilterPrimitiveSpec =
       input: FilterInput;
       stdDeviationX: number;
       stdDeviationY: number;
-      edgeMode: "none" | "duplicate" | "wrap";
+      edgeMode: FilterEdgeMode;
     })
+  | (FilterPrimitiveSpecBase & {
+      type: "convolveMatrix";
+      input: FilterInput;
+      orderX: number;
+      orderY: number;
+      kernelMatrix: number[];
+      divisor: number;
+      bias: number;
+      targetX: number;
+      targetY: number;
+      edgeMode: FilterEdgeMode;
+      kernelUnitLengthX?: number;
+      kernelUnitLengthY?: number;
+      preserveAlpha: boolean;
+    })
+  | (FilterPrimitiveSpecBase & {
+      type: "morphology";
+      input: FilterInput;
+      operator: FilterMorphologyOperator;
+      radiusX: number;
+      radiusY: number;
+    })
+  | (FilterPrimitiveSpecBase & {
+      type: "displacementMap";
+      input: FilterInput;
+      input2: FilterInput;
+      scale: number;
+      xChannel: FilterChannelSelector;
+      yChannel: FilterChannelSelector;
+    })
+  | (FilterPrimitiveSpecBase & { type: "tile"; input: FilterInput })
+  | (FilterPrimitiveSpecBase & {
+      type: "turbulence";
+      baseFrequencyX: number;
+      baseFrequencyY: number;
+      numOctaves: number;
+      seed: number;
+      stitchTiles: boolean;
+      noiseType: FilterTurbulenceType;
+    })
+  | (FilterPrimitiveSpecBase & { type: "image"; image: FilterImageSource })
   | (FilterPrimitiveSpecBase & { type: "offset"; input: FilterInput; dx: number; dy: number })
   | (FilterPrimitiveSpecBase & { type: "flood"; color: RGBAColor })
   | (FilterPrimitiveSpecBase & { type: "merge"; inputs: FilterInput[] })
@@ -268,8 +344,49 @@ export type FilterPrimitive =
       input: FilterInput;
       stdDeviationX: number;
       stdDeviationY: number;
-      edgeMode: "none" | "duplicate" | "wrap";
+      edgeMode: FilterEdgeMode;
     })
+  | (FilterPrimitiveBase & {
+      type: "convolveMatrix";
+      input: FilterInput;
+      orderX: number;
+      orderY: number;
+      kernelMatrix: number[];
+      divisor: number;
+      bias: number;
+      targetX: number;
+      targetY: number;
+      edgeMode: FilterEdgeMode;
+      kernelUnitLengthX?: number;
+      kernelUnitLengthY?: number;
+      preserveAlpha: boolean;
+    })
+  | (FilterPrimitiveBase & {
+      type: "morphology";
+      input: FilterInput;
+      operator: FilterMorphologyOperator;
+      radiusX: number;
+      radiusY: number;
+    })
+  | (FilterPrimitiveBase & {
+      type: "displacementMap";
+      input: FilterInput;
+      input2: FilterInput;
+      displacement: Pick<AffineTransform, "a" | "b" | "c" | "d">;
+      xChannel: FilterChannelSelector;
+      yChannel: FilterChannelSelector;
+    })
+  | (FilterPrimitiveBase & { type: "tile"; input: FilterInput; tileRegion: RenderBounds })
+  | (FilterPrimitiveBase & {
+      type: "turbulence";
+      baseFrequencyX: number;
+      baseFrequencyY: number;
+      numOctaves: number;
+      seed: number;
+      stitchTiles: boolean;
+      noiseType: FilterTurbulenceType;
+    })
+  | (FilterPrimitiveBase & { type: "image"; image: FilterImageSource })
   | (FilterPrimitiveBase & { type: "offset"; input: FilterInput; dx: number; dy: number })
   | (FilterPrimitiveBase & { type: "flood"; color: RGBAColor })
   | (FilterPrimitiveBase & { type: "merge"; inputs: FilterInput[] })
@@ -616,22 +733,7 @@ export interface RenderImage {
   viewport: ViewBoxData;
   preserveAspectRatio: PreserveAspectRatio;
   imageRendering: string;
-  resource?:
-    | {
-        type: "raster";
-        bytes?: Uint8Array;
-        mimeType: string;
-        canonicalURL: string;
-        assetName?: string;
-        intrinsicSize?: { width: number; height: number };
-      }
-    | {
-        type: "svg";
-        canonicalURL: string;
-        document: RenderDocument;
-        referencedPreserveAspectRatio: PreserveAspectRatio;
-        hasReferencedPreserveAspectRatio: boolean;
-      };
+  resource?: ImageResource;
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;

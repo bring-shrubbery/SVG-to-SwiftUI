@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <defs>
+    <filter id="warp" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">
+      <feFlood flood-color="#ff0080" result="map"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="14" xChannelSelector="R" yChannelSelector="B"/>
+    </filter>
+  </defs>
+  <rect width="120" height="60" fill="#17112b"/>
+  <g filter="url(#warp)">
+    <rect x="10" y="12" width="100" height="36" rx="8" fill="#26c6da"/>
+    <path d="M10 20h100M10 30h100M10 40h100" stroke="#fff" stroke-width="3"/>
+    <circle cx="35" cy="30" r="12" fill="#ec407a" fill-opacity=".8"/>
+  </g>
+</svg>

@@ -94,6 +94,16 @@ interface GeneratedMask {
 interface GeneratedFilter {
   instance: FilterInstance;
   canvas: ViewBoxData;
+  imageHelpers: Array<{ key: string; name: string }>;
+  maxOutputPixels: number;
+}
+
+interface FilterImageHelper {
+  key: string;
+  name: string;
+  primitive: Extract<FilterPrimitive, { type: "image" }>;
+  canvas: ViewBoxData;
+  subdocumentName?: string;
 }
 
 interface GeneratedClipPath {
@@ -117,6 +127,7 @@ interface ViewBuildContext {
     transform: RenderNode["transform"];
     subdocumentName?: string;
   }>;
+  filterImageHelpers: FilterImageHelper[];
   subdocuments: string[][];
   rootName: string;
   config: SwiftUIGeneratorConfig;
@@ -360,15 +371,99 @@ function buildViewNodes(
               dy: transform.b * primitive.dx + transform.d * primitive.dy,
             };
       }
+      if (primitive.type === "morphology")
+        return {
+          ...primitive,
+          subregion,
+          radiusX: Math.hypot(transform.a * primitive.radiusX, transform.b * primitive.radiusX),
+          radiusY: Math.hypot(transform.c * primitive.radiusY, transform.d * primitive.radiusY),
+        };
+      if (primitive.type === "convolveMatrix" && primitive.kernelUnitLengthX !== undefined)
+        return {
+          ...primitive,
+          subregion,
+          kernelUnitLengthX: Math.hypot(
+            transform.a * primitive.kernelUnitLengthX,
+            transform.b * primitive.kernelUnitLengthX,
+          ),
+          kernelUnitLengthY: Math.hypot(
+            transform.c * primitive.kernelUnitLengthY!,
+            transform.d * primitive.kernelUnitLengthY!,
+          ),
+        };
+      if (primitive.type === "displacementMap")
+        return {
+          ...primitive,
+          subregion,
+          displacement: {
+            a: transform.a * primitive.displacement.a + transform.c * primitive.displacement.b,
+            b: transform.b * primitive.displacement.a + transform.d * primitive.displacement.b,
+            c: transform.a * primitive.displacement.c + transform.c * primitive.displacement.d,
+            d: transform.b * primitive.displacement.c + transform.d * primitive.displacement.d,
+          },
+        };
+      if (primitive.type === "tile")
+        return { ...primitive, subregion, tileRegion: transformRegion(primitive.tileRegion) };
+      if (primitive.type === "image" && primitive.image.contentTransform)
+        return {
+          ...primitive,
+          subregion,
+          image: {
+            ...primitive.image,
+            contentTransform: multiplyTransforms(transform, primitive.image.contentTransform),
+          },
+        };
       return { ...primitive, subregion };
     };
+    const instance: FilterInstance = {
+      ...filter,
+      region: transformRegion(filter.region),
+      primitives: filter.primitives.map(transformPrimitive),
+    };
+    const imageHelpers: Array<{ key: string; name: string }> = [];
+    for (const [index, primitive] of instance.primitives.entries()) {
+      if (primitive.type !== "image" || !primitive.image.resource) continue;
+      const key = `filter-image-${index}`;
+      const name = `FilterImageLayer${context.filterImageHelpers.length}`;
+      let subdocumentName: string | undefined;
+      if (primitive.image.resource.type === "svg") {
+        subdocumentName = `${context.rootName}FilterImageDocument${context.subdocuments.length}`;
+        const child = primitive.image.resource.document;
+        const childProperties: SVGElementProperties = {
+          width: child.viewport.width,
+          height: child.viewport.height,
+          viewBox: child.viewport.viewBox,
+          userViewport: child.viewport.userViewport,
+          preserveAspectRatio: child.viewport.preserveAspectRatio,
+          viewBoxTransform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
+          zeroSized: child.viewport.zeroSized,
+        };
+        const generatedChild = generateView(child, childProperties, {
+          ...context.config,
+          structName: subdocumentName,
+          preserveColors: true,
+          usageCommentPrefix: false,
+        });
+        context.subdocuments.push(generatedChild.lines);
+      }
+      context.filterImageHelpers.push({
+        key,
+        name,
+        primitive,
+        canvas: context.coordinateSpace,
+        ...(subdocumentName ? { subdocumentName } : {}),
+      });
+      imageHelpers.push({ key, name });
+    }
+    const configuredMaxPixels = context.config.filters?.maxOutputPixels ?? 16_000_000;
     return {
-      instance: {
-        ...filter,
-        region: transformRegion(filter.region),
-        primitives: filter.primitives.map(transformPrimitive),
-      },
+      instance,
       canvas: context.coordinateSpace,
+      imageHelpers,
+      maxOutputPixels:
+        Number.isFinite(configuredMaxPixels) && configuredMaxPixels > 0
+          ? Math.max(1, Math.trunc(configuredMaxPixels))
+          : 16_000_000,
     };
   };
 
@@ -846,7 +941,7 @@ function filterCompositeOperatorLiteral(operator: Extract<FilterPrimitive, { typ
   return `.${operator === "in" ? "inside" : operator === "out" ? "outside" : operator}`;
 }
 
-function filterPrimitiveLiteral(primitive: FilterPrimitive): string {
+function filterPrimitiveLiteral(primitive: FilterPrimitive, index: number): string {
   const region = filterRegionLiteral(primitive.subregion);
   const linear = primitive.colorInterpolation === "linearRGB" ? "true" : "false";
   const result = primitive.result ? swiftString(primitive.result) : "nil";
@@ -859,6 +954,18 @@ function filterPrimitiveLiteral(primitive: FilterPrimitive): string {
       return `.componentTransfer(input: ${filterInputLiteral(primitive.input)}, functions: [${primitive.functions.map(filterComponentFunctionLiteral).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "composite":
       return `.composite(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, operation: ${filterCompositeOperatorLiteral(primitive.operator)}, k1: ${formatNumber(primitive.k1)}, k2: ${formatNumber(primitive.k2)}, k3: ${formatNumber(primitive.k3)}, k4: ${formatNumber(primitive.k4)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "convolveMatrix":
+      return `.convolveMatrix(input: ${filterInputLiteral(primitive.input)}, orderX: ${primitive.orderX}, orderY: ${primitive.orderY}, kernel: [${primitive.kernelMatrix.map((value) => formatNumber(value)).join(", ")}], divisor: ${formatNumber(primitive.divisor)}, bias: ${formatNumber(primitive.bias)}, targetX: ${primitive.targetX}, targetY: ${primitive.targetY}, edge: .${primitive.edgeMode}, unitX: ${primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX)}, unitY: ${primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY)}, preserveAlpha: ${primitive.preserveAlpha}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "morphology":
+      return `.morphology(input: ${filterInputLiteral(primitive.input)}, operation: .${primitive.operator}, radiusX: ${formatNumber(primitive.radiusX)}, radiusY: ${formatNumber(primitive.radiusY)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "displacementMap":
+      return `.displacementMap(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, a: ${formatNumber(primitive.displacement.a)}, b: ${formatNumber(primitive.displacement.b)}, c: ${formatNumber(primitive.displacement.c)}, d: ${formatNumber(primitive.displacement.d)}, xChannel: .${primitive.xChannel.toLowerCase()}, yChannel: .${primitive.yChannel.toLowerCase()}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "tile":
+      return `.tile(input: ${filterInputLiteral(primitive.input)}, tileRegion: ${filterRegionLiteral(primitive.tileRegion)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "turbulence":
+      return `.turbulence(baseFrequencyX: ${formatNumber(primitive.baseFrequencyX)}, baseFrequencyY: ${formatNumber(primitive.baseFrequencyY)}, octaves: ${primitive.numOctaves}, seed: ${primitive.seed}, stitch: ${primitive.stitchTiles}, fractalNoise: ${primitive.noiseType === "fractalNoise"}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "image":
+      return `.image(key: ${swiftString(`filter-image-${index}`)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "gaussianBlur":
       return `.gaussianBlur(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, edge: .${primitive.edgeMode}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "offset":
@@ -876,7 +983,7 @@ function filterPrimitiveLiteral(primitive: FilterPrimitive): string {
 
 function filterDefinitionLiteral(filter: GeneratedFilter): string {
   const instance = filter.instance;
-  return `SVGFilterDefinition(region: ${filterRegionLiteral(instance.region)}, primitives: [${instance.primitives.map(filterPrimitiveLiteral).join(", ")}], fillPaint: ${filterColorLiteral(instance.fillPaint)}, strokePaint: ${filterColorLiteral(instance.strokePaint)})`;
+  return `SVGFilterDefinition(region: ${filterRegionLiteral(instance.region)}, primitives: [${instance.primitives.map((primitive, index) => filterPrimitiveLiteral(primitive, index)).join(", ")}], fillPaint: ${filterColorLiteral(instance.fillPaint)}, strokePaint: ${filterColorLiteral(instance.strokePaint)}, maxOutputPixels: ${filter.maxOutputPixels})`;
 }
 
 function textGradientLength(
@@ -1737,9 +1844,17 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   if (node.type === "pattern") return renderPatternNode(node, level, indentation);
   const lines = node.filter
     ? [
-        `${prefix}SVGFilteredCanvas(definition: ${filterDefinitionLiteral(node.filter)}, canvas: CGSize(width: ${formatNumber(node.filter.canvas.width)}, height: ${formatNumber(node.filter.canvas.height)})) { graphics, size in`,
+        `${prefix}SVGFilteredCanvas(definition: ${filterDefinitionLiteral(node.filter)}, canvas: CGSize(width: ${formatNumber(node.filter.canvas.width)}, height: ${formatNumber(node.filter.canvas.height)}), drawSource: { graphics, size in`,
         ...renderGeneratedCommands(node.children, "graphics", level + 1, indentation),
-        `${prefix}}`,
+        `${prefix}}, renderFilterImages: { size, scale in`,
+        `${prefix}${indentation}var images: [String: CGImage] = [:]`,
+        ...node.filter.imageHelpers.flatMap(({ key, name }) => [
+          `${prefix}${indentation}let ${name}Renderer = ImageRenderer(content: ${name}().frame(width: size.width, height: size.height))`,
+          `${prefix}${indentation}${name}Renderer.scale = scale`,
+          `${prefix}${indentation}if let image = ${name}Renderer.cgImage { images[${swiftString(key)}] = image }`,
+        ]),
+        `${prefix}${indentation}return images`,
+        `${prefix}})`,
       ]
     : [`${prefix}ZStack {`];
   if (!node.filter) {
@@ -1899,6 +2014,18 @@ private enum SVGFilterCompositeOperator: Equatable {
     case over, inside, outside, atop, xor, lighter, arithmetic
 }
 
+private enum SVGFilterMorphologyOperator {
+    case erode, dilate
+}
+
+private enum SVGFilterChannel {
+    case r, g, b, a
+
+    var index: Int {
+        switch self { case .r: 0; case .g: 1; case .b: 2; case .a: 3 }
+    }
+}
+
 private enum SVGFilterComponentFunction {
     case identity
     case table([Float])
@@ -1912,6 +2039,12 @@ private enum SVGFilterPrimitive {
     case colorMatrix(input: SVGFilterInput, matrix: [Float], region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case componentTransfer(input: SVGFilterInput, functions: [SVGFilterComponentFunction], region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case composite(input: SVGFilterInput, input2: SVGFilterInput, operation: SVGFilterCompositeOperator, k1: Float, k2: Float, k3: Float, k4: Float, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case convolveMatrix(input: SVGFilterInput, orderX: Int, orderY: Int, kernel: [Float], divisor: Float, bias: Float, targetX: Int, targetY: Int, edge: SVGFilterEdgeMode, unitX: CGFloat?, unitY: CGFloat?, preserveAlpha: Bool, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case morphology(input: SVGFilterInput, operation: SVGFilterMorphologyOperator, radiusX: CGFloat, radiusY: CGFloat, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case displacementMap(input: SVGFilterInput, input2: SVGFilterInput, a: CGFloat, b: CGFloat, c: CGFloat, d: CGFloat, xChannel: SVGFilterChannel, yChannel: SVGFilterChannel, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case tile(input: SVGFilterInput, tileRegion: SVGFilterRegion, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case turbulence(baseFrequencyX: CGFloat, baseFrequencyY: CGFloat, octaves: Int, seed: Int, stitch: Bool, fractalNoise: Bool, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case image(key: String, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case gaussianBlur(input: SVGFilterInput, sigmaX: CGFloat, sigmaY: CGFloat, edge: SVGFilterEdgeMode, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case offset(input: SVGFilterInput, dx: CGFloat, dy: CGFloat, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case flood(color: SVGFilterColor, region: SVGFilterRegion, linearRGB: Bool, result: String?)
@@ -1925,6 +2058,12 @@ private enum SVGFilterPrimitive {
              let .colorMatrix(_, _, region, _, _),
              let .componentTransfer(_, _, region, _, _),
              let .composite(_, _, _, _, _, _, _, region, _, _),
+             let .convolveMatrix(_, _, _, _, _, _, _, _, _, _, _, _, region, _, _),
+             let .morphology(_, _, _, _, region, _, _),
+             let .displacementMap(_, _, _, _, _, _, _, _, region, _, _),
+             let .tile(_, _, region, _, _),
+             let .turbulence(_, _, _, _, _, _, region, _, _),
+             let .image(_, region, _, _),
              let .gaussianBlur(_, _, _, _, region, _, _),
              let .offset(_, _, _, region, _, _),
              let .flood(_, region, _, _),
@@ -1941,6 +2080,12 @@ private enum SVGFilterPrimitive {
              let .colorMatrix(_, _, _, value, _),
              let .componentTransfer(_, _, _, value, _),
              let .composite(_, _, _, _, _, _, _, _, value, _),
+             let .convolveMatrix(_, _, _, _, _, _, _, _, _, _, _, _, _, value, _),
+             let .morphology(_, _, _, _, _, value, _),
+             let .displacementMap(_, _, _, _, _, _, _, _, _, value, _),
+             let .tile(_, _, _, value, _),
+             let .turbulence(_, _, _, _, _, _, _, value, _),
+             let .image(_, _, value, _),
              let .gaussianBlur(_, _, _, _, _, value, _),
              let .offset(_, _, _, _, value, _),
              let .flood(_, _, value, _),
@@ -1957,12 +2102,14 @@ private struct SVGFilterDefinition {
     let primitives: [SVGFilterPrimitive]
     let fillPaint: SVGFilterColor
     let strokePaint: SVGFilterColor
+    let maxOutputPixels: Int
 }
 
 private struct SVGFilteredCanvas: View {
     let definition: SVGFilterDefinition
     let canvas: CGSize
     let drawSource: (CGContext, CGSize) -> Void
+    let renderFilterImages: @MainActor (CGSize, CGFloat) -> [String: CGImage]
     @Environment(\\.displayScale) private var displayScale
 
     var body: some View {
@@ -1978,6 +2125,7 @@ private struct SVGFilteredCanvas: View {
         guard size.width > 0, size.height > 0, canvas.width > 0, canvas.height > 0 else { return nil }
         let pixelWidth = max(1, Int((size.width * displayScale).rounded()))
         let pixelHeight = max(1, Int((size.height * displayScale).rounded()))
+        guard pixelWidth <= definition.maxOutputPixels / pixelHeight else { return nil }
         let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
         guard let graphics = CGContext(
             data: nil,
@@ -1992,7 +2140,12 @@ private struct SVGFilteredCanvas: View {
         graphics.scaleBy(x: displayScale, y: -displayScale)
         drawSource(graphics, size)
         guard let sourceImage = graphics.makeImage() else { return nil }
-        return SVGFilterBitmapRuntime.render(definition, sourceImage: sourceImage, canvas: canvas)
+        return SVGFilterBitmapRuntime.render(
+            definition,
+            sourceImage: sourceImage,
+            canvas: canvas,
+            filterImages: renderFilterImages(size, displayScale)
+        )
     }
 }
 
@@ -2024,25 +2177,30 @@ private struct SVGFilterPixelRect {
     }
 }
 
+private struct SVGFilterPixelRegion {
+    let x: CGFloat
+    let y: CGFloat
+    let width: CGFloat
+    let height: CGFloat
+}
+
+private struct SVGFilterStitchInfo {
+    var width: Int
+    var height: Int
+    var wrapX: Int
+    var wrapY: Int
+}
+
 private enum SVGFilterBitmapRuntime {
-    static func render(_ definition: SVGFilterDefinition, sourceImage: CGImage, canvas: CGSize) -> CGImage? {
-        guard let data = sourceImage.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return nil }
+    static func render(_ definition: SVGFilterDefinition, sourceImage: CGImage, canvas: CGSize, filterImages: [String: CGImage]) -> CGImage? {
         let width = sourceImage.width
         let height = sourceImage.height
-        var source = SVGFilterBitmap(width: width, height: height)
-        for y in 0..<height {
-            for x in 0..<width {
-                let byte = y * sourceImage.bytesPerRow + x * 4
-                let value = (y * width + x) * 4
-                source.values[value] = Float(bytes[byte]) / 255
-                source.values[value + 1] = Float(bytes[byte + 1]) / 255
-                source.values[value + 2] = Float(bytes[byte + 2]) / 255
-                source.values[value + 3] = Float(bytes[byte + 3]) / 255
-            }
-        }
+        guard width > 0, height > 0, width <= definition.maxOutputPixels / height,
+              let source = bitmap(sourceImage) else { return nil }
         let scaleX = CGFloat(width) / canvas.width
         let scaleY = CGFloat(height) / canvas.height
-        let output = apply(definition, source: source, scaleX: scaleX, scaleY: scaleY)
+        let images = filterImages.compactMapValues(bitmap)
+        let output = apply(definition, source: source, scaleX: scaleX, scaleY: scaleY, filterImages: images)
         let outputBytes = output.values.map { UInt8((min(1, max(0, $0)) * 255).rounded()) }
         let outputData = Data(outputBytes)
         guard let provider = CGDataProvider(data: outputData as CFData) else { return nil }
@@ -2062,11 +2220,29 @@ private enum SVGFilterBitmapRuntime {
         )
     }
 
-    private static func pixelRect(_ region: SVGFilterRegion, scaleX: CGFloat, scaleY: CGFloat, height: Int) -> SVGFilterPixelRect {
+    private static func bitmap(_ image: CGImage) -> SVGFilterBitmap? {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return nil }
+        var bytes = Array<UInt8>(repeating: 0, count: width * height * 4)
+        guard let context = CGContext(
+            data: &bytes,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return SVGFilterBitmap(width: width, height: height, values: bytes.map { Float($0) / 255 })
+    }
+
+    private static func pixelRect(_ region: SVGFilterRegion, scaleX: CGFloat, scaleY: CGFloat, width: Int, height: Int) -> SVGFilterPixelRect {
         SVGFilterPixelRect(
             minX: max(0, Int(floor(region.x * scaleX))),
             minY: max(0, Int(floor(region.y * scaleY))),
-            maxX: min(Int(ceil((region.x + region.width) * scaleX)), Int.max),
+            maxX: min(Int(ceil((region.x + region.width) * scaleX)), width),
             maxY: min(Int(ceil((region.y + region.height) * scaleY)), height)
         )
     }
@@ -2330,6 +2506,268 @@ private enum SVGFilterBitmapRuntime {
         return result
     }
 
+    private static func sampleBilinear(_ image: SVGFilterBitmap, x: CGFloat, y: CGFloat, edge: SVGFilterEdgeMode, bounds: SVGFilterPixelRect) -> [Float] {
+        let minX = Int(floor(x))
+        let minY = Int(floor(y))
+        let fractionX = Float(x - CGFloat(minX))
+        let fractionY = Float(y - CGFloat(minY))
+        return (0..<4).map { channel in
+            let top = sample(image, x: minX, y: minY, channel: channel, edge: edge, bounds: bounds) * (1 - fractionX)
+                + sample(image, x: minX + 1, y: minY, channel: channel, edge: edge, bounds: bounds) * fractionX
+            let bottom = sample(image, x: minX, y: minY + 1, channel: channel, edge: edge, bounds: bounds) * (1 - fractionX)
+                + sample(image, x: minX + 1, y: minY + 1, channel: channel, edge: edge, bounds: bounds) * fractionX
+            return clamped(top * (1 - fractionY) + bottom * fractionY)
+        }
+    }
+
+    private static func write(_ pixel: [Float], to image: inout SVGFilterBitmap, x: Int, y: Int) {
+        let index = (y * image.width + x) * 4
+        for channel in 0..<4 { image.values[index + channel] = pixel[channel] }
+    }
+
+    private static func convolve(_ image: SVGFilterBitmap, orderX: Int, orderY: Int, kernel: [Float], divisor: Float, bias: Float, targetX: Int, targetY: Int, edge: SVGFilterEdgeMode, unitX: CGFloat, unitY: CGFloat, preserveAlpha: Bool, bounds: SVGFilterPixelRect) -> SVGFilterBitmap {
+        guard orderX > 0, orderY > 0, kernel.count == orderX * orderY, divisor != 0 else { return image }
+        var result = SVGFilterBitmap(width: image.width, height: image.height)
+        for y in 0..<image.height {
+            for x in 0..<image.width {
+                var sums: [Float] = [0, 0, 0, 0]
+                for row in 0..<orderY {
+                    for column in 0..<orderX {
+                        var pixel = sampleBilinear(
+                            image,
+                            x: CGFloat(x) + CGFloat(column - targetX) * unitX,
+                            y: CGFloat(y) + CGFloat(row - targetY) * unitY,
+                            edge: edge,
+                            bounds: bounds
+                        )
+                        let weight = kernel[(orderY - row - 1) * orderX + orderX - column - 1]
+                        if preserveAlpha {
+                            let alpha = clamped(pixel[3])
+                            if alpha > 0 {
+                                pixel[0] = clamped(pixel[0] / alpha)
+                                pixel[1] = clamped(pixel[1] / alpha)
+                                pixel[2] = clamped(pixel[2] / alpha)
+                            } else {
+                                pixel[0] = 0; pixel[1] = 0; pixel[2] = 0
+                            }
+                        }
+                        for channel in 0..<4 { sums[channel] += pixel[channel] * weight }
+                    }
+                }
+                let index = (y * image.width + x) * 4
+                if preserveAlpha {
+                    let alpha = clamped(image.values[index + 3])
+                    write([
+                        clamped(sums[0] / divisor + bias) * alpha,
+                        clamped(sums[1] / divisor + bias) * alpha,
+                        clamped(sums[2] / divisor + bias) * alpha,
+                        alpha,
+                    ], to: &result, x: x, y: y)
+                } else {
+                    var channels = sums.map { clamped($0 / divisor + bias) }
+                    let alpha = channels[3]
+                    channels[0] = min(alpha, channels[0])
+                    channels[1] = min(alpha, channels[1])
+                    channels[2] = min(alpha, channels[2])
+                    write(channels, to: &result, x: x, y: y)
+                }
+            }
+        }
+        return result
+    }
+
+    private static func morphology(_ image: SVGFilterBitmap, operation: SVGFilterMorphologyOperator, radiusX: CGFloat, radiusY: CGFloat) -> SVGFilterBitmap {
+        guard radiusX > 0, radiusY > 0 else { return image }
+        var result = SVGFilterBitmap(width: image.width, height: image.height)
+        let minX = Int(ceil(-radiusX)); let maxX = Int(floor(radiusX))
+        let minY = Int(ceil(-radiusY)); let maxY = Int(floor(radiusY))
+        for y in 0..<image.height {
+            for x in 0..<image.width {
+                var channels: [Float] = Array(repeating: operation == .erode ? 1 : 0, count: 4)
+                for offsetY in minY...maxY {
+                    for offsetX in minX...maxX {
+                        for channel in 0..<4 {
+                            let value = image.component(x + offsetX, y + offsetY, channel)
+                            channels[channel] = operation == .erode ? min(channels[channel], value) : max(channels[channel], value)
+                        }
+                    }
+                }
+                let alpha = channels[3]
+                channels[0] = min(alpha, channels[0]); channels[1] = min(alpha, channels[1]); channels[2] = min(alpha, channels[2])
+                write(channels, to: &result, x: x, y: y)
+            }
+        }
+        return result
+    }
+
+    private static func displacement(_ source: SVGFilterBitmap, map: SVGFilterBitmap, a: CGFloat, b: CGFloat, c: CGFloat, d: CGFloat, xChannel: SVGFilterChannel, yChannel: SVGFilterChannel) -> SVGFilterBitmap {
+        var result = SVGFilterBitmap(width: source.width, height: source.height)
+        let bounds = SVGFilterPixelRect(minX: 0, minY: 0, maxX: source.width, maxY: source.height)
+        for y in 0..<source.height {
+            for x in 0..<source.width {
+                let index = (y * map.width + x) * 4
+                let alpha = clamped(map.values[index + 3])
+                let xValue = alpha > 0 ? clamped(map.values[index + xChannel.index] / alpha) : 0
+                let yValue = alpha > 0 ? clamped(map.values[index + yChannel.index] / alpha) : 0
+                write(sampleBilinear(
+                    source,
+                    x: CGFloat(x) + a * CGFloat(xValue - 0.5) + c * CGFloat(yValue - 0.5),
+                    y: CGFloat(y) + b * CGFloat(xValue - 0.5) + d * CGFloat(yValue - 0.5),
+                    edge: .none,
+                    bounds: bounds
+                ), to: &result, x: x, y: y)
+            }
+        }
+        return result
+    }
+
+    private static func positiveModulo(_ value: CGFloat, _ modulus: CGFloat) -> CGFloat {
+        let remainder = value.truncatingRemainder(dividingBy: modulus)
+        return remainder < 0 ? remainder + modulus : remainder
+    }
+
+    private static func tile(_ image: SVGFilterBitmap, input: SVGFilterPixelRegion, output: SVGFilterPixelRegion) -> SVGFilterBitmap {
+        var result = SVGFilterBitmap(width: image.width, height: image.height)
+        guard input.width > 0, input.height > 0 else { return result }
+        let bounds = SVGFilterPixelRect(minX: 0, minY: 0, maxX: image.width, maxY: image.height)
+        let startX = max(0, Int(floor(output.x))); let endX = min(image.width, Int(ceil(output.x + output.width)))
+        let startY = max(0, Int(floor(output.y))); let endY = min(image.height, Int(ceil(output.y + output.height)))
+        guard startX < endX, startY < endY else { return result }
+        for y in startY..<endY {
+            for x in startX..<endX {
+                let sourceX = input.x + positiveModulo(CGFloat(x) + 0.5 - input.x, input.width) - 0.5
+                let sourceY = input.y + positiveModulo(CGFloat(y) + 0.5 - input.y, input.height) - 0.5
+                write(sampleBilinear(image, x: sourceX, y: sourceY, edge: .none, bounds: bounds), to: &result, x: x, y: y)
+            }
+        }
+        return result
+    }
+
+    private final class TurbulenceGenerator {
+        private static let latticeSize = 256
+        private static let mask = 255
+        private static let perlinN = 4096
+        private var lattice = Array(repeating: 0, count: 514)
+        private var gradients = Array(repeating: Array(repeating: (CGFloat(0), CGFloat(0)), count: 514), count: 4)
+
+        init(seed: Int) {
+            var random = Self.setupSeed(seed)
+            var index = 0
+            for channel in 0..<4 {
+                for item in 0..<Self.latticeSize {
+                    index = item
+                    lattice[item] = item
+                    var x: CGFloat = 0; var y: CGFloat = 0; var length: CGFloat = 0
+                    repeat {
+                        random = Self.nextRandom(random)
+                        x = CGFloat(random % 512 - 256) / 256
+                        random = Self.nextRandom(random)
+                        y = CGFloat(random % 512 - 256) / 256
+                        length = hypot(x, y)
+                    } while length == 0
+                    gradients[channel][item] = (x / length, y / length)
+                }
+            }
+            index = Self.latticeSize
+            while index > 1 {
+                index -= 1
+                random = Self.nextRandom(random)
+                lattice.swapAt(index, random % Self.latticeSize)
+            }
+            for item in 0..<(Self.latticeSize + 2) {
+                lattice[Self.latticeSize + item] = lattice[item]
+                for channel in 0..<4 { gradients[channel][Self.latticeSize + item] = gradients[channel][item] }
+            }
+        }
+
+        private static func setupSeed(_ value: Int) -> Int {
+            if value <= 0 { return -(value % 2_147_483_646) + 1 }
+            return min(value, 2_147_483_646)
+        }
+
+        private static func nextRandom(_ value: Int) -> Int {
+            var result = 16_807 * (value % 127_773) - 2_836 * (value / 127_773)
+            if result <= 0 { result += 2_147_483_647 }
+            return result
+        }
+
+        private func noise(_ channel: Int, _ x: CGFloat, _ y: CGFloat, _ stitch: SVGFilterStitchInfo?) -> CGFloat {
+            var bx0 = Int(x + CGFloat(Self.perlinN)); var bx1 = bx0 + 1
+            let rx0 = x + CGFloat(Self.perlinN - bx0); let rx1 = rx0 - 1
+            var by0 = Int(y + CGFloat(Self.perlinN)); var by1 = by0 + 1
+            let ry0 = y + CGFloat(Self.perlinN - by0); let ry1 = ry0 - 1
+            if let stitch {
+                if bx0 >= stitch.wrapX { bx0 -= stitch.width }; if bx1 >= stitch.wrapX { bx1 -= stitch.width }
+                if by0 >= stitch.wrapY { by0 -= stitch.height }; if by1 >= stitch.wrapY { by1 -= stitch.height }
+            }
+            bx0 &= Self.mask; bx1 &= Self.mask; by0 &= Self.mask; by1 &= Self.mask
+            let i = lattice[bx0]; let j = lattice[bx1]
+            let b00 = lattice[i + by0]; let b10 = lattice[j + by0]
+            let b01 = lattice[i + by1]; let b11 = lattice[j + by1]
+            func curve(_ value: CGFloat) -> CGFloat { value * value * (3 - 2 * value) }
+            func dot(_ gradient: (CGFloat, CGFloat), _ dx: CGFloat, _ dy: CGFloat) -> CGFloat { dx * gradient.0 + dy * gradient.1 }
+            let sx = curve(rx0); let sy = curve(ry0)
+            let top = dot(gradients[channel][b00], rx0, ry0) + sx * (dot(gradients[channel][b10], rx1, ry0) - dot(gradients[channel][b00], rx0, ry0))
+            let bottom = dot(gradients[channel][b01], rx0, ry1) + sx * (dot(gradients[channel][b11], rx1, ry1) - dot(gradients[channel][b01], rx0, ry1))
+            return top + sy * (bottom - top)
+        }
+
+        func sample(channel: Int, x pointX: CGFloat, y pointY: CGFloat, frequencyX inputFrequencyX: CGFloat, frequencyY inputFrequencyY: CGFloat, octaves: Int, fractalNoise: Bool, stitchTiles: Bool, tile: SVGFilterRegion) -> Float {
+            var frequencyX = inputFrequencyX; var frequencyY = inputFrequencyY
+            var stitch: SVGFilterStitchInfo?
+            if stitchTiles && tile.width > 0 && tile.height > 0 {
+                func adjusted(_ frequency: CGFloat, _ size: CGFloat) -> CGFloat {
+                    guard frequency != 0 else { return 0 }
+                    let low = floor(size * frequency) / size; let high = ceil(size * frequency) / size
+                    return low > 0 && frequency / low < high / frequency ? low : high
+                }
+                frequencyX = adjusted(frequencyX, tile.width); frequencyY = adjusted(frequencyY, tile.height)
+                let width = Int(tile.width * frequencyX + 0.5); let height = Int(tile.height * frequencyY + 0.5)
+                stitch = SVGFilterStitchInfo(
+                    width: width,
+                    height: height,
+                    wrapX: Int(tile.x * frequencyX) + Self.perlinN + width,
+                    wrapY: Int(tile.y * frequencyY) + Self.perlinN + height
+                )
+            }
+            var x = pointX * frequencyX; var y = pointY * frequencyY
+            var ratio: CGFloat = 1; var sum: CGFloat = 0
+            for _ in 0..<octaves {
+                let value = noise(channel, x, y, stitch)
+                sum += (fractalNoise ? value : abs(value)) / ratio
+                x *= 2; y *= 2; ratio *= 2
+                if stitch != nil {
+                    stitch!.width *= 2; stitch!.wrapX = 2 * stitch!.wrapX - Self.perlinN
+                    stitch!.height *= 2; stitch!.wrapY = 2 * stitch!.wrapY - Self.perlinN
+                }
+            }
+            return clamped(Float(fractalNoise ? (sum + 1) / 2 : sum))
+        }
+    }
+
+    private static func turbulence(width: Int, height: Int, baseFrequencyX: CGFloat, baseFrequencyY: CGFloat, octaves: Int, seed: Int, stitch: Bool, fractalNoise: Bool, region: SVGFilterRegion, scaleX: CGFloat, scaleY: CGFloat) -> SVGFilterBitmap {
+        var result = SVGFilterBitmap(width: width, height: height)
+        let generator = TurbulenceGenerator(seed: seed)
+        for y in 0..<height {
+            for x in 0..<width {
+                let channels = (0..<4).map { channel in generator.sample(
+                    channel: channel,
+                    x: CGFloat(x) / scaleX,
+                    y: CGFloat(y) / scaleY,
+                    frequencyX: baseFrequencyX,
+                    frequencyY: baseFrequencyY,
+                    octaves: octaves,
+                    fractalNoise: fractalNoise,
+                    stitchTiles: stitch,
+                    tile: region
+                ) }
+                let alpha = channels[3]
+                write([channels[0] * alpha, channels[1] * alpha, channels[2] * alpha, alpha], to: &result, x: x, y: y)
+            }
+        }
+        return result
+    }
+
     private static func gaussianKernel(_ sigma: CGFloat) -> [Float] {
         guard sigma > 0 else { return [1] }
         let radius = max(1, Int(ceil(sigma * 3)))
@@ -2422,14 +2860,15 @@ private enum SVGFilterBitmapRuntime {
         return result
     }
 
-    private static func apply(_ definition: SVGFilterDefinition, source unboundedSource: SVGFilterBitmap, scaleX: CGFloat, scaleY: CGFloat) -> SVGFilterBitmap {
-        let filterRect = pixelRect(definition.region, scaleX: scaleX, scaleY: scaleY, height: unboundedSource.height)
+    private static func apply(_ definition: SVGFilterDefinition, source unboundedSource: SVGFilterBitmap, scaleX: CGFloat, scaleY: CGFloat, filterImages: [String: SVGFilterBitmap]) -> SVGFilterBitmap {
+        let filterRect = pixelRect(definition.region, scaleX: scaleX, scaleY: scaleY, width: unboundedSource.width, height: unboundedSource.height)
         let source = cropped(unboundedSource, to: filterRect)
         let sourceAlpha = alpha(source)
         let transparent = SVGFilterBitmap(width: source.width, height: source.height)
         let fillPaint = cropped(constant(definition.fillPaint, width: source.width, height: source.height), to: filterRect)
         let strokePaint = cropped(constant(definition.strokePaint, width: source.width, height: source.height), to: filterRect)
         var results: [SVGFilterBitmap] = []
+        var resultRegions: [SVGFilterPixelRect] = []
 
         func input(_ value: SVGFilterInput) -> SVGFilterBitmap {
             switch value {
@@ -2442,9 +2881,16 @@ private enum SVGFilterBitmapRuntime {
             }
         }
 
+        func inputRegion(_ value: SVGFilterInput) -> SVGFilterPixelRect {
+            if case let .result(index) = value, resultRegions.indices.contains(index) {
+                return resultRegions[index]
+            }
+            return filterRect
+        }
+
         for primitive in definition.primitives {
             let linear = primitive.linearRGB
-            let region = pixelRect(primitive.region, scaleX: scaleX, scaleY: scaleY, height: source.height)
+            let region = pixelRect(primitive.region, scaleX: scaleX, scaleY: scaleY, width: source.width, height: source.height)
             let output: SVGFilterBitmap
             switch primitive {
             case let .blend(value, value2, mode, _, _, _):
@@ -2465,8 +2911,68 @@ private enum SVGFilterBitmapRuntime {
                     linear: linear,
                     encode: true
                 )
+            case let .convolveMatrix(value, orderX, orderY, kernel, divisor, bias, targetX, targetY, edge, unitX, unitY, preserveAlpha, _, _, _):
+                let working = converted(input(value), linear: linear, encode: false)
+                output = converted(convolve(
+                    working,
+                    orderX: orderX,
+                    orderY: orderY,
+                    kernel: kernel,
+                    divisor: divisor,
+                    bias: bias,
+                    targetX: targetX,
+                    targetY: targetY,
+                    edge: edge,
+                    unitX: unitX.map { $0 * scaleX } ?? 1,
+                    unitY: unitY.map { $0 * scaleY } ?? 1,
+                    preserveAlpha: preserveAlpha,
+                    bounds: inputRegion(value)
+                ), linear: linear, encode: true)
+            case let .morphology(value, operation, radiusX, radiusY, _, _, _):
+                let working = converted(input(value), linear: linear, encode: false)
+                output = converted(morphology(working, operation: operation, radiusX: radiusX * scaleX, radiusY: radiusY * scaleY), linear: linear, encode: true)
+            case let .displacementMap(value, value2, a, b, c, d, xChannel, yChannel, _, _, _):
+                let map = converted(input(value2), linear: linear, encode: false)
+                output = displacement(
+                    input(value),
+                    map: map,
+                    a: a * scaleX,
+                    b: b * scaleY,
+                    c: c * scaleX,
+                    d: d * scaleY,
+                    xChannel: xChannel,
+                    yChannel: yChannel
+                )
+            case let .tile(value, tileRegion, _, _, _):
+                output = tile(
+                    input(value),
+                    input: SVGFilterPixelRegion(x: tileRegion.x * scaleX, y: tileRegion.y * scaleY, width: tileRegion.width * scaleX, height: tileRegion.height * scaleY),
+                    output: SVGFilterPixelRegion(x: primitive.region.x * scaleX, y: primitive.region.y * scaleY, width: primitive.region.width * scaleX, height: primitive.region.height * scaleY)
+                )
+            case let .turbulence(baseFrequencyX, baseFrequencyY, octaves, seed, stitch, fractalNoise, primitiveRegion, _, _):
+                let generated = turbulence(
+                    width: source.width,
+                    height: source.height,
+                    baseFrequencyX: baseFrequencyX,
+                    baseFrequencyY: baseFrequencyY,
+                    octaves: octaves,
+                    seed: seed,
+                    stitch: stitch,
+                    fractalNoise: fractalNoise,
+                    region: SVGFilterRegion(
+                        x: 0,
+                        y: 0,
+                        width: primitiveRegion.width * scaleX,
+                        height: primitiveRegion.height * scaleY
+                    ),
+                    scaleX: scaleX,
+                    scaleY: scaleY
+                )
+                output = converted(generated, linear: linear, encode: true)
+            case let .image(key, _, _, _):
+                output = filterImages[key] ?? transparent
             case let .gaussianBlur(value, sigmaX, sigmaY, edge, _, _, _):
-                output = converted(blur(converted(input(value), linear: linear, encode: false), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: edge, bounds: region), linear: linear, encode: true)
+                output = converted(blur(converted(input(value), linear: linear, encode: false), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: edge, bounds: inputRegion(value)), linear: linear, encode: true)
             case let .offset(value, dx, dy, _, _, _):
                 output = offset(input(value), dx: dx * scaleX, dy: dy * scaleY)
             case let .flood(color, _, _, _):
@@ -2476,7 +2982,7 @@ private enum SVGFilterBitmapRuntime {
                 for value in inputs { merged = over(input(value), merged) }
                 output = merged
             case let .dropShadow(value, sigmaX, sigmaY, dx, dy, color, _, _, _):
-                let shadowAlpha = offset(blur(alpha(input(value)), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: .none, bounds: region), dx: dx * scaleX, dy: dy * scaleY)
+                let shadowAlpha = offset(blur(alpha(input(value)), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: .none, bounds: inputRegion(value)), dx: dx * scaleX, dy: dy * scaleY)
                 var shadow = constant(color, width: source.width, height: source.height)
                 for index in stride(from: 0, to: shadow.values.count, by: 4) {
                     let mask = shadowAlpha.values[index + 3]
@@ -2490,6 +2996,7 @@ private enum SVGFilterBitmapRuntime {
                 output = input(value)
             }
             results.append(cropped(output, to: region))
+            resultRegions.append(region)
         }
         return cropped(results.last ?? source, to: filterRect)
     }
@@ -2597,6 +3104,85 @@ function createImageHelper(
   return body;
 }
 
+function createFilterImageHelper(helper: FilterImageHelper, indentationSize: number): string[] {
+  const indentation = " ".repeat(indentationSize);
+  const i2 = indentation.repeat(2);
+  const i3 = indentation.repeat(3);
+  const i4 = indentation.repeat(4);
+  const primitive = helper.primitive;
+  const resource = primitive.image.resource!;
+  const canvas = helper.canvas;
+  const isLocal = primitive.image.localElementId !== undefined;
+  const intrinsic =
+    resource.type === "raster"
+      ? (resource.intrinsicSize ?? { width: primitive.subregion.width, height: primitive.subregion.height })
+      : { width: resource.document.viewport.width, height: resource.document.viewport.height };
+  const preserveAspectRatio =
+    resource.type === "svg" && primitive.image.preserveAspectRatio.defer && resource.hasReferencedPreserveAspectRatio
+      ? resource.referencedPreserveAspectRatio
+      : primitive.image.preserveAspectRatio;
+  const placement = isLocal
+    ? (primitive.image.contentTransform ?? { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
+    : viewBoxTransform(
+        { x: 0, y: 0, width: intrinsic.width, height: intrinsic.height },
+        primitive.subregion,
+        preserveAspectRatio,
+      );
+  const drawRect =
+    resource.type === "svg" && isLocal
+      ? resource.document.viewport.viewBox
+      : { x: 0, y: 0, width: intrinsic.width, height: intrinsic.height };
+  const body = [
+    `private struct ${helper.name}: View {`,
+    `${indentation}var body: some View {`,
+    `${i2}Canvas { context, size in`,
+    `${i3}guard size.width > 0, size.height > 0 else { return }`,
+    `${i3}let viewport = CGAffineTransform(a: size.width / ${formatNumber(canvas.width)}, b: 0, c: 0, d: size.height / ${formatNumber(canvas.height)}, tx: ${formatNumber(-canvas.x)} * size.width / ${formatNumber(canvas.width)}, ty: ${formatNumber(-canvas.y)} * size.height / ${formatNumber(canvas.height)})`,
+    `${i3}context.transform = viewport`,
+    `${i3}context.clip(to: Path(CGRect(x: ${formatNumber(primitive.subregion.x)}, y: ${formatNumber(primitive.subregion.y)}, width: ${formatNumber(primitive.subregion.width)}, height: ${formatNumber(primitive.subregion.height)})))`,
+    `${i3}context.transform = context.transform.concatenating(${swiftTransform(placement)})`,
+  ];
+  if (resource.type === "svg") {
+    body.push(
+      `${i3}if let image = context.resolveSymbol(id: 0) {`,
+      `${i4}context.draw(image, in: CGRect(x: ${formatNumber(drawRect.x)}, y: ${formatNumber(drawRect.y)}, width: ${formatNumber(drawRect.width)}, height: ${formatNumber(drawRect.height)}))`,
+      `${i3}}`,
+      `${i2}} symbols: {`,
+      `${i3}${helper.subdocumentName!}()`,
+      `${i3}.frame(width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)})`,
+      `${i3}.tag(0)`,
+      `${i2}}`,
+    );
+  } else if (resource.assetName) {
+    body.push(
+      `${i3}let image = context.resolve(Image(${swiftString(resource.assetName)}))`,
+      `${i3}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
+      `${i2}}`,
+    );
+  } else {
+    body.push(
+      `${i3}if let source = Self.embeddedImage {`,
+      `${i4}context.draw(context.resolve(source), in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
+      `${i3}}`,
+      `${i2}}`,
+    );
+  }
+  body.push(`${indentation}}`);
+  if (resource.type === "raster" && resource.bytes) {
+    body.push(
+      "",
+      `${indentation}private static let embeddedImage: Image? = {`,
+      `${i2}guard let data = Data(base64Encoded: ${swiftString(base64(resource.bytes))}),`,
+      `${i2}${indentation}let source = CGImageSourceCreateWithData(data as CFData, nil),`,
+      `${i2}${indentation}let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }`,
+      `${i2}return Image(decorative: image, scale: 1, orientation: .up)`,
+      `${indentation}}()`,
+    );
+  }
+  body.push("}");
+  return body;
+}
+
 function gradientSupport(indentationSize: number): string[] {
   const indentation = " ".repeat(indentationSize);
   return [
@@ -2683,6 +3269,7 @@ function createView(
   helpers: ShapeHelper[],
   textHelpers: ViewBuildContext["textHelpers"],
   imageHelpers: ViewBuildContext["imageHelpers"],
+  filterImageHelpers: ViewBuildContext["filterImageHelpers"],
   coordinateSpace: ViewBoxData,
   document: RenderDocument,
   indentationSize: number,
@@ -2715,6 +3302,7 @@ function createView(
   for (const helper of textHelpers)
     body.push("", ...createTextHelper(helper, coordinateSpace, document, indentationSize));
   for (const helper of imageHelpers) body.push("", ...createImageHelper(helper, coordinateSpace, indentationSize));
+  for (const helper of filterImageHelpers) body.push("", ...createFilterImageHelper(helper, indentationSize));
   if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
   if (containsFilterNode(nodes)) body.push("", ...filterSupport(indentationSize));
   return createStructTemplate({
@@ -2769,6 +3357,7 @@ export function generateView(
     activePatterns: new Set(),
     textHelpers: [],
     imageHelpers: [],
+    filterImageHelpers: [],
     subdocuments: [],
     rootName: config.structName ?? "SVGView",
     config,
@@ -2784,6 +3373,14 @@ export function generateView(
     imports.add("Foundation");
     imports.add("ImageIO");
   }
+  if (
+    context.filterImageHelpers.some(
+      (helper) => helper.primitive.image.resource?.type === "raster" && helper.primitive.image.resource.bytes,
+    )
+  ) {
+    imports.add("Foundation");
+    imports.add("ImageIO");
+  }
   if (context.textHelpers.length > 0 || context.imageHelpers.length > 0) imports.add("SwiftUI");
   return {
     lines: [
@@ -2795,6 +3392,7 @@ export function generateView(
         context.helpers,
         context.textHelpers,
         context.imageHelpers,
+        context.filterImageHelpers,
         document.viewport.coordinateSpace,
         document,
         indentationSize,

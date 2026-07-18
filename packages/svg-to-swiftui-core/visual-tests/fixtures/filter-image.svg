@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60">
+  <defs>
+    <g id="local"><rect width="20" height="20" rx="5" fill="#7e57c2"/><circle cx="10" cy="10" r="5" fill="#fff"/></g>
+    <filter id="images" x="0" y="0" width="120" height="60" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feImage href="#local" x="5" y="5" width="30" height="50" preserveAspectRatio="xMidYMid meet" result="localImage"/>
+      <feImage href="../assets/nested-image.svg" x="45" y="5" width="30" height="50" preserveAspectRatio="xMidYMid slice" result="svgImage"/>
+      <feImage href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgQIAZcfRzQAAAABJRU5ErkJggg==" x="85" y="5" width="30" height="50" preserveAspectRatio="none" result="rasterImage"/>
+      <feMerge><feMergeNode in="localImage"/><feMergeNode in="svgImage"/><feMergeNode in="rasterImage"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="120" height="60" fill="#102027" filter="url(#images)"/>
+</svg>
