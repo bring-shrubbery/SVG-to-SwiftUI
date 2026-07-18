@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120">
+  <rect width="300" height="120" fill="#f8fafc"/>
+  <path d="M15 45H285M15 85H285" stroke="#cbd5e1"/>
+  <text x="25 75 125 175 225" y="45 52 45 52 45" dx="0 2 -2 3 0" rotate="-8 5 -4 7 0" font-family="Poppins" font-size="30" font-weight="700" fill="#1d4ed8">Swift</text>
+  <text x="25" y="91" dx="0 2 4 6" rotate="0 8" font-family="Poppins" font-size="21" font-style="italic" fill="#9f1239">A&#x301;BCD</text>
+</svg>
