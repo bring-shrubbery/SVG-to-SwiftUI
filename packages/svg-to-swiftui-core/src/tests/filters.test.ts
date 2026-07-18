@@ -110,7 +110,6 @@ describe("SVG filter graph and common primitives", () => {
         "invalid-filter-edge-mode",
         "unknown-filter-input",
         "unsupported-filter-background-input",
-        "unsupported-filter-primitive",
       ]),
     );
     const target = filtered(`
@@ -122,9 +121,10 @@ describe("SVG filter graph and common primitives", () => {
       <rect width="10" height="10" filter="url(#f)"/></svg>
     `);
     expect(binary.filter?.primitives[0]).toMatchObject({
-      type: "passthrough",
+      type: "composite",
       input: { type: "sourceAlpha" },
       input2: { type: "fillPaint" },
+      operator: "over",
     });
   });
 

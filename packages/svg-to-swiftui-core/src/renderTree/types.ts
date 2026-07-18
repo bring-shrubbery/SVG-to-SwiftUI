@@ -109,6 +109,23 @@ export type SVGBlendMode =
   | "color"
   | "luminosity";
 
+export type FilterBlendMode = SVGBlendMode;
+export type FilterCompositeOperator = "over" | "in" | "out" | "atop" | "xor" | "lighter" | "arithmetic";
+
+export type FilterComponentTransferFunction =
+  | { type: "identity" }
+  | { type: "table"; values: number[] }
+  | { type: "discrete"; values: number[] }
+  | { type: "linear"; slope: number; intercept: number }
+  | { type: "gamma"; amplitude: number; exponent: number; offset: number };
+
+export type FilterComponentTransferFunctions = [
+  FilterComponentTransferFunction,
+  FilterComponentTransferFunction,
+  FilterComponentTransferFunction,
+  FilterComponentTransferFunction,
+];
+
 export interface NodeCoordinateContext {
   viewport: { width: number; height: number };
   rootViewport: { width: number; height: number };
@@ -173,6 +190,28 @@ interface FilterPrimitiveSpecBase {
 
 export type FilterPrimitiveSpec =
   | (FilterPrimitiveSpecBase & {
+      type: "blend";
+      input: FilterInput;
+      input2: FilterInput;
+      mode: FilterBlendMode;
+    })
+  | (FilterPrimitiveSpecBase & { type: "colorMatrix"; input: FilterInput; matrix: number[] })
+  | (FilterPrimitiveSpecBase & {
+      type: "componentTransfer";
+      input: FilterInput;
+      functions: FilterComponentTransferFunctions;
+    })
+  | (FilterPrimitiveSpecBase & {
+      type: "composite";
+      input: FilterInput;
+      input2: FilterInput;
+      operator: FilterCompositeOperator;
+      k1: number;
+      k2: number;
+      k3: number;
+      k4: number;
+    })
+  | (FilterPrimitiveSpecBase & {
       type: "gaussianBlur";
       input: FilterInput;
       stdDeviationX: number;
@@ -202,6 +241,28 @@ interface FilterPrimitiveBase {
 }
 
 export type FilterPrimitive =
+  | (FilterPrimitiveBase & {
+      type: "blend";
+      input: FilterInput;
+      input2: FilterInput;
+      mode: FilterBlendMode;
+    })
+  | (FilterPrimitiveBase & { type: "colorMatrix"; input: FilterInput; matrix: number[] })
+  | (FilterPrimitiveBase & {
+      type: "componentTransfer";
+      input: FilterInput;
+      functions: FilterComponentTransferFunctions;
+    })
+  | (FilterPrimitiveBase & {
+      type: "composite";
+      input: FilterInput;
+      input2: FilterInput;
+      operator: FilterCompositeOperator;
+      k1: number;
+      k2: number;
+      k3: number;
+      k4: number;
+    })
   | (FilterPrimitiveBase & {
       type: "gaussianBlur";
       input: FilterInput;
