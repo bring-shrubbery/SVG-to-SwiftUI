@@ -1,6 +1,7 @@
 import type { ElementNode } from "svg-parser";
 import { parse } from "svg-parser";
 import { parseOpacity } from "../colorUtils";
+import { foreignObjectKey, foreignObjectSnapshotDocument } from "../foreignObjects";
 import {
   defaultFontMetrics,
   type FontMetrics,
@@ -41,6 +42,7 @@ import type {
   PatternPaint,
   RenderDiagnostic,
   RenderDocument,
+  RenderForeignObject,
   RenderGroup,
   RenderImage,
   RenderNode,
@@ -1696,6 +1698,62 @@ function buildImage(
   };
 }
 
+function buildForeignObject(
+  element: ElementNode,
+  resolved: ReturnType<typeof resolvedPresentation>,
+  coordinate: CoordinateContext,
+  context: BuildContext,
+): RenderForeignObject {
+  const viewport = viewportRect(element, coordinate, context, { width: 0, height: 0 }, resolved);
+  const key = foreignObjectKey(element, context.resources.parents);
+  const snapshot = foreignObjectSnapshotDocument(element, context.resources.parents, viewport, resolved.effective);
+  const prepared = context.config.__foreignObjectSnapshots?.get(key);
+
+  if (!context.config.__preparingForeignObjects && viewport.width > 0 && viewport.height > 0) {
+    if (prepared) {
+      for (const diagnostic of prepared.diagnostics)
+        addDiagnostic(context, element, diagnostic.code, diagnostic.message);
+    } else {
+      addDiagnostic(
+        context,
+        element,
+        "foreign-object-requires-async-conversion",
+        "Static foreignObject content requires convertAsync() with a foreignObjectRenderer adapter; the content was omitted.",
+      );
+    }
+  }
+
+  const filter = String(resolved.effective.filter ?? "none").trim();
+  if (!context.config.__preparingForeignObjects && filter.toLowerCase() !== "none")
+    addDiagnostic(
+      context,
+      element,
+      "foreign-object-filter-deferred",
+      `foreignObject filter '${filter}' is retained for the filter runtime in issues #67-#71 but is not applied yet.`,
+      resolved.provenance.filter,
+    );
+
+  return {
+    type: "foreignObject",
+    key,
+    viewport,
+    snapshotDocument: snapshot.document,
+    ...(snapshot.accessibilityLabel ? { accessibilityLabel: snapshot.accessibilityLabel } : {}),
+    snapshotScale: prepared?.scale ?? context.config.foreignObjects?.scale ?? 1,
+    ...(prepared?.resource ? { resource: prepared.resource } : {}),
+    filter,
+    attributes: { ...(element.properties ?? {}) } as Record<string, string | number>,
+    style: resolved.style,
+    transform: computedTransform(element, resolved, context),
+    source: sourceLocation(element),
+    paintContext: {
+      viewport: { ...coordinate.viewport },
+      rootViewport: { ...coordinate.rootViewport },
+      fontMetrics: { ...resolved.fontMetrics },
+    },
+  };
+}
+
 function safeViewBox(element: ElementNode, context: BuildContext): ViewBoxData | undefined {
   try {
     return parseViewBox(element.properties?.viewBox);
@@ -1995,6 +2053,9 @@ function buildNode(
   }
   if (tag === "image") {
     return [buildImage(element, resolved, coordinate, context)];
+  }
+  if (tag === "foreignObject") {
+    return [buildForeignObject(element, resolved, coordinate, context)];
   }
   addDiagnostic(context, element, "unsupported-element", `Element <${tag}> is not supported by the current renderer.`);
   return [];

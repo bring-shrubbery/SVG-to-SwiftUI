@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+  <rect x="4" y="4" width="120" height="56" rx="8" fill="#e8f4ff" stroke="#3478a8" stroke-width="2"/>
+  <foreignObject x="14" y="10" width="100" height="44">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;color:#123b56;font:12px/15px Helvetica">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(38,160,210,.55);box-shadow:inset 0 0 0 5px rgba(255,255,255,.55)"></div>
+      <div><strong>Transparent</strong><br/><span style="font-size:9px;color:#4b7187">nested grid layout</span></div>
+    </div>
+  </foreignObject>
+</svg>

@@ -348,7 +348,7 @@ export function renderNodeBounds(node: RenderNode, parent = IDENTITY_TRANSFORM):
     }
     return bounds;
   }
-  if (node.type === "image") {
+  if (node.type === "image" || node.type === "foreignObject") {
     if (hidden(node.style.visibility) || !node.resource || node.viewport.width <= 0 || node.viewport.height <= 0)
       return undefined;
     let bounds: RenderBounds | undefined = transformedRect(

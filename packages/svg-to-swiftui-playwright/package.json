@@ -1,0 +1,42 @@
+{
+  "name": "@svg-to-swiftui/playwright",
+  "version": "0.1.0",
+  "description": "Secure conversion-time Chromium renderer for SVG foreignObject snapshots.",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --minify --external playwright",
+    "dev": "tsup src/index.ts --watch --format esm,cjs --dts --external playwright",
+    "clean": "rm -rf .turbo node_modules dist",
+    "test": "jest",
+    "lint": "biome check .",
+    "format": "biome format .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "1.51.1",
+    "pngjs": "^7.0.0"
+  },
+  "peerDependencies": {
+    "svg-to-swiftui-core": ">=0.4.0"
+  },
+  "devDependencies": {
+    "@svg-to-swiftui/tsconfig": "workspace:*",
+    "@swc/core": "^1.15.18",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.3.0",
+    "@types/pngjs": "^6.0.5",
+    "jest": "^30.2.0",
+    "svg-to-swiftui-core": "workspace:*",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}

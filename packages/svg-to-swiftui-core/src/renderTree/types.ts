@@ -454,8 +454,35 @@ export interface RenderImage {
   mask?: MaskInstance;
 }
 
+export interface RenderForeignObject {
+  type: "foreignObject";
+  /** Stable structural identity used to join the preflight snapshot to the final render tree. */
+  key: string;
+  viewport: ViewBoxData;
+  snapshotDocument: string;
+  accessibilityLabel?: string;
+  snapshotScale: number;
+  resource?: {
+    type: "raster";
+    bytes?: Uint8Array;
+    mimeType: "image/png";
+    canonicalURL: string;
+    assetName?: string;
+    intrinsicSize: { width: number; height: number };
+  };
+  /** Retained until the filter runtime lands in issues #67-#71. */
+  filter: string;
+  attributes: Readonly<Record<string, string | number>>;
+  style: ComputedStyle;
+  transform: AffineTransform;
+  source: SourceLocation;
+  paintContext: NodeCoordinateContext;
+  clipPath?: ClipPathInstance;
+  mask?: MaskInstance;
+}
+
 /** The union is intentionally extensible for clip, mask, filter, marker, and foreign-object nodes. */
-export type RenderNode = RenderGroup | RenderShape | RenderText | RenderImage;
+export type RenderNode = RenderGroup | RenderShape | RenderText | RenderImage | RenderForeignObject;
 
 export interface ResourceRegistry {
   definitions: Map<string, ElementNode>;

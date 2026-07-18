@@ -24,6 +24,66 @@ export interface SwiftUIGeneratorConfig {
   };
   /** Deterministic resource loading. The default embeddedOnly policy performs no filesystem or network I/O. */
   resources?: ResourceConfiguration;
+  /** Conversion-time renderer for static SVG <foreignObject> content. Async conversion is required. */
+  foreignObjectRenderer?: ForeignObjectRenderer;
+  /** Bounded rasterization and artifact behavior for static <foreignObject> snapshots. */
+  foreignObjects?: ForeignObjectConfiguration;
+}
+
+export interface ForeignObjectConfiguration {
+  /** Snapshot pixels per SVG user unit. Defaults to 1 and is capped by maxScale. */
+  scale?: number;
+  /** Maximum accepted snapshot scale. Defaults to 4 and cannot exceed 8. */
+  maxScale?: number;
+  /** Extract snapshots larger than this many PNG bytes when using the artifact API. Defaults to 256 KiB. */
+  inlineByteLimit?: number;
+}
+
+export interface ForeignObjectSnapshotRequest {
+  /** Complete isolated, sanitized document. Active content is removed before the adapter receives it. */
+  document: string;
+  /** Foreign content box in SVG user-space coordinates. The isolated document itself starts at 0,0. */
+  viewport: ViewBoxData;
+  /** Exact transparent output dimensions requested from the adapter. */
+  pixelWidth: number;
+  pixelHeight: number;
+  scale: number;
+  source: { element: "foreignObject"; id?: string };
+  /** Deterministic browser base used to resolve relative XHTML/CSS resource URLs. */
+  baseURL: string;
+  /** Human-readable text/ARIA label extracted from the sanitized subtree. */
+  accessibilityLabel?: string;
+  /** Resolve browser subresources through the configured deterministic resource policy. */
+  resolveResource: (url: string) => Promise<ForeignObjectResolvedResource | undefined>;
+}
+
+export interface ForeignObjectResolvedResource {
+  bytes: Uint8Array;
+  mimeType: string;
+  canonicalURL: string;
+}
+
+export interface ForeignObjectSnapshot {
+  /** Unpremultiplied 8-bit sRGB pixels in row-major RGBA order. */
+  rgba: Uint8Array;
+  width: number;
+  height: number;
+  /** Actual pixels per SVG user unit used by the renderer. */
+  scale: number;
+}
+
+export type ForeignObjectRenderer = (
+  request: ForeignObjectSnapshotRequest,
+) => ForeignObjectSnapshot | Promise<ForeignObjectSnapshot>;
+
+export interface ConversionArtifact {
+  /** Deterministic content-addressed filename, including extension. */
+  name: string;
+  mimeType: "image/png";
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+  scale: number;
 }
 
 export type ResourcePolicy = "embeddedOnly" | "local" | "custom";
