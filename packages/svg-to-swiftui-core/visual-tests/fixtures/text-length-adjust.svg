@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 130">
+  <rect width="300" height="130" fill="#fff7ed"/>
+  <path d="M25 20V112M275 20V112" stroke="#fdba74" stroke-dasharray="3 3"/>
+  <text x="25" y="54" textLength="250" lengthAdjust="spacing" font-family="Poppins" font-size="27" fill="#9a3412">Spacing</text>
+  <text x="25" y="100" textLength="250" lengthAdjust="spacingAndGlyphs" font-family="Poppins" font-size="27" fill="#0f766e">Stretch</text>
+</svg>

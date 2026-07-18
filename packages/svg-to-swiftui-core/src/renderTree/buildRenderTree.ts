@@ -27,6 +27,7 @@ import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { resolvePaintServers } from "./gradients";
 import { markerVertices, orientedMarkerAngle, resolveMarkerResources } from "./markers";
 import { resolveMaskInstance, resolveMaskResources } from "./masks";
+import { measureGeometryPath } from "./pathMetrics";
 import { resolvePatternPaintServers } from "./patterns";
 import type {
   ComputedStyle,
@@ -45,7 +46,10 @@ import type {
   RenderNode,
   RenderShape,
   RenderText,
+  RenderTextCharacter,
   RenderTextChunk,
+  RenderTextLengthAdjustment,
+  RenderTextPath,
   RenderTextRun,
   ResourceRegistry,
   SourceLocation,
@@ -742,6 +746,7 @@ function geometry(
 function createRegistry(root: ElementNode): ResourceRegistry {
   const registry: ResourceRegistry = {
     definitions: new Map(),
+    parents: new Map(),
     symbols: new Map(),
     paints: new Map(),
     paintElements: new Map(),
@@ -769,7 +774,10 @@ function createRegistry(root: ElementNode): ResourceRegistry {
       if (element.tagName === "filter") registry.filters.set(id, element);
     }
     for (const child of element.children) {
-      if (typeof child !== "string" && child.type === "element") visit(child);
+      if (typeof child !== "string" && child.type === "element") {
+        registry.parents.set(child, element);
+        visit(child);
+      }
     }
   }
   visit(root);
@@ -795,13 +803,42 @@ function textContent(element: ElementNode): string {
     .map((child) => {
       if (typeof child === "string") return decode(child);
       if (child.type === "text") return decode(String(child.value ?? ""));
-      if (child.type === "element" && child.tagName === "tspan") return textContent(child);
+      if (child.type === "element" && (child.tagName === "tspan" || child.tagName === "textPath"))
+        return textContent(child);
       return "";
     })
     .join("");
 }
 
-function textLength(
+function textLengths(
+  value: unknown,
+  axis: "horizontal" | "vertical" | "other",
+  coordinate: CoordinateContext,
+  fontMetrics: FontMetrics,
+  element: ElementNode,
+  context: BuildContext,
+  label: string,
+): number[] {
+  if (value === undefined || value === null || String(value).trim() === "") return [];
+  const tokens = String(value)
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  return tokens.map(
+    (token) =>
+      lengthValue(
+        token,
+        { ...coordinate, fontMetrics },
+        axis === "horizontal" ? "viewport-width" : axis === "vertical" ? "viewport-height" : fontMetrics.fontSize,
+        axis,
+        element,
+        context,
+        { fallback: 0, negative: "allow", label },
+      ) ?? 0,
+  );
+}
+
+function textLengthValue(
   value: unknown,
   axis: "horizontal" | "vertical" | "other",
   coordinate: CoordinateContext,
@@ -811,30 +848,21 @@ function textLength(
   label: string,
   fallback = 0,
 ): number {
-  if (value === undefined || value === null || String(value).trim() === "") return fallback;
-  const tokens = String(value)
-    .trim()
-    .split(/[\s,]+/)
-    .filter(Boolean);
-  if (tokens.length > 1) {
-    addDiagnostic(
-      context,
-      element,
-      "advanced-text-positioning",
-      `${label} lists are deferred to the advanced text positioning ticket; using the first value.`,
-    );
-  }
-  return (
-    lengthValue(
-      tokens[0],
-      { ...coordinate, fontMetrics },
-      axis === "horizontal" ? "viewport-width" : axis === "vertical" ? "viewport-height" : fontMetrics.fontSize,
-      axis,
-      element,
-      context,
-      { fallback, negative: "allow", label },
-    ) ?? fallback
-  );
+  return textLengths(value, axis, coordinate, fontMetrics, element, context, label)[0] ?? fallback;
+}
+
+function graphemes(value: string): string[] {
+  const Segmenter = (
+    Intl as unknown as {
+      Segmenter?: new (
+        locales?: string | string[],
+        options?: { granularity: "grapheme" },
+      ) => { segment(input: string): Iterable<{ segment: string }> };
+    }
+  ).Segmenter;
+  if (Segmenter)
+    return Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(value), (item) => item.segment);
+  return Array.from(value);
 }
 
 function fontFamilies(value: unknown): string[] {
@@ -936,14 +964,241 @@ function buildText(
   coordinate: CoordinateContext,
   context: BuildContext,
 ): RenderText {
-  interface RawRun extends RenderTextRun {
+  interface PositionScope {
+    owner: ElementNode;
+    x: number[];
+    y: number[];
+    dx: number[];
+    dy: number[];
+    rotate: number[];
+    count: number;
+  }
+  interface LengthScope {
+    owner: ElementNode;
+    target: number;
+    mode: RenderTextLengthAdjustment["mode"];
+    characters: number[];
+  }
+  interface RawSegment {
+    text: string;
+    preserveSpace: boolean;
+    scopes: PositionScope[];
+    lengthScopes: LengthScope[];
+    anchor: RenderTextChunk["anchor"];
+    direction: RenderTextChunk["direction"];
+    writingMode: RenderTextChunk["writingMode"];
+    textPath?: RenderTextPath;
+    run: Omit<RenderTextRun, "text" | "characters" | "dx" | "dy">;
+  }
+  interface FlatCharacter extends RenderTextCharacter {
     x?: number;
     y?: number;
-    anchor: RenderTextChunk["anchor"];
-    preserveSpace: boolean;
+    index: number;
+    segment: RawSegment;
   }
-  const rawRuns: RawRun[] = [];
+
+  const rawSegments: RawSegment[] = [];
+  const lengthScopes: LengthScope[] = [];
   const rootCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
+
+  const rotations = (value: unknown, owner: ElementNode): number[] => {
+    if (value === undefined || value === null || String(value).trim() === "") return [];
+    return String(value)
+      .trim()
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map((token) => {
+        const result = Number(token);
+        if (Number.isFinite(result)) return result;
+        addDiagnostic(context, owner, "invalid-text-rotation", `Invalid rotate value '${token}'.`);
+        return 0;
+      });
+  };
+
+  const writingMode = (value: unknown): RenderTextChunk["writingMode"] => {
+    const normalized = String(value ?? "horizontal-tb")
+      .trim()
+      .toLowerCase();
+    if (normalized === "vertical-lr") return "vertical-lr";
+    if (["vertical-rl", "tb", "tb-rl"].includes(normalized)) return "vertical-rl";
+    return "horizontal-tb";
+  };
+
+  const textOrientation = (
+    effective: Presentation,
+    mode: RenderTextChunk["writingMode"],
+  ): RenderTextRun["textOrientation"] => {
+    if (mode === "horizontal-tb") return "mixed";
+    const legacy = String(effective["glyph-orientation-vertical"] ?? "auto")
+      .trim()
+      .toLowerCase();
+    if (legacy === "0" || legacy === "0deg") return "upright";
+    if (legacy === "90" || legacy === "90deg") return "sideways";
+    const value = String(effective["text-orientation"] ?? "mixed")
+      .trim()
+      .toLowerCase();
+    return value === "upright" || value === "sideways" ? value : "mixed";
+  };
+
+  const unicodeBidi = (value: unknown): RenderTextRun["unicodeBidi"] => {
+    const normalized = String(value ?? "normal")
+      .trim()
+      .toLowerCase();
+    if (
+      normalized === "embed" ||
+      normalized === "isolate" ||
+      normalized === "bidi-override" ||
+      normalized === "isolate-override" ||
+      normalized === "plaintext"
+    )
+      return normalized;
+    return "normal";
+  };
+
+  const resolveTextPath = (
+    owner: ElementNode,
+    ownerResolved: ReturnType<typeof resolvedPresentation>,
+    ownerCoordinate: CoordinateContext,
+  ): RenderTextPath | undefined => {
+    const props = owner.properties ?? {};
+    let resolvedGeometry: Geometry | undefined;
+    let matrix = IDENTITY_TRANSFORM;
+    let directPathFailed = false;
+    if (props.path !== undefined && String(props.path).trim() !== "") {
+      try {
+        const candidate: Geometry = { type: "path", d: String(props.path) };
+        measureGeometryPath(candidate);
+        resolvedGeometry = candidate;
+      } catch (error) {
+        directPathFailed = true;
+        addDiagnostic(
+          context,
+          owner,
+          "invalid-text-path-data",
+          `Invalid textPath path data: ${error instanceof Error ? error.message : String(error)}.`,
+        );
+      }
+    }
+    if (!resolvedGeometry) {
+      const href = props.href ?? props["xlink:href"];
+      if (href === undefined || String(href).trim() === "") {
+        addDiagnostic(
+          context,
+          owner,
+          "missing-text-path-reference",
+          directPathFailed
+            ? "textPath path data is invalid and no fallback href was provided."
+            : "textPath requires path data or a local href.",
+        );
+        return undefined;
+      }
+      const reference = String(href).trim();
+      if (!reference.startsWith("#")) {
+        addDiagnostic(
+          context,
+          owner,
+          "external-text-path-reference",
+          "textPath only supports local fragment references.",
+        );
+        return undefined;
+      }
+      const id = reference.slice(1);
+      const target = context.resources.definitions.get(id);
+      if (!target) {
+        addDiagnostic(context, owner, "missing-text-path-target", `textPath references missing element #${id}.`);
+        return undefined;
+      }
+      const seen = new Set<ElementNode>([owner]);
+      let referenceCursor: ElementNode | undefined = target;
+      while (referenceCursor?.tagName === "textPath") {
+        if (seen.has(referenceCursor)) {
+          addDiagnostic(context, owner, "cyclic-text-path-reference", `textPath reference #${id} is cyclic.`);
+          return undefined;
+        }
+        seen.add(referenceCursor);
+        const nestedHref = referenceCursor.properties?.href ?? referenceCursor.properties?.["xlink:href"];
+        referenceCursor =
+          nestedHref !== undefined && String(nestedHref).startsWith("#")
+            ? context.resources.definitions.get(String(nestedHref).slice(1))
+            : undefined;
+      }
+      if (!GEOMETRY_ELEMENTS.has(target.tagName ?? "")) {
+        addDiagnostic(context, owner, "invalid-text-path-target", `textPath #${id} is not an SVG geometry element.`);
+        return undefined;
+      }
+      const lineage: ElementNode[] = [];
+      let parent = context.resources.parents.get(target);
+      while (parent && parent.tagName !== "svg") {
+        lineage.unshift(parent);
+        parent = context.resources.parents.get(parent);
+      }
+      let inherited: Presentation = {};
+      for (const ancestor of lineage) {
+        const ancestorResolved = resolvedPresentation(ancestor, inherited, ownerCoordinate, context);
+        matrix = multiplyTransforms(matrix, computedTransform(ancestor, ancestorResolved, context));
+        inherited = ancestorResolved.effective;
+      }
+      const targetResolved = resolvedPresentation(target, inherited, ownerCoordinate, context);
+      resolvedGeometry = geometry(
+        target,
+        targetResolved,
+        { ...ownerCoordinate, fontMetrics: targetResolved.fontMetrics },
+        context,
+      );
+      matrix = multiplyTransforms(matrix, computedTransform(target, targetResolved, context));
+      if (!resolvedGeometry) return undefined;
+    }
+
+    try {
+      const metrics = measureGeometryPath(resolvedGeometry, matrix);
+      if (metrics.length <= 0 || metrics.points.length < 2) {
+        addDiagnostic(context, owner, "empty-text-path", "textPath resolved to a zero-length path.");
+        return undefined;
+      }
+      const rawOffset = String(props.startOffset ?? "0").trim();
+      const percentage = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)%$/i.exec(rawOffset);
+      const distanceScale = metrics.authoredLength ? metrics.length / metrics.authoredLength : 1;
+      const startOffset = percentage
+        ? (Number(percentage[1]) / 100) * metrics.length
+        : textLengthValue(
+            props.startOffset,
+            "other",
+            ownerCoordinate,
+            ownerResolved.fontMetrics,
+            owner,
+            context,
+            "startOffset",
+          ) * distanceScale;
+      const methodValue = String(props.method ?? "align").toLowerCase();
+      const spacingValue = String(props.spacing ?? "exact").toLowerCase();
+      const sideValue = String(props.side ?? "left").toLowerCase();
+      if (methodValue !== "align" && methodValue !== "stretch")
+        addDiagnostic(context, owner, "invalid-text-path-method", `Invalid textPath method '${methodValue}'.`);
+      if (spacingValue !== "auto" && spacingValue !== "exact")
+        addDiagnostic(context, owner, "invalid-text-path-spacing", `Invalid textPath spacing '${spacingValue}'.`);
+      if (sideValue !== "left" && sideValue !== "right")
+        addDiagnostic(context, owner, "invalid-text-path-side", `Invalid textPath side '${sideValue}'.`);
+      return {
+        points: metrics.points,
+        length: metrics.length,
+        closed: metrics.closed,
+        distanceScale,
+        startOffset,
+        method: methodValue === "stretch" ? "stretch" : "align",
+        spacing: spacingValue === "auto" ? "auto" : "exact",
+        side: sideValue === "right" ? "right" : "left",
+        source: sourceLocation(owner),
+      };
+    } catch (error) {
+      addDiagnostic(
+        context,
+        owner,
+        "invalid-text-path-geometry",
+        `Unable to measure textPath geometry: ${error instanceof Error ? error.message : String(error)}.`,
+      );
+      return undefined;
+    }
+  };
 
   const visit = (
     owner: ElementNode,
@@ -951,6 +1206,9 @@ function buildText(
     ownerCoordinate: CoordinateContext,
     transform: AffineTransform,
     inheritedPreserve: boolean,
+    inheritedScopes: PositionScope[],
+    inheritedLengthScopes: LengthScope[],
+    inheritedPath?: RenderTextPath,
   ): void => {
     const props = owner.properties ?? {};
     const effective = ownerResolved.effective;
@@ -960,36 +1218,123 @@ function buildText(
         (inheritedPreserve || ["pre", "pre-wrap", "break-spaces"].includes(String(effective["white-space"]))));
     const anchorValue = String(effective["text-anchor"] ?? "start").toLowerCase();
     const anchor: RenderTextChunk["anchor"] = anchorValue === "middle" || anchorValue === "end" ? anchorValue : "start";
-    let positionPending = true;
-    const position = () => {
-      if (!positionPending) return { dx: 0, dy: 0 };
-      positionPending = false;
-      return {
-        ...(props.x === undefined
-          ? {}
-          : {
-              x: textLength(
-                props.x,
-                "horizontal",
+    const mode = writingMode(effective["writing-mode"]);
+    const direction: RenderTextChunk["direction"] = String(effective.direction).toLowerCase() === "rtl" ? "rtl" : "ltr";
+    const scope: PositionScope = {
+      owner,
+      x:
+        owner === element && props.x === undefined
+          ? [0]
+          : textLengths(props.x, "horizontal", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-x"),
+      y:
+        owner === element && props.y === undefined
+          ? [0]
+          : textLengths(props.y, "vertical", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-y"),
+      dx: textLengths(props.dx, "horizontal", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-dx"),
+      dy: textLengths(props.dy, "vertical", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-dy"),
+      rotate: rotations(props.rotate, owner),
+      count: 0,
+    };
+    const scopes = [...inheritedScopes, scope];
+    const ownLength =
+      props.textLength === undefined
+        ? undefined
+        : textLengthValue(
+            props.textLength,
+            mode === "horizontal-tb" ? "horizontal" : "vertical",
+            ownerCoordinate,
+            ownerResolved.fontMetrics,
+            owner,
+            context,
+            "textLength",
+            Number.NaN,
+          );
+    let ownLengthScope: LengthScope | undefined;
+    if (ownLength !== undefined && Number.isFinite(ownLength)) {
+      if (ownLength < 0) addDiagnostic(context, owner, "negative-text-length", "textLength cannot be negative.");
+      else {
+        const lengthAdjust = String(props.lengthAdjust ?? "spacing");
+        if (lengthAdjust !== "spacing" && lengthAdjust !== "spacingAndGlyphs")
+          addDiagnostic(context, owner, "invalid-length-adjust", `Invalid lengthAdjust '${lengthAdjust}'.`);
+        ownLengthScope = {
+          owner,
+          target: ownLength,
+          mode: lengthAdjust === "spacingAndGlyphs" ? "spacingAndGlyphs" : "spacing",
+          characters: [],
+        };
+        lengthScopes.push(ownLengthScope);
+      }
+    }
+    const activeLengthScopes = ownLengthScope ? [...inheritedLengthScopes, ownLengthScope] : inheritedLengthScopes;
+    const textPath =
+      owner.tagName === "textPath" ? resolveTextPath(owner, ownerResolved, ownerCoordinate) : inheritedPath;
+
+    const size = ownerResolved.fontMetrics.fontSize;
+    const spacing = (name: "letter-spacing" | "word-spacing") => {
+      const raw = effective[name];
+      return String(raw ?? "normal")
+        .trim()
+        .toLowerCase() === "normal"
+        ? 0
+        : textLengthValue(raw, "other", ownerCoordinate, ownerResolved.fontMetrics, owner, context, name);
+    };
+    const shiftRaw = String(effective["baseline-shift"] ?? "baseline")
+      .trim()
+      .toLowerCase();
+    const baselineShift =
+      shiftRaw === "sub"
+        ? -0.2 * size
+        : shiftRaw === "super"
+          ? 0.4 * size
+          : shiftRaw === "baseline"
+            ? 0
+            : textLengthValue(
+                shiftRaw,
+                "other",
                 ownerCoordinate,
                 ownerResolved.fontMetrics,
                 owner,
                 context,
-                "text-x",
-              ),
-            }),
-        ...(props.y === undefined
-          ? {}
-          : {
-              y: textLength(props.y, "vertical", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-y"),
-            }),
-        dx: textLength(props.dx, "horizontal", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-dx"),
-        dy: textLength(props.dy, "vertical", ownerCoordinate, ownerResolved.fontMetrics, owner, context, "text-dy"),
-      };
+                "baseline-shift",
+              );
+    const decorationValue = `${effective["text-decoration"] ?? ""} ${effective["text-decoration-line"] ?? ""}`;
+    const decoration = (["underline", "overline", "line-through"] as const).filter((item) =>
+      new RegExp(`(?:^|\\s)${item}(?:\\s|$)`).test(decorationValue),
+    );
+    const sizeAdjustRaw = String(effective["font-size-adjust"] ?? "none")
+      .trim()
+      .toLowerCase();
+    const run: RawSegment["run"] = {
+      font: {
+        family: resolveTextFamily(owner, effective["font-family"], context),
+        size,
+        weight: fontWeight(effective["font-weight"]),
+        width: fontWidth(effective["font-stretch"]),
+        italic: ["italic", "oblique"].includes(String(effective["font-style"] ?? "normal").toLowerCase()),
+        smallCaps: /small-caps/i.test(String(effective["font-variant"] ?? "normal")),
+        ...(sizeAdjustRaw !== "none" && Number.isFinite(Number(sizeAdjustRaw))
+          ? { sizeAdjust: Number(sizeAdjustRaw) }
+          : {}),
+      },
+      letterSpacing: spacing("letter-spacing"),
+      wordSpacing: spacing("word-spacing"),
+      kerning: String(effective["font-kerning"] ?? "auto").toLowerCase() !== "none",
+      baseline: textBaseline(effective["alignment-baseline"] ?? effective["dominant-baseline"]),
+      baselineShift,
+      decoration,
+      direction,
+      unicodeBidi: unicodeBidi(effective["unicode-bidi"]),
+      textOrientation: textOrientation(effective, mode),
+      style: ownerResolved.style,
+      transform,
+      source: sourceLocation(owner),
     };
+
     for (const child of owner.children) {
       if (typeof child !== "string" && child.type === "element") {
-        if (child.tagName !== "tspan") continue;
+        if (child.tagName !== "tspan" && child.tagName !== "textPath") continue;
+        if (child.tagName === "textPath" && inheritedPath)
+          addDiagnostic(context, child, "nested-text-path", "A textPath cannot be nested inside another textPath.");
         const childResolved = resolvedPresentation(child, ownerResolved.effective, ownerCoordinate, context);
         visit(
           child,
@@ -997,175 +1342,145 @@ function buildText(
           { ...ownerCoordinate, fontMetrics: childResolved.fontMetrics },
           multiplyTransforms(transform, computedTransform(child, childResolved, context)),
           preserveSpace,
+          scopes,
+          activeLengthScopes,
+          textPath,
         );
-        positionPending = false;
         continue;
       }
       const value = typeof child === "string" ? child : child.type === "text" ? String(child.value ?? "") : "";
       const decoded = textContent({ ...owner, children: [child] });
       if (!value && !decoded) continue;
-      const size = ownerResolved.fontMetrics.fontSize;
-      const spacing = (name: "letter-spacing" | "word-spacing") => {
-        const raw = effective[name];
-        return String(raw ?? "normal")
-          .trim()
-          .toLowerCase() === "normal"
-          ? 0
-          : textLength(raw, "other", ownerCoordinate, ownerResolved.fontMetrics, owner, context, name);
-      };
-      const shiftRaw = String(effective["baseline-shift"] ?? "baseline")
-        .trim()
-        .toLowerCase();
-      const baselineShift =
-        shiftRaw === "sub"
-          ? -0.2 * size
-          : shiftRaw === "super"
-            ? 0.4 * size
-            : shiftRaw === "baseline"
-              ? 0
-              : textLength(
-                  shiftRaw,
-                  "other",
-                  ownerCoordinate,
-                  ownerResolved.fontMetrics,
-                  owner,
-                  context,
-                  "baseline-shift",
-                );
-      const decorationValue = `${effective["text-decoration"] ?? ""} ${effective["text-decoration-line"] ?? ""}`;
-      const decoration = (["underline", "overline", "line-through"] as const).filter((item) =>
-        new RegExp(`(?:^|\\s)${item}(?:\\s|$)`).test(decorationValue),
-      );
-      const sizeAdjustRaw = String(effective["font-size-adjust"] ?? "none")
-        .trim()
-        .toLowerCase();
-      rawRuns.push({
+      rawSegments.push({
         text: decoded,
-        ...position(),
-        font: {
-          family: resolveTextFamily(owner, effective["font-family"], context),
-          size,
-          weight: fontWeight(effective["font-weight"]),
-          width: fontWidth(effective["font-stretch"]),
-          italic: ["italic", "oblique"].includes(String(effective["font-style"] ?? "normal").toLowerCase()),
-          smallCaps: /small-caps/i.test(String(effective["font-variant"] ?? "normal")),
-          ...(sizeAdjustRaw !== "none" && Number.isFinite(Number(sizeAdjustRaw))
-            ? { sizeAdjust: Number(sizeAdjustRaw) }
-            : {}),
-        },
-        letterSpacing: spacing("letter-spacing"),
-        wordSpacing: spacing("word-spacing"),
-        kerning: String(effective["font-kerning"] ?? "auto").toLowerCase() !== "none",
-        baseline: textBaseline(effective["alignment-baseline"] ?? effective["dominant-baseline"]),
-        baselineShift,
-        decoration,
-        style: ownerResolved.style,
-        transform,
-        source: sourceLocation(owner),
-        anchor,
         preserveSpace,
-      });
-    }
-    if (owner.children.length === 0) {
-      rawRuns.push({
-        text: "",
-        ...position(),
-        font: {
-          family: resolveTextFamily(owner, effective["font-family"], context),
-          size: ownerResolved.fontMetrics.fontSize,
-          weight: fontWeight(effective["font-weight"]),
-          width: fontWidth(effective["font-stretch"]),
-          italic: false,
-          smallCaps: false,
-        },
-        letterSpacing: 0,
-        wordSpacing: 0,
-        kerning: true,
-        baseline: "alphabetic",
-        baselineShift: 0,
-        decoration: [],
-        style: ownerResolved.style,
-        transform,
-        source: sourceLocation(owner),
+        scopes,
+        lengthScopes: activeLengthScopes,
         anchor,
-        preserveSpace,
+        direction,
+        writingMode: mode,
+        ...(textPath ? { textPath } : {}),
+        run,
       });
     }
   };
 
-  visit(element, resolved, rootCoordinate, IDENTITY_TRANSFORM, false);
-  const firstRun = rawRuns[0];
-  if (firstRun) {
-    const rootProps = element.properties ?? {};
-    if (firstRun.x === undefined && rootProps.x !== undefined)
-      firstRun.x = textLength(
-        rootProps.x,
-        "horizontal",
-        rootCoordinate,
-        resolved.fontMetrics,
-        element,
-        context,
-        "text-x",
-      );
-    if (firstRun.y === undefined && rootProps.y !== undefined)
-      firstRun.y = textLength(
-        rootProps.y,
-        "vertical",
-        rootCoordinate,
-        resolved.fontMetrics,
-        element,
-        context,
-        "text-y",
-      );
-    if (firstRun.source.element === "tspan") {
-      firstRun.dx += textLength(
-        rootProps.dx,
-        "horizontal",
-        rootCoordinate,
-        resolved.fontMetrics,
-        element,
-        context,
-        "text-dx",
-      );
-      firstRun.dy += textLength(
-        rootProps.dy,
-        "vertical",
-        rootCoordinate,
-        resolved.fontMetrics,
-        element,
-        context,
-        "text-dy",
-      );
-    }
-  }
+  visit(element, resolved, rootCoordinate, IDENTITY_TRANSFORM, false, [], []);
   let previousCollapsedSpace = true;
-  for (const run of rawRuns) {
-    if (run.preserveSpace) {
-      previousCollapsedSpace = /\s$/.test(run.text);
+  for (const segment of rawSegments) {
+    if (segment.preserveSpace) {
+      previousCollapsedSpace = /\s$/.test(segment.text);
       continue;
     }
-    let normalized = run.text.replace(/[\t\n\r ]+/g, " ");
+    let normalized = segment.text.replace(/[\t\n\r ]+/g, " ");
     if (previousCollapsedSpace) normalized = normalized.replace(/^ /, "");
     previousCollapsedSpace = / $/.test(normalized);
-    run.text = normalized;
+    segment.text = normalized;
   }
-  for (let index = rawRuns.length - 1; index >= 0; index--) {
-    const run = rawRuns[index]!;
-    if (run.preserveSpace) break;
-    if (run.text === "") continue;
-    run.text = run.text.replace(/ $/, "");
+  for (let index = rawSegments.length - 1; index >= 0; index--) {
+    const segment = rawSegments[index]!;
+    if (segment.preserveSpace) break;
+    if (segment.text === "") continue;
+    segment.text = segment.text.replace(/ $/, "");
     break;
   }
 
-  const chunks: RenderTextChunk[] = [];
-  for (const raw of rawRuns) {
-    const { x, y, anchor, preserveSpace: _preserve, ...run } = raw;
-    const last = chunks[chunks.length - 1];
-    const startsChunk = chunks.length === 0 || x !== undefined || y !== undefined || last?.anchor !== anchor;
-    if (startsChunk)
-      chunks.push({ ...(x === undefined ? {} : { x }), ...(y === undefined ? {} : { y }), anchor, runs: [] });
-    chunks[chunks.length - 1]!.runs.push(run);
+  const flat: FlatCharacter[] = [];
+  const resolvedPosition = (scopes: PositionScope[], property: "x" | "y" | "dx" | "dy" | "rotate") => {
+    for (let index = scopes.length - 1; index >= 0; index--) {
+      const scope = scopes[index]!;
+      const values = scope[property];
+      if (values.length === 0) continue;
+      if (property === "rotate") return values[Math.min(scope.count, values.length - 1)];
+      if (scope.count < values.length) return values[scope.count];
+    }
+    return undefined;
+  };
+  for (const segment of rawSegments) {
+    for (const text of graphemes(segment.text)) {
+      const index = flat.length;
+      const x = resolvedPosition(segment.scopes, "x");
+      const y = resolvedPosition(segment.scopes, "y");
+      const dx = resolvedPosition(segment.scopes, "dx") ?? 0;
+      const dy = resolvedPosition(segment.scopes, "dy") ?? 0;
+      const rotate = resolvedPosition(segment.scopes, "rotate") ?? 0;
+      flat.push({
+        text,
+        dx,
+        dy,
+        rotate,
+        ...(x === undefined ? {} : { x }),
+        ...(y === undefined ? {} : { y }),
+        index,
+        segment,
+      });
+      for (const scope of segment.scopes) scope.count += 1;
+      for (const scope of segment.lengthScopes) scope.characters.push(index);
+    }
   }
+
+  const chunks: RenderTextChunk[] = [];
+  const chunkCharacters: FlatCharacter[][] = [];
+  for (const character of flat) {
+    const previousMembers = chunkCharacters[chunkCharacters.length - 1];
+    const previous = previousMembers?.[previousMembers.length - 1];
+    const startsChunk =
+      !previous ||
+      character.x !== undefined ||
+      character.y !== undefined ||
+      previous.segment.textPath !== character.segment.textPath ||
+      previous.segment.anchor !== character.segment.anchor ||
+      previous.segment.writingMode !== character.segment.writingMode;
+    if (startsChunk) {
+      chunks.push({
+        ...(character.x === undefined ? {} : { x: character.x }),
+        ...(character.y === undefined ? {} : { y: character.y }),
+        anchor: character.segment.anchor,
+        direction: character.segment.direction,
+        writingMode: character.segment.writingMode,
+        lengthAdjustments: [],
+        ...(character.segment.textPath ? { textPath: character.segment.textPath } : {}),
+        runs: [],
+      });
+      chunkCharacters.push([]);
+    }
+    const chunk = chunks[chunks.length - 1]!;
+    const members = chunkCharacters[chunkCharacters.length - 1]!;
+    members.push(character);
+    const previousMember = members[members.length - 2];
+    if (!previousMember || previousMember.segment !== character.segment) {
+      chunk.runs.push({
+        text: character.text,
+        characters: [{ text: character.text, dx: character.dx, dy: character.dy, rotate: character.rotate }],
+        dx: character.dx,
+        dy: character.dy,
+        ...character.segment.run,
+      });
+    } else {
+      const run = chunk.runs[chunk.runs.length - 1]!;
+      run.text += character.text;
+      run.characters.push({ text: character.text, dx: character.dx, dy: character.dy, rotate: character.rotate });
+    }
+  }
+
+  for (const scope of lengthScopes) {
+    const total = scope.characters.length;
+    if (total === 0) continue;
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const members = chunkCharacters[chunkIndex]!;
+      const local = members
+        .map((character, index) => (scope.characters.includes(character.index) ? index : -1))
+        .filter((index) => index >= 0);
+      if (local.length === 0) continue;
+      chunks[chunkIndex]!.lengthAdjustments.push({
+        start: Math.min(...local),
+        end: Math.max(...local) + 1,
+        target: scope.target * (local.length / total),
+        mode: scope.mode,
+      });
+    }
+  }
+
   return {
     type: "text",
     text: textContent(element),

@@ -352,10 +352,52 @@ export interface RenderTextChunk {
   y?: number;
   runs: RenderTextRun[];
   anchor: "start" | "middle" | "end";
+  direction: "ltr" | "rtl";
+  writingMode: "horizontal-tb" | "vertical-rl" | "vertical-lr";
+  lengthAdjustments: RenderTextLengthAdjustment[];
+  textPath?: RenderTextPath;
+}
+
+export interface RenderTextCharacter {
+  /** One extended grapheme cluster; never a UTF-16 code unit. */
+  text: string;
+  dx: number;
+  dy: number;
+  rotate: number;
+}
+
+export interface RenderTextLengthAdjustment {
+  /** Character range local to the containing chunk. */
+  start: number;
+  end: number;
+  target: number;
+  mode: "spacing" | "spacingAndGlyphs";
+}
+
+export interface RenderTextPathPoint {
+  x: number;
+  y: number;
+  distance: number;
+  /** True when this point begins a new subpath; no segment joins it to the previous point. */
+  move: boolean;
+}
+
+export interface RenderTextPath {
+  points: RenderTextPathPoint[];
+  length: number;
+  closed: boolean;
+  /** Converts authored path-distance units (pathLength) into actual user units. */
+  distanceScale: number;
+  startOffset: number;
+  method: "align" | "stretch";
+  spacing: "auto" | "exact";
+  side: "left" | "right";
+  source: SourceLocation;
 }
 
 export interface RenderTextRun {
   text: string;
+  characters: RenderTextCharacter[];
   dx: number;
   dy: number;
   font: {
@@ -373,6 +415,9 @@ export interface RenderTextRun {
   baseline: "alphabetic" | "middle" | "central" | "hanging" | "text-before-edge" | "text-after-edge";
   baselineShift: number;
   decoration: readonly ("underline" | "overline" | "line-through")[];
+  direction: "ltr" | "rtl";
+  unicodeBidi: "normal" | "embed" | "isolate" | "bidi-override" | "isolate-override" | "plaintext";
+  textOrientation: "mixed" | "upright" | "sideways";
   style: ComputedStyle;
   transform: AffineTransform;
   source: SourceLocation;
@@ -414,6 +459,8 @@ export type RenderNode = RenderGroup | RenderShape | RenderText | RenderImage;
 
 export interface ResourceRegistry {
   definitions: Map<string, ElementNode>;
+  /** Document ancestry used to resolve transformed geometry references. */
+  parents: Map<ElementNode, ElementNode>;
   symbols: Map<string, ElementNode>;
   /** Typed paint resources consumed by the renderer. */
   paints: Map<string, PaintServer>;

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180">
+  <rect width="220" height="180" fill="#ecfeff"/>
+  <path d="M65 15V165M150 15V165" stroke="#a5f3fc"/>
+  <text x="65" y="20" writing-mode="vertical-rl" text-orientation="sideways" font-family="Poppins" font-size="24" fill="#0e7490">Vertical</text>
+  <text x="150" y="20" writing-mode="vertical-lr" text-orientation="upright" font-family="Poppins" font-size="22" fill="#be123c">ABC</text>
+</svg>

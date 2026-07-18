@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 180">
+  <rect width="340" height="180" fill="#f0fdf4"/>
+  <defs>
+    <path id="upper" d="M25 115 C90 25 250 25 315 115" pathLength="290"/>
+    <circle id="lower" cx="170" cy="112" r="48"/>
+  </defs>
+  <use href="#upper" fill="none" stroke="#86efac"/>
+  <use href="#lower" fill="none" stroke="#bbf7d0"/>
+  <text font-family="Poppins" font-size="25" font-weight="700" fill="#166534" text-anchor="middle">
+    <textPath href="#upper" startOffset="50%" spacing="exact">SwiftUI path</textPath>
+  </text>
+  <text font-family="Poppins" font-size="14" fill="#7e22ce">
+    <textPath href="#lower" startOffset="12%">closed loop</textPath>
+  </text>
+</svg>

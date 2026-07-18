@@ -11661,6 +11661,14 @@
       "expectedMode": "view",
       "tags": ["font", "font-weight", "text", "tspan", "view"]
     },
+    "text-bidi-direction": {
+      "width": 320,
+      "height": 130,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["bidi", "direction", "font", "rtl", "text", "tspan", "unicode-bidi", "view"]
+    },
     "text-gradient-stroke": {
       "width": 260,
       "height": 100,
@@ -11668,6 +11676,32 @@
       "fontFamilies": ["Poppins"],
       "expectedMode": "view",
       "tags": ["font", "gradient", "linearGradient", "opacity", "paint-order", "stop", "stroke", "text", "view"]
+    },
+    "text-length-adjust": {
+      "width": 300,
+      "height": 130,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["font", "lengthAdjust", "spacing", "text", "textLength", "view"]
+    },
+    "text-path-layout": {
+      "width": 340,
+      "height": 180,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["circle", "font", "path", "pathLength", "startOffset", "text", "textPath", "use", "view"]
+    },
+    "text-position-lists": {
+      "width": 300,
+      "height": 120,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["dx", "font", "grapheme", "rotate", "text", "view", "x", "y"],
+      "tolerance": { "maxMeanRgbError": 3.6 },
+      "toleranceReason": "Resvg and CoreGraphics use slightly different antialias coverage for independently rotated glyph outlines."
     },
     "text-spacing-decoration-transform": {
       "width": 260,
@@ -11684,6 +11718,14 @@
       "fontFamilies": ["Noto Sans"],
       "expectedMode": "view",
       "tags": ["bidi", "font", "text", "tspan", "unicode", "view", "whitespace"]
+    },
+    "text-vertical-writing": {
+      "width": 220,
+      "height": 180,
+      "fonts": ["fonts/Poppins-Regular.ttf", "fonts/Poppins-Bold.ttf", "fonts/Poppins-Italic.ttf"],
+      "fontFamilies": ["Poppins"],
+      "expectedMode": "view",
+      "tags": ["font", "text", "text-orientation", "vertical", "view", "writing-mode"]
     },
     "viewport-nonzero-origin": {
       "width": 180,

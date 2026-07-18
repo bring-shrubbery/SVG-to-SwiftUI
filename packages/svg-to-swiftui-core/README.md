@@ -81,7 +81,7 @@ Generated SwiftUI keeps pattern content vector-based in `Canvas`. It repeats com
 
 ### Static text and fonts
 
-Horizontal `<text>` and nested `<tspan>` content uses CoreText glyph paths inside a scalable SwiftUI `Canvas`. The renderer preserves inherited font and paint styles, single-value `x`/`y`/`dx`/`dy`, anchors, common baselines, spacing, decorations, transforms, solid/gradient fills, strokes, painter order, SVG whitespace, Unicode shaping, and an accessibility label. Glyph outlines provide deterministic SVG positioning but are not selectable text.
+`<text>`, nested `<tspan>`, and `<textPath>` content uses CoreText glyph paths inside a scalable SwiftUI `Canvas`. CoreText performs shaping and bidi reordering while the SVG layout layer applies grapheme-safe `x`/`y`/`dx`/`dy`/`rotate` lists, nested `textLength` constraints, horizontal and vertical writing modes, anchors, baselines, spacing, decorations, transforms, paint, and one accessibility label. Text paths support local paths and basic shapes, transformed references, `pathLength`, `startOffset`, `method`, `spacing`, `side`, open/closed paths, multiple subpaths, and deterministic adaptive curve metrics. Glyph outlines are not selectable text.
 
 Configure the same registered families in the conversion host and generated app:
 
@@ -96,7 +96,7 @@ convert(svg, {
 });
 ```
 
-Permissive lookup emits a structured `missing-font-family` warning and uses the configured fallback. Font-strict lookup fails conversion. Advanced per-glyph position lists, rotation lists, `textLength`, vertical writing, and `textPath` remain part of the advanced text ticket.
+Permissive lookup emits a structured `missing-font-family` warning and uses the configured fallback. Font-strict lookup fails conversion. Missing, external, wrong-type, empty, and cyclic text-path references produce structured diagnostics.
 
 ### Static images and deterministic resources
 
@@ -198,7 +198,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [x] Basic static SVG `<text>` and `<tspan>` rendering
 - [x] Static SVG `<image>` rendering with deterministic raster/SVG resource resolution
-- [ ] Advanced SVG text positioning and `<textPath>`
+- [x] Advanced SVG text positioning, bidi/vertical layout, `textLength`, and `<textPath>`
 - [ ] Automatic animation support
 
 ## Built With

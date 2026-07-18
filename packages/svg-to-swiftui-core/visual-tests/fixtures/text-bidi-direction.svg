@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 130">
+  <rect width="320" height="130" fill="#f5f3ff"/>
+  <path d="M20 20V110M300 20V110" stroke="#c4b5fd"/>
+  <text x="300" y="52" direction="rtl" unicode-bidi="embed" text-anchor="start" font-family="Poppins" font-size="26" fill="#5b21b6">ABC 123</text>
+  <text x="20" y="96" direction="ltr" font-family="Poppins" font-size="24" fill="#166534">LTR <tspan direction="rtl" unicode-bidi="embed">ABC 42</tspan> end</text>
+</svg>
