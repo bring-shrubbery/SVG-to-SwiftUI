@@ -324,6 +324,65 @@
       "expectedMode": "view",
       "tags": ["geometry", "path", "rect", "view"]
     },
+    "filter-blend-modes": {
+      "width": 128,
+      "height": 32,
+      "expectedMode": "view",
+      "tags": ["feBlend", "feFlood", "filter", "g", "geometry", "opacity", "rect", "units", "view"]
+    },
+    "filter-color-matrix": {
+      "width": 128,
+      "height": 26,
+      "expectedMode": "view",
+      "tags": ["feColorMatrix", "filter", "g", "geometry", "linearGradient", "rect", "stop", "units", "view"],
+      "tolerance": {
+        "maxOutsidePercent": 4
+      },
+      "toleranceReason": "A one-pixel filter-subregion boundary differs between the SVG and CoreGraphics rasterizers; interior color-matrix pixels match within the default channel threshold."
+    },
+    "filter-component-transfer": {
+      "width": 128,
+      "height": 26,
+      "expectedMode": "view",
+      "tags": [
+        "feComponentTransfer",
+        "filter",
+        "g",
+        "geometry",
+        "linearGradient",
+        "opacity",
+        "rect",
+        "stop",
+        "units",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 4.2
+      },
+      "toleranceReason": "A one-pixel filter-subregion boundary and gradient quantization differ between the SVG and CoreGraphics rasterizers; interior transfer-function pixels match within default thresholds."
+    },
+    "filter-composite-operators": {
+      "width": 128,
+      "height": 37,
+      "expectedMode": "view",
+      "tags": [
+        "feComposite",
+        "feFlood",
+        "filter",
+        "g",
+        "geometry",
+        "opacity",
+        "rect",
+        "units",
+        "view",
+        "webkit-reference"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 3.7,
+        "maxMeanRgbError": 3.6
+      },
+      "toleranceReason": "WKWebView and CoreGraphics round one-pixel primitive-subregion boundaries differently; operator interiors match within the default channel threshold."
+    },
     "filter-common-primitives": {
       "width": 160,
       "height": 100,

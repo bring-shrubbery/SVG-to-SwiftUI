@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60" color-interpolation-filters="sRGB">
+  <defs>
+    <linearGradient id="spectrum"><stop stop-color="#ef3340"/><stop offset=".5" stop-color="#21a179"/><stop offset="1" stop-color="#3454d1"/></linearGradient>
+    <filter id="identity" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0"/></filter>
+    <filter id="saturate" x="0" y="0" width="100%" height="100%"><feColorMatrix type="saturate" values="0"/></filter>
+    <filter id="hue" x="0" y="0" width="100%" height="100%"><feColorMatrix type="hueRotate" values="110"/></filter>
+    <filter id="luma" x="0" y="0" width="100%" height="100%"><feColorMatrix type="luminanceToAlpha"/></filter>
+    <filter id="matrix" x="0" y="0" width="100%" height="100%"><feColorMatrix values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 .65 .1"/></filter>
+  </defs>
+  <rect width="300" height="60" fill="#f2c94c"/>
+  <g fill="url(#spectrum)"><rect x="0" y="0" width="60" height="60" filter="url(#identity)"/><rect x="60" y="0" width="60" height="60" filter="url(#saturate)"/><rect x="120" y="0" width="60" height="60" filter="url(#hue)"/><rect x="180" y="0" width="60" height="60" filter="url(#luma)"/><rect x="240" y="0" width="60" height="60" filter="url(#matrix)"/></g>
+</svg>

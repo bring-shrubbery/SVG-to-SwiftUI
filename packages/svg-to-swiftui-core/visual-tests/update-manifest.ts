@@ -7,6 +7,10 @@ import { findSvgFiles, fixtureKey, MANIFEST_PATH, outputMode } from "./manifest"
 const LOGICAL_WIDTH = 128;
 
 interface ExistingFixture {
+  width?: number;
+  height?: number;
+  expectedMode?: "shape" | "view";
+  tags?: string[];
   scale?: number;
   background?: string | null;
   fonts?: string[];
@@ -126,6 +130,39 @@ function tagsFor(name: string, source: string, expectedMode: "shape" | "view"): 
   if (/\bclip-rule\s*(?:=|:)/.test(source)) tags.add("clip-rule");
   if (/\bmix-blend-mode\s*(?:=|:)/.test(source)) tags.add("blend-mode");
   if (/\bisolation\s*(?:=|:)/.test(source)) tags.add("isolation");
+  if (/<filter\b/i.test(source)) tags.add("filter");
+  for (const primitive of [
+    "feBlend",
+    "feColorMatrix",
+    "feComponentTransfer",
+    "feComposite",
+    "feConvolveMatrix",
+    "feDiffuseLighting",
+    "feDisplacementMap",
+    "feDropShadow",
+    "feFlood",
+    "feGaussianBlur",
+    "feImage",
+    "feMerge",
+    "feMergeNode",
+    "feMorphology",
+    "feOffset",
+    "feSpecularLighting",
+    "feTile",
+    "feTurbulence",
+  ]) {
+    if (new RegExp(`<${primitive}\\b`, "i").test(source)) tags.add(primitive);
+  }
+  for (const input of [
+    "SourceGraphic",
+    "SourceAlpha",
+    "BackgroundImage",
+    "BackgroundAlpha",
+    "FillPaint",
+    "StrokePaint",
+  ])
+    if (new RegExp(`(?:in|in2)=["']${input}["']`, "i").test(source)) tags.add(input);
+  if (/<feComposite\b/i.test(source)) tags.add("webkit-reference");
   if (/<pattern\b[^>]*(?:href|xlink:href)\s*=/.test(source)) tags.add("pattern-href");
   if (/var\(\s*--|--[\w-]+\s*:/.test(source)) tags.add("css-variables");
   return [...tags].sort();
@@ -141,10 +178,10 @@ for (const sourcePath of findSvgFiles()) {
   const expectedMode = needsPreservedPaint(source) || automaticMode === "view" ? "view" : "shape";
   const existing = existingFixtures[name];
   fixtures[name] = {
-    width: size.width,
-    height: size.height,
-    expectedMode,
-    tags: tagsFor(basename(name), source, expectedMode),
+    width: existing?.width ?? size.width,
+    height: existing?.height ?? size.height,
+    expectedMode: existing?.expectedMode ?? expectedMode,
+    tags: existing?.tags ?? tagsFor(basename(name), source, expectedMode),
     ...(existing?.scale === undefined ? {} : { scale: existing.scale }),
     ...(existing?.background === undefined ? {} : { background: existing.background }),
     ...(existing?.fonts === undefined ? {} : { fonts: existing.fonts }),

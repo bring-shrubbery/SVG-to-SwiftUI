@@ -822,11 +822,43 @@ function filterRegionLiteral(region: FilterInstance["region"]): string {
   return `SVGFilterRegion(x: ${formatNumber(region.x)}, y: ${formatNumber(region.y)}, width: ${formatNumber(region.width)}, height: ${formatNumber(region.height)})`;
 }
 
+function filterBlendModeLiteral(mode: Extract<FilterPrimitive, { type: "blend" }>["mode"]): string {
+  return `.${mode.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())}`;
+}
+
+function filterComponentFunctionLiteral(
+  fn: Extract<FilterPrimitive, { type: "componentTransfer" }>["functions"][number],
+): string {
+  switch (fn.type) {
+    case "identity":
+      return ".identity";
+    case "table":
+    case "discrete":
+      return `.${fn.type}([${fn.values.map((value) => formatNumber(value)).join(", ")}])`;
+    case "linear":
+      return `.linear(slope: ${formatNumber(fn.slope)}, intercept: ${formatNumber(fn.intercept)})`;
+    case "gamma":
+      return `.gamma(amplitude: ${formatNumber(fn.amplitude)}, exponent: ${formatNumber(fn.exponent)}, offset: ${formatNumber(fn.offset)})`;
+  }
+}
+
+function filterCompositeOperatorLiteral(operator: Extract<FilterPrimitive, { type: "composite" }>["operator"]): string {
+  return `.${operator === "in" ? "inside" : operator === "out" ? "outside" : operator}`;
+}
+
 function filterPrimitiveLiteral(primitive: FilterPrimitive): string {
   const region = filterRegionLiteral(primitive.subregion);
   const linear = primitive.colorInterpolation === "linearRGB" ? "true" : "false";
   const result = primitive.result ? swiftString(primitive.result) : "nil";
   switch (primitive.type) {
+    case "blend":
+      return `.blend(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, mode: ${filterBlendModeLiteral(primitive.mode)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "colorMatrix":
+      return `.colorMatrix(input: ${filterInputLiteral(primitive.input)}, matrix: [${primitive.matrix.map((value) => formatNumber(value)).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "componentTransfer":
+      return `.componentTransfer(input: ${filterInputLiteral(primitive.input)}, functions: [${primitive.functions.map(filterComponentFunctionLiteral).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "composite":
+      return `.composite(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, operation: ${filterCompositeOperatorLiteral(primitive.operator)}, k1: ${formatNumber(primitive.k1)}, k2: ${formatNumber(primitive.k2)}, k3: ${formatNumber(primitive.k3)}, k4: ${formatNumber(primitive.k4)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "gaussianBlur":
       return `.gaussianBlur(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, edge: .${primitive.edgeMode}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "offset":
@@ -1857,7 +1889,29 @@ private enum SVGFilterEdgeMode {
     case wrap
 }
 
+private enum SVGFilterBlendMode {
+    case normal, multiply, screen, overlay, darken, lighten
+    case colorDodge, colorBurn, hardLight, softLight, difference, exclusion
+    case hue, saturation, color, luminosity
+}
+
+private enum SVGFilterCompositeOperator: Equatable {
+    case over, inside, outside, atop, xor, lighter, arithmetic
+}
+
+private enum SVGFilterComponentFunction {
+    case identity
+    case table([Float])
+    case discrete([Float])
+    case linear(slope: Float, intercept: Float)
+    case gamma(amplitude: Float, exponent: Float, offset: Float)
+}
+
 private enum SVGFilterPrimitive {
+    case blend(input: SVGFilterInput, input2: SVGFilterInput, mode: SVGFilterBlendMode, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case colorMatrix(input: SVGFilterInput, matrix: [Float], region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case componentTransfer(input: SVGFilterInput, functions: [SVGFilterComponentFunction], region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case composite(input: SVGFilterInput, input2: SVGFilterInput, operation: SVGFilterCompositeOperator, k1: Float, k2: Float, k3: Float, k4: Float, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case gaussianBlur(input: SVGFilterInput, sigmaX: CGFloat, sigmaY: CGFloat, edge: SVGFilterEdgeMode, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case offset(input: SVGFilterInput, dx: CGFloat, dy: CGFloat, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case flood(color: SVGFilterColor, region: SVGFilterRegion, linearRGB: Bool, result: String?)
@@ -1867,7 +1921,11 @@ private enum SVGFilterPrimitive {
 
     var region: SVGFilterRegion {
         switch self {
-        case let .gaussianBlur(_, _, _, _, region, _, _),
+        case let .blend(_, _, _, region, _, _),
+             let .colorMatrix(_, _, region, _, _),
+             let .componentTransfer(_, _, region, _, _),
+             let .composite(_, _, _, _, _, _, _, region, _, _),
+             let .gaussianBlur(_, _, _, _, region, _, _),
              let .offset(_, _, _, region, _, _),
              let .flood(_, region, _, _),
              let .merge(_, region, _, _),
@@ -1879,7 +1937,11 @@ private enum SVGFilterPrimitive {
 
     var linearRGB: Bool {
         switch self {
-        case let .gaussianBlur(_, _, _, _, _, value, _),
+        case let .blend(_, _, _, _, value, _),
+             let .colorMatrix(_, _, _, value, _),
+             let .componentTransfer(_, _, _, value, _),
+             let .composite(_, _, _, _, _, _, _, _, value, _),
+             let .gaussianBlur(_, _, _, _, _, value, _),
              let .offset(_, _, _, _, value, _),
              let .flood(_, _, value, _),
              let .merge(_, _, value, _),
@@ -2059,6 +2121,215 @@ private enum SVGFilterBitmapRuntime {
         return result
     }
 
+    private static func clamped(_ value: Float) -> Float {
+        if value.isNaN || value == -.infinity { return 0 }
+        if value == .infinity { return 1 }
+        return min(1, max(0, value))
+    }
+
+    private static func unpremultiplied(_ image: SVGFilterBitmap, _ index: Int) -> (Float, Float, Float, Float) {
+        let alpha = clamped(image.values[index + 3])
+        guard alpha > 0 else { return (0, 0, 0, 0) }
+        return (
+            clamped(image.values[index] / alpha),
+            clamped(image.values[index + 1] / alpha),
+            clamped(image.values[index + 2] / alpha),
+            alpha
+        )
+    }
+
+    private static func separableBlend(_ mode: SVGFilterBlendMode, backdrop: Float, source: Float) -> Float {
+        switch mode {
+        case .normal: return source
+        case .multiply: return backdrop * source
+        case .screen: return backdrop + source - backdrop * source
+        case .overlay: return backdrop <= 0.5 ? 2 * backdrop * source : 1 - 2 * (1 - backdrop) * (1 - source)
+        case .darken: return min(backdrop, source)
+        case .lighten: return max(backdrop, source)
+        case .colorDodge: return backdrop == 0 ? 0 : source == 1 ? 1 : min(1, backdrop / (1 - source))
+        case .colorBurn: return backdrop == 1 ? 1 : source == 0 ? 0 : 1 - min(1, (1 - backdrop) / source)
+        case .hardLight: return source <= 0.5 ? 2 * source * backdrop : 1 - 2 * (1 - source) * (1 - backdrop)
+        case .softLight:
+            if source <= 0.5 { return backdrop - (1 - 2 * source) * backdrop * (1 - backdrop) }
+            let d = backdrop <= 0.25 ? ((16 * backdrop - 12) * backdrop + 4) * backdrop : sqrt(backdrop)
+            return backdrop + (2 * source - 1) * (d - backdrop)
+        case .difference: return abs(backdrop - source)
+        case .exclusion: return backdrop + source - 2 * backdrop * source
+        case .hue, .saturation, .color, .luminosity: return source
+        }
+    }
+
+    private static func luminosity(_ color: [Float]) -> Float {
+        0.3 * color[0] + 0.59 * color[1] + 0.11 * color[2]
+    }
+
+    private static func saturation(_ color: [Float]) -> Float {
+        (color.max() ?? 0) - (color.min() ?? 0)
+    }
+
+    private static func clipColor(_ color: [Float]) -> [Float] {
+        var result = color
+        let lum = luminosity(result)
+        let minimum = result.min() ?? 0
+        let maximum = result.max() ?? 0
+        if minimum < 0 {
+            for channel in 0..<3 { result[channel] = lum + (result[channel] - lum) * lum / (lum - minimum) }
+        }
+        if maximum > 1 {
+            for channel in 0..<3 { result[channel] = lum + (result[channel] - lum) * (1 - lum) / (maximum - lum) }
+        }
+        return result
+    }
+
+    private static func setLuminosity(_ color: [Float], _ value: Float) -> [Float] {
+        let delta = value - luminosity(color)
+        return clipColor(color.map { $0 + delta })
+    }
+
+    private static func setSaturation(_ color: [Float], _ value: Float) -> [Float] {
+        var result: [Float] = [0, 0, 0]
+        let order = [0, 1, 2].sorted { color[$0] < color[$1] }
+        let minimum = order[0]
+        let middle = order[1]
+        let maximum = order[2]
+        if color[maximum] > color[minimum] {
+            result[middle] = (color[middle] - color[minimum]) * value / (color[maximum] - color[minimum])
+            result[maximum] = value
+        }
+        return result
+    }
+
+    private static func blendedColor(_ mode: SVGFilterBlendMode, backdrop: [Float], source: [Float]) -> [Float] {
+        switch mode {
+        case .hue: return setLuminosity(setSaturation(source, saturation(backdrop)), luminosity(backdrop))
+        case .saturation: return setLuminosity(setSaturation(backdrop, saturation(source)), luminosity(backdrop))
+        case .color: return setLuminosity(source, luminosity(backdrop))
+        case .luminosity: return setLuminosity(backdrop, luminosity(source))
+        default: return (0..<3).map { separableBlend(mode, backdrop: backdrop[$0], source: source[$0]) }
+        }
+    }
+
+    private static func blend(_ source: SVGFilterBitmap, _ backdrop: SVGFilterBitmap, mode: SVGFilterBlendMode) -> SVGFilterBitmap {
+        var result = source
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            let cs = unpremultiplied(source, index)
+            let cb = unpremultiplied(backdrop, index)
+            let mixed = blendedColor(mode, backdrop: [cb.0, cb.1, cb.2], source: [cs.0, cs.1, cs.2])
+            let alpha = clamped(cs.3 + cb.3 * (1 - cs.3))
+            for channel in 0..<3 {
+                let sourceValue = min(cs.3, clamped(source.values[index + channel]))
+                let backdropValue = min(cb.3, clamped(backdrop.values[index + channel]))
+                let value = (1 - cs.3) * backdropValue
+                    + (1 - cb.3) * sourceValue
+                    + cs.3 * cb.3 * mixed[channel]
+                result.values[index + channel] = min(alpha, clamped(value))
+            }
+            result.values[index + 3] = alpha
+        }
+        return result
+    }
+
+    private static func colorMatrix(_ image: SVGFilterBitmap, matrix: [Float]) -> SVGFilterBitmap {
+        guard matrix.count == 20 else { return image }
+        var result = image
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            let input = unpremultiplied(image, index)
+            let channels = [input.0, input.1, input.2, input.3]
+            var output: [Float] = [0, 0, 0, 0]
+            for row in 0..<4 {
+                let offset = row * 5
+                output[row] = clamped(
+                    matrix[offset] * channels[0] + matrix[offset + 1] * channels[1]
+                        + matrix[offset + 2] * channels[2] + matrix[offset + 3] * channels[3]
+                        + matrix[offset + 4]
+                )
+            }
+            let alpha = output[3]
+            result.values[index] = output[0] * alpha
+            result.values[index + 1] = output[1] * alpha
+            result.values[index + 2] = output[2] * alpha
+            result.values[index + 3] = alpha
+        }
+        return result
+    }
+
+    private static func transfer(_ input: Float, function: SVGFilterComponentFunction) -> Float {
+        let value = clamped(input)
+        switch function {
+        case .identity: return value
+        case let .table(values):
+            guard !values.isEmpty else { return value }
+            guard values.count > 1 else { return clamped(values[0]) }
+            if value == 1 { return clamped(values[values.count - 1]) }
+            let scaled = value * Float(values.count - 1)
+            let index = Int(floor(scaled))
+            return clamped(values[index] + (scaled - Float(index)) * (values[index + 1] - values[index]))
+        case let .discrete(values):
+            guard !values.isEmpty else { return value }
+            let index = min(values.count - 1, Int(floor(value * Float(values.count))))
+            return clamped(values[index])
+        case let .linear(slope, intercept): return clamped(slope * value + intercept)
+        case let .gamma(amplitude, exponent, offset): return clamped(amplitude * pow(value, exponent) + offset)
+        }
+    }
+
+    private static func componentTransfer(_ image: SVGFilterBitmap, functions: [SVGFilterComponentFunction]) -> SVGFilterBitmap {
+        guard functions.count == 4 else { return image }
+        var result = image
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            let input = unpremultiplied(image, index)
+            let alpha = transfer(input.3, function: functions[3])
+            result.values[index] = transfer(input.0, function: functions[0]) * alpha
+            result.values[index + 1] = transfer(input.1, function: functions[1]) * alpha
+            result.values[index + 2] = transfer(input.2, function: functions[2]) * alpha
+            result.values[index + 3] = alpha
+        }
+        return result
+    }
+
+    private static func composite(_ source: SVGFilterBitmap, _ destination: SVGFilterBitmap, operation: SVGFilterCompositeOperator, k1: Float, k2: Float, k3: Float, k4: Float) -> SVGFilterBitmap {
+        var result = source
+        for index in stride(from: 0, to: result.values.count, by: 4) {
+            let sourceAlpha = clamped(source.values[index + 3])
+            let destinationAlpha = clamped(destination.values[index + 3])
+            func sourceValue(_ channel: Int) -> Float {
+                channel == 3 ? sourceAlpha : min(sourceAlpha, clamped(source.values[index + channel]))
+            }
+            func destinationValue(_ channel: Int) -> Float {
+                channel == 3 ? destinationAlpha : min(destinationAlpha, clamped(destination.values[index + channel]))
+            }
+            if operation == .arithmetic {
+                for channel in 0..<4 {
+                    result.values[index + channel] = clamped(
+                        k1 * sourceValue(channel) * destinationValue(channel)
+                            + k2 * sourceValue(channel) + k3 * destinationValue(channel) + k4
+                    )
+                }
+            } else {
+                let factors: (Float, Float)
+                switch operation {
+                case .over: factors = (1, 1 - sourceAlpha)
+                case .inside: factors = (destinationAlpha, 0)
+                case .outside: factors = (1 - destinationAlpha, 0)
+                case .atop: factors = (destinationAlpha, 1 - sourceAlpha)
+                case .xor: factors = (1 - destinationAlpha, 1 - sourceAlpha)
+                case .lighter: factors = (1, 1)
+                case .arithmetic: factors = (0, 0)
+                }
+                for channel in 0..<4 {
+                    result.values[index + channel] = clamped(
+                        sourceValue(channel) * factors.0 + destinationValue(channel) * factors.1
+                    )
+                }
+            }
+            let alpha = result.values[index + 3]
+            result.values[index] = min(alpha, result.values[index])
+            result.values[index + 1] = min(alpha, result.values[index + 1])
+            result.values[index + 2] = min(alpha, result.values[index + 2])
+        }
+        return result
+    }
+
     private static func gaussianKernel(_ sigma: CGFloat) -> [Float] {
         guard sigma > 0 else { return [1] }
         let radius = max(1, Int(ceil(sigma * 3)))
@@ -2176,6 +2447,24 @@ private enum SVGFilterBitmapRuntime {
             let region = pixelRect(primitive.region, scaleX: scaleX, scaleY: scaleY, height: source.height)
             let output: SVGFilterBitmap
             switch primitive {
+            case let .blend(value, value2, mode, _, _, _):
+                let sourceValue = converted(input(value), linear: linear, encode: false)
+                let backdropValue = converted(input(value2), linear: linear, encode: false)
+                output = converted(blend(sourceValue, backdropValue, mode: mode), linear: linear, encode: true)
+            case let .colorMatrix(value, matrix, _, _, _):
+                let working = converted(input(value), linear: linear, encode: false)
+                output = converted(colorMatrix(working, matrix: matrix), linear: linear, encode: true)
+            case let .componentTransfer(value, functions, _, _, _):
+                let working = converted(input(value), linear: linear, encode: false)
+                output = converted(componentTransfer(working, functions: functions), linear: linear, encode: true)
+            case let .composite(value, value2, operation, k1, k2, k3, k4, _, _, _):
+                let sourceValue = converted(input(value), linear: linear, encode: false)
+                let destinationValue = converted(input(value2), linear: linear, encode: false)
+                output = converted(
+                    composite(sourceValue, destinationValue, operation: operation, k1: k1, k2: k2, k3: k3, k4: k4),
+                    linear: linear,
+                    encode: true
+                )
             case let .gaussianBlur(value, sigmaX, sigmaY, edge, _, _, _):
                 output = converted(blur(converted(input(value), linear: linear, encode: false), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: edge, bounds: region), linear: linear, encode: true)
             case let .offset(value, dx, dy, _, _, _):

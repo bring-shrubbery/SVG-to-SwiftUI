@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60" color-interpolation-filters="sRGB">
+  <defs>
+    <linearGradient id="ramp"><stop stop-color="#183059"/><stop offset=".5" stop-color="#f6ae2d"/><stop offset="1" stop-color="#f03a47" stop-opacity=".35"/></linearGradient>
+    <filter id="identity" x="0" y="0" width="100%" height="100%"><feComponentTransfer/></filter>
+    <filter id="table" x="0" y="0" width="100%" height="100%"><feComponentTransfer><feFuncR type="table" tableValues="0 1 .2"/><feFuncG type="table" tableValues="1 .1 1"/><feFuncB type="table" tableValues=".2 .8 0"/></feComponentTransfer></filter>
+    <filter id="discrete" x="0" y="0" width="100%" height="100%"><feComponentTransfer><feFuncR type="discrete" tableValues="0 .4 1"/><feFuncG type="discrete" tableValues="1 .5 0"/><feFuncB type="discrete" tableValues="0 1"/></feComponentTransfer></filter>
+    <filter id="linear" x="0" y="0" width="100%" height="100%"><feComponentTransfer><feFuncR type="linear" slope="1.5" intercept="-.2"/><feFuncG type="linear" slope=".65" intercept=".2"/><feFuncA type="linear" slope=".6" intercept=".15"/></feComponentTransfer></filter>
+    <filter id="gamma" x="0" y="0" width="100%" height="100%"><feComponentTransfer><feFuncR type="gamma" amplitude="1.4" exponent="2" offset=".05"/><feFuncG type="gamma" amplitude=".8" exponent=".5"/><feFuncB type="gamma" amplitude="1.2" exponent="3"/></feComponentTransfer></filter>
+  </defs>
+  <rect width="300" height="60" fill="#d9d9d9"/>
+  <g fill="url(#ramp)"><rect x="0" y="0" width="60" height="60" filter="url(#identity)"/><rect x="60" y="0" width="60" height="60" filter="url(#table)"/><rect x="120" y="0" width="60" height="60" filter="url(#discrete)"/><rect x="180" y="0" width="60" height="60" filter="url(#linear)"/><rect x="240" y="0" width="60" height="60" filter="url(#gamma)"/></g>
+</svg>

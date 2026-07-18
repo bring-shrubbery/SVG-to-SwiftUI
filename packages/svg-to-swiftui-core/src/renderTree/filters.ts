@@ -11,7 +11,11 @@ import {
 import type { Presentation, StyleResolution, SVGStyleResolver } from "../styleCascade";
 import { objectBoundingBox } from "./bounds";
 import type {
+  FilterBlendMode,
   FilterColorInterpolation,
+  FilterComponentTransferFunction,
+  FilterComponentTransferFunctions,
+  FilterCompositeOperator,
   FilterInput,
   FilterInstance,
   FilterPrimitive,
@@ -25,6 +29,35 @@ import type {
   RenderNode,
   SourceLocation,
 } from "./types";
+
+const IDENTITY_COLOR_MATRIX = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0];
+const FILTER_BLEND_MODES = new Set<FilterBlendMode>([
+  "normal",
+  "multiply",
+  "screen",
+  "overlay",
+  "darken",
+  "lighten",
+  "color-dodge",
+  "color-burn",
+  "hard-light",
+  "soft-light",
+  "difference",
+  "exclusion",
+  "hue",
+  "saturation",
+  "color",
+  "luminosity",
+]);
+const FILTER_COMPOSITE_OPERATORS = new Set<FilterCompositeOperator>([
+  "over",
+  "in",
+  "out",
+  "atop",
+  "xor",
+  "lighter",
+  "arithmetic",
+]);
 
 const CLEAR: RGBAColor = { red: 0, green: 0, blue: 0, alpha: 0 };
 const RESERVED_INPUTS: Readonly<Record<string, FilterInput["type"]>> = {
@@ -178,6 +211,160 @@ function numberPair(
   }
 }
 
+function numberList(element: ElementNode, name: string, diagnostics: RenderDiagnostic[]): number[] | undefined {
+  const raw = attribute(element, name);
+  if (raw === undefined || String(raw).trim() === "") return [];
+  const source = String(raw).trim();
+  if (/^,|,$|,\s*,/.test(source)) {
+    diagnostic(diagnostics, element, `invalid-filter-${name.toLowerCase()}`, `${name} contains an invalid separator.`);
+    return undefined;
+  }
+  try {
+    return source.split(/[\s,]+/).map((token) => parsePlainNumber(token, name));
+  } catch (error) {
+    diagnostic(
+      diagnostics,
+      element,
+      `invalid-filter-${name.toLowerCase()}`,
+      error instanceof Error ? error.message : String(error),
+    );
+    return undefined;
+  }
+}
+
+function saturateMatrix(value: number): number[] {
+  return [
+    0.213 + 0.787 * value,
+    0.715 - 0.715 * value,
+    0.072 - 0.072 * value,
+    0,
+    0,
+    0.213 - 0.213 * value,
+    0.715 + 0.285 * value,
+    0.072 - 0.072 * value,
+    0,
+    0,
+    0.213 - 0.213 * value,
+    0.715 - 0.715 * value,
+    0.072 + 0.928 * value,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+  ];
+}
+
+function hueRotateMatrix(degrees: number): number[] {
+  const radians = (degrees * Math.PI) / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+  const base = [0.213, 0.715, 0.072, 0.213, 0.715, 0.072, 0.213, 0.715, 0.072];
+  const cosineTerms = [0.787, -0.715, -0.072, -0.213, 0.285, -0.072, -0.213, -0.715, 0.928];
+  const sineTerms = [-0.213, -0.715, 0.928, 0.143, 0.14, -0.283, -0.787, 0.715, 0.072];
+  const values = base.map((value, index) => value + cosine * cosineTerms[index]! + sine * sineTerms[index]!);
+  return [
+    values[0]!,
+    values[1]!,
+    values[2]!,
+    0,
+    0,
+    values[3]!,
+    values[4]!,
+    values[5]!,
+    0,
+    0,
+    values[6]!,
+    values[7]!,
+    values[8]!,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+  ];
+}
+
+function colorMatrix(element: ElementNode, diagnostics: RenderDiagnostic[]): number[] {
+  const rawType = String(attribute(element, "type") ?? "matrix").trim();
+  const type = ["matrix", "saturate", "hueRotate", "luminanceToAlpha"].includes(rawType) ? rawType : "matrix";
+  if (type !== rawType)
+    diagnostic(
+      diagnostics,
+      element,
+      "invalid-filter-color-matrix-type",
+      `Invalid feColorMatrix type '${rawType}'; using matrix.`,
+    );
+  if (type === "luminanceToAlpha") return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2126, 0.7152, 0.0722, 0, 0];
+  const values = numberList(element, "values", diagnostics);
+  const fallback =
+    type === "matrix" ? IDENTITY_COLOR_MATRIX : type === "saturate" ? saturateMatrix(1) : hueRotateMatrix(0);
+  const required = type === "matrix" ? 20 : 1;
+  if (values === undefined || (hasAttribute(element, "values") && values.length !== required)) {
+    if (values !== undefined)
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-filter-color-matrix-values-count",
+        `feColorMatrix type '${type}' requires ${required} value${required === 1 ? "" : "s"}; using pass-through.`,
+      );
+    return fallback;
+  }
+  if (values.length === 0) return fallback;
+  return type === "matrix" ? values : type === "saturate" ? saturateMatrix(values[0]!) : hueRotateMatrix(values[0]!);
+}
+
+function componentFunction(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterComponentTransferFunction {
+  const rawType = String(attribute(element, "type") ?? "identity")
+    .trim()
+    .toLowerCase();
+  if (!["identity", "table", "discrete", "linear", "gamma"].includes(rawType)) {
+    diagnostic(
+      diagnostics,
+      element,
+      "invalid-filter-component-transfer-type",
+      `Invalid component transfer type '${rawType}'; using identity.`,
+    );
+    return { type: "identity" };
+  }
+  if (rawType === "identity") return { type: "identity" };
+  if (rawType === "table" || rawType === "discrete") {
+    const values = numberList(element, "tableValues", diagnostics);
+    return values ? { type: rawType, values } : { type: "identity" };
+  }
+  if (rawType === "linear")
+    return {
+      type: "linear",
+      slope: numberValue(element, "slope", 1, diagnostics),
+      intercept: numberValue(element, "intercept", 0, diagnostics),
+    };
+  return {
+    type: "gamma",
+    amplitude: numberValue(element, "amplitude", 1, diagnostics),
+    exponent: numberValue(element, "exponent", 1, diagnostics),
+    offset: numberValue(element, "offset", 0, diagnostics),
+  };
+}
+
+function componentFunctions(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterComponentTransferFunctions {
+  const functions: FilterComponentTransferFunctions = [
+    { type: "identity" },
+    { type: "identity" },
+    { type: "identity" },
+    { type: "identity" },
+  ];
+  const channels: Readonly<Record<string, number>> = { fefuncr: 0, fefuncg: 1, fefuncb: 2, fefunca: 3 };
+  for (const child of children(element)) {
+    const channel = channels[child.tagName?.toLowerCase() ?? ""];
+    if (channel !== undefined) functions[channel] = componentFunction(child, diagnostics);
+  }
+  return functions;
+}
+
 function regionSpec(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterPrimitiveRegionSpec {
   const x = optionalLength(element, "x", diagnostics);
   const y = optionalLength(element, "y", diagnostics);
@@ -274,7 +461,47 @@ function buildPrimitiveSpecs(
       ...(input2 ? { input2 } : {}),
     };
     let spec: FilterPrimitiveSpec;
-    if (tag === "fegaussianblur") {
+    if (tag === "feblend") {
+      const rawMode = String(attribute(element, "mode") ?? "normal")
+        .trim()
+        .toLowerCase() as FilterBlendMode;
+      const mode = FILTER_BLEND_MODES.has(rawMode) ? rawMode : "normal";
+      if (mode !== rawMode)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-blend-mode",
+          `Invalid feBlend mode '${rawMode}'; using normal.`,
+        );
+      spec = { type: "blend", input, input2: input2 ?? previousInput(), mode, ...common };
+    } else if (tag === "fecolormatrix") {
+      spec = { type: "colorMatrix", input, matrix: colorMatrix(element, diagnostics), ...common };
+    } else if (tag === "fecomponenttransfer") {
+      spec = { type: "componentTransfer", input, functions: componentFunctions(element, diagnostics), ...common };
+    } else if (tag === "fecomposite") {
+      const rawOperator = String(attribute(element, "operator") ?? "over")
+        .trim()
+        .toLowerCase() as FilterCompositeOperator;
+      const operator = FILTER_COMPOSITE_OPERATORS.has(rawOperator) ? rawOperator : "over";
+      if (operator !== rawOperator)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-filter-composite-operator",
+          `Invalid feComposite operator '${rawOperator}'; using over.`,
+        );
+      spec = {
+        type: "composite",
+        input,
+        input2: input2 ?? previousInput(),
+        operator,
+        k1: numberValue(element, "k1", 0, diagnostics),
+        k2: numberValue(element, "k2", 0, diagnostics),
+        k3: numberValue(element, "k3", 0, diagnostics),
+        k4: numberValue(element, "k4", 0, diagnostics),
+        ...common,
+      };
+    } else if (tag === "fegaussianblur") {
       const [stdDeviationX, stdDeviationY] = numberPair(element, "stdDeviation", 0, diagnostics);
       const rawEdge = String(attribute(element, "edgeMode") ?? "none")
         .trim()
