@@ -116,6 +116,36 @@ export type FilterChannelSelector = "R" | "G" | "B" | "A";
 export type FilterMorphologyOperator = "erode" | "dilate";
 export type FilterTurbulenceType = "turbulence" | "fractalNoise";
 
+export type FilterLightSourceSpec =
+  | { type: "distant"; azimuth: number; elevation: number }
+  | { type: "point"; x: number; y: number; z: number }
+  | {
+      type: "spot";
+      x: number;
+      y: number;
+      z: number;
+      pointsAtX: number;
+      pointsAtY: number;
+      pointsAtZ: number;
+      specularExponent: number;
+      limitingConeAngle?: number;
+    };
+
+export type FilterLightSource =
+  | { type: "distant"; x: number; y: number; z: number }
+  | { type: "point"; x: number; y: number; z: number }
+  | {
+      type: "spot";
+      x: number;
+      y: number;
+      z: number;
+      pointsAtX: number;
+      pointsAtY: number;
+      pointsAtZ: number;
+      specularExponent: number;
+      limitingConeAngle?: number;
+    };
+
 export type FilterComponentTransferFunction =
   | { type: "identity" }
   | { type: "table"; values: number[] }
@@ -294,6 +324,27 @@ export type FilterPrimitiveSpec =
       noiseType: FilterTurbulenceType;
     })
   | (FilterPrimitiveSpecBase & { type: "image"; image: FilterImageSource })
+  | (FilterPrimitiveSpecBase & {
+      type: "diffuseLighting";
+      input: FilterInput;
+      surfaceScale: number;
+      diffuseConstant: number;
+      kernelUnitLengthX?: number;
+      kernelUnitLengthY?: number;
+      color: RGBAColor;
+      light?: FilterLightSourceSpec;
+    })
+  | (FilterPrimitiveSpecBase & {
+      type: "specularLighting";
+      input: FilterInput;
+      surfaceScale: number;
+      specularConstant: number;
+      specularExponent: number;
+      kernelUnitLengthX?: number;
+      kernelUnitLengthY?: number;
+      color: RGBAColor;
+      light?: FilterLightSourceSpec;
+    })
   | (FilterPrimitiveSpecBase & { type: "offset"; input: FilterInput; dx: number; dy: number })
   | (FilterPrimitiveSpecBase & { type: "flood"; color: RGBAColor })
   | (FilterPrimitiveSpecBase & { type: "merge"; inputs: FilterInput[] })
@@ -387,6 +438,27 @@ export type FilterPrimitive =
       noiseType: FilterTurbulenceType;
     })
   | (FilterPrimitiveBase & { type: "image"; image: FilterImageSource })
+  | (FilterPrimitiveBase & {
+      type: "diffuseLighting";
+      input: FilterInput;
+      surfaceScale: number;
+      diffuseConstant: number;
+      kernelUnitLengthX?: number;
+      kernelUnitLengthY?: number;
+      color: RGBAColor;
+      light?: FilterLightSource;
+    })
+  | (FilterPrimitiveBase & {
+      type: "specularLighting";
+      input: FilterInput;
+      surfaceScale: number;
+      specularConstant: number;
+      specularExponent: number;
+      kernelUnitLengthX?: number;
+      kernelUnitLengthY?: number;
+      color: RGBAColor;
+      light?: FilterLightSource;
+    })
   | (FilterPrimitiveBase & { type: "offset"; input: FilterInput; dx: number; dy: number })
   | (FilterPrimitiveBase & { type: "flood"; color: RGBAColor })
   | (FilterPrimitiveBase & { type: "merge"; inputs: FilterInput[] })

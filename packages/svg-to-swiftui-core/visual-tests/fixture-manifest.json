@@ -477,6 +477,85 @@
         "view"
       ]
     },
+    "filter-lighting-diffuse": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "SourceAlpha",
+        "circle",
+        "feComposite",
+        "feDiffuseLighting",
+        "feGaussianBlur",
+        "filter",
+        "geometry",
+        "path",
+        "rect",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 5
+      },
+      "toleranceReason": "The SVG and generated Swift renderers use different Gaussian kernel truncation and edge antialiasing; the lit interiors and alpha match, with differences confined to softened shape edges."
+    },
+    "filter-lighting-specular": {
+      "width": 128,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "SourceAlpha",
+        "SourceGraphic",
+        "circle",
+        "feComposite",
+        "feGaussianBlur",
+        "feSpecularLighting",
+        "filter",
+        "g",
+        "geometry",
+        "rect",
+        "view"
+      ]
+    },
+    "filter-lighting-spot": {
+      "width": 128,
+      "height": 51,
+      "expectedMode": "view",
+      "tags": [
+        "SourceAlpha",
+        "circle",
+        "feComposite",
+        "feDiffuseLighting",
+        "feGaussianBlur",
+        "filter",
+        "g",
+        "geometry",
+        "rect",
+        "view"
+      ]
+    },
+    "filter-lighting-units-transforms": {
+      "width": 128,
+      "height": 77,
+      "expectedMode": "view",
+      "tags": [
+        "SourceAlpha",
+        "feComposite",
+        "feDiffuseLighting",
+        "feGaussianBlur",
+        "feSpecularLighting",
+        "filter",
+        "g",
+        "geometry",
+        "rect",
+        "transform",
+        "units",
+        "view"
+      ],
+      "tolerance": {
+        "maxOutsidePercent": 3.2
+      },
+      "toleranceReason": "CoreGraphics and the SVG reference rasterizer round transformed softened edges and the one-pixel specular sample differently; the objectBoundingBox lighting interior matches within default channel and mean-error limits."
+    },
     "filter-morphology": {
       "width": 128,
       "height": 64,

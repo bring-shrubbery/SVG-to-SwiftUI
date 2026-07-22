@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">
+  <defs>
+    <filter id="distant" filterUnits="userSpaceOnUse" x="0" y="0" width="80" height="80" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="bump"/>
+      <feDiffuseLighting in="bump" surfaceScale="6" diffuseConstant="1.1" kernelUnitLength="1" lighting-color="#ffb45c" result="light">
+        <feDistantLight azimuth="225" elevation="45"/>
+      </feDiffuseLighting>
+      <feComposite in="light" in2="SourceAlpha" operator="in"/>
+    </filter>
+    <filter id="point" filterUnits="userSpaceOnUse" x="80" y="0" width="80" height="80" color-interpolation-filters="linearRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="bump"/>
+      <feDiffuseLighting in="bump" surfaceScale="8" diffuseConstant="1" lighting-color="#68d8ff" result="light">
+        <fePointLight x="102" y="18" z="28"/>
+      </feDiffuseLighting>
+      <feComposite in="light" in2="SourceAlpha" operator="in"/>
+    </filter>
+  </defs>
+  <rect width="160" height="80" fill="#151b2d"/>
+  <circle cx="40" cy="40" r="27" fill="#ffffff" filter="url(#distant)"/>
+  <path d="M90 62V20h24c22 0 36 12 36 21s-14 21-36 21z" fill="#ffffff" filter="url(#point)"/>
+</svg>

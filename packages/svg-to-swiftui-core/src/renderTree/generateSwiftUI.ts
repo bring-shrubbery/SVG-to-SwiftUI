@@ -15,6 +15,7 @@ import type {
   ComputedStyle,
   FilterInput,
   FilterInstance,
+  FilterLightSource,
   FilterPrimitive,
   Geometry,
   GradientStop,
@@ -348,6 +349,32 @@ function buildViewNodes(
       const y = Math.min(...ys);
       return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
     };
+    const zScale = Math.sqrt(Math.abs(transform.a * transform.d - transform.b * transform.c));
+    const transformLight = (light: FilterLightSource | undefined): FilterLightSource | undefined => {
+      if (!light) return undefined;
+      if (light.type === "distant")
+        return {
+          type: "distant",
+          x: transform.a * light.x + transform.c * light.y,
+          y: transform.b * light.x + transform.d * light.y,
+          z: light.z * zScale,
+        };
+      const position = {
+        x: transform.a * light.x + transform.c * light.y + transform.e,
+        y: transform.b * light.x + transform.d * light.y + transform.f,
+        z: light.z * zScale,
+      };
+      if (light.type === "point") return { type: "point", ...position };
+      return {
+        type: "spot",
+        ...position,
+        pointsAtX: transform.a * light.pointsAtX + transform.c * light.pointsAtY + transform.e,
+        pointsAtY: transform.b * light.pointsAtX + transform.d * light.pointsAtY + transform.f,
+        pointsAtZ: light.pointsAtZ * zScale,
+        specularExponent: light.specularExponent,
+        ...(light.limitingConeAngle === undefined ? {} : { limitingConeAngle: light.limitingConeAngle }),
+      };
+    };
     const transformPrimitive = (primitive: FilterPrimitive): FilterPrimitive => {
       const subregion = transformRegion(primitive.subregion);
       if (primitive.type === "offset")
@@ -390,6 +417,25 @@ function buildViewNodes(
             transform.c * primitive.kernelUnitLengthY!,
             transform.d * primitive.kernelUnitLengthY!,
           ),
+        };
+      if (primitive.type === "diffuseLighting" || primitive.type === "specularLighting")
+        return {
+          ...primitive,
+          subregion,
+          surfaceScale: primitive.surfaceScale * zScale,
+          ...(primitive.kernelUnitLengthX === undefined
+            ? {}
+            : {
+                kernelUnitLengthX: Math.hypot(
+                  transform.a * primitive.kernelUnitLengthX,
+                  transform.b * primitive.kernelUnitLengthX,
+                ),
+                kernelUnitLengthY: Math.hypot(
+                  transform.c * primitive.kernelUnitLengthY!,
+                  transform.d * primitive.kernelUnitLengthY!,
+                ),
+              }),
+          light: transformLight(primitive.light),
         };
       if (primitive.type === "displacementMap")
         return {
@@ -913,6 +959,15 @@ function filterColorLiteral(color: RGBAColor): string {
   return `SVGFilterColor(red: ${formatNumber(color.red)}, green: ${formatNumber(color.green)}, blue: ${formatNumber(color.blue)}, alpha: ${formatNumber(color.alpha)})`;
 }
 
+function filterLightLiteral(light: FilterLightSource | undefined): string {
+  if (!light) return "nil";
+  if (light.type === "distant")
+    return `.distant(x: ${formatNumber(light.x)}, y: ${formatNumber(light.y)}, z: ${formatNumber(light.z)})`;
+  if (light.type === "point")
+    return `.point(x: ${formatNumber(light.x)}, y: ${formatNumber(light.y)}, z: ${formatNumber(light.z)})`;
+  return `.spot(x: ${formatNumber(light.x)}, y: ${formatNumber(light.y)}, z: ${formatNumber(light.z)}, pointsAtX: ${formatNumber(light.pointsAtX)}, pointsAtY: ${formatNumber(light.pointsAtY)}, pointsAtZ: ${formatNumber(light.pointsAtZ)}, exponent: ${formatNumber(light.specularExponent)}, coneAngle: ${light.limitingConeAngle === undefined ? "nil" : formatNumber(light.limitingConeAngle)})`;
+}
+
 function filterRegionLiteral(region: FilterInstance["region"]): string {
   return `SVGFilterRegion(x: ${formatNumber(region.x)}, y: ${formatNumber(region.y)}, width: ${formatNumber(region.width)}, height: ${formatNumber(region.height)})`;
 }
@@ -966,6 +1021,10 @@ function filterPrimitiveLiteral(primitive: FilterPrimitive, index: number): stri
       return `.turbulence(baseFrequencyX: ${formatNumber(primitive.baseFrequencyX)}, baseFrequencyY: ${formatNumber(primitive.baseFrequencyY)}, octaves: ${primitive.numOctaves}, seed: ${primitive.seed}, stitch: ${primitive.stitchTiles}, fractalNoise: ${primitive.noiseType === "fractalNoise"}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "image":
       return `.image(key: ${swiftString(`filter-image-${index}`)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "diffuseLighting":
+      return `.diffuseLighting(input: ${filterInputLiteral(primitive.input)}, surfaceScale: ${formatNumber(primitive.surfaceScale)}, diffuseConstant: ${formatNumber(primitive.diffuseConstant)}, unitX: ${primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX)}, unitY: ${primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY)}, color: ${filterColorLiteral(primitive.color)}, light: ${filterLightLiteral(primitive.light)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+    case "specularLighting":
+      return `.specularLighting(input: ${filterInputLiteral(primitive.input)}, surfaceScale: ${formatNumber(primitive.surfaceScale)}, specularConstant: ${formatNumber(primitive.specularConstant)}, specularExponent: ${formatNumber(primitive.specularExponent)}, unitX: ${primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX)}, unitY: ${primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY)}, color: ${filterColorLiteral(primitive.color)}, light: ${filterLightLiteral(primitive.light)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "gaussianBlur":
       return `.gaussianBlur(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, edge: .${primitive.edgeMode}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "offset":
@@ -1980,6 +2039,18 @@ function filterSupport(indentationSize: number): string[] {
 
 }
 
+private struct SVGFilterVector3 {
+    let x: CGFloat
+    let y: CGFloat
+    let z: CGFloat
+}
+
+private enum SVGFilterLight {
+    case distant(x: CGFloat, y: CGFloat, z: CGFloat)
+    case point(x: CGFloat, y: CGFloat, z: CGFloat)
+    case spot(x: CGFloat, y: CGFloat, z: CGFloat, pointsAtX: CGFloat, pointsAtY: CGFloat, pointsAtZ: CGFloat, exponent: CGFloat, coneAngle: CGFloat?)
+}
+
 private struct SVGFilterRegion {
     let x: CGFloat
     let y: CGFloat
@@ -2045,6 +2116,8 @@ private enum SVGFilterPrimitive {
     case tile(input: SVGFilterInput, tileRegion: SVGFilterRegion, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case turbulence(baseFrequencyX: CGFloat, baseFrequencyY: CGFloat, octaves: Int, seed: Int, stitch: Bool, fractalNoise: Bool, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case image(key: String, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case diffuseLighting(input: SVGFilterInput, surfaceScale: CGFloat, diffuseConstant: CGFloat, unitX: CGFloat?, unitY: CGFloat?, color: SVGFilterColor, light: SVGFilterLight?, region: SVGFilterRegion, linearRGB: Bool, result: String?)
+    case specularLighting(input: SVGFilterInput, surfaceScale: CGFloat, specularConstant: CGFloat, specularExponent: CGFloat, unitX: CGFloat?, unitY: CGFloat?, color: SVGFilterColor, light: SVGFilterLight?, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case gaussianBlur(input: SVGFilterInput, sigmaX: CGFloat, sigmaY: CGFloat, edge: SVGFilterEdgeMode, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case offset(input: SVGFilterInput, dx: CGFloat, dy: CGFloat, region: SVGFilterRegion, linearRGB: Bool, result: String?)
     case flood(color: SVGFilterColor, region: SVGFilterRegion, linearRGB: Bool, result: String?)
@@ -2064,6 +2137,8 @@ private enum SVGFilterPrimitive {
              let .tile(_, _, region, _, _),
              let .turbulence(_, _, _, _, _, _, region, _, _),
              let .image(_, region, _, _),
+             let .diffuseLighting(_, _, _, _, _, _, _, region, _, _),
+             let .specularLighting(_, _, _, _, _, _, _, _, region, _, _),
              let .gaussianBlur(_, _, _, _, region, _, _),
              let .offset(_, _, _, region, _, _),
              let .flood(_, region, _, _),
@@ -2086,6 +2161,8 @@ private enum SVGFilterPrimitive {
              let .tile(_, _, _, value, _),
              let .turbulence(_, _, _, _, _, _, _, value, _),
              let .image(_, _, value, _),
+             let .diffuseLighting(_, _, _, _, _, _, _, _, value, _),
+             let .specularLighting(_, _, _, _, _, _, _, _, _, value, _),
              let .gaussianBlur(_, _, _, _, _, value, _),
              let .offset(_, _, _, _, value, _),
              let .flood(_, _, value, _),
@@ -2848,6 +2925,109 @@ private enum SVGFilterBitmapRuntime {
         return result
     }
 
+    private static func normalized(_ x: CGFloat, _ y: CGFloat, _ z: CGFloat) -> SVGFilterVector3 {
+        let length = sqrt(x * x + y * y + z * z)
+        guard length > 0 else { return SVGFilterVector3(x: 0, y: 0, z: 0) }
+        return SVGFilterVector3(x: x / length, y: y / length, z: z / length)
+    }
+
+    private static func surfaceNormal(_ image: SVGFilterBitmap, x: Int, y: Int, surfaceScale: CGFloat, unitX: CGFloat?, unitY: CGFloat?, scaleX: CGFloat, scaleY: CGFloat, bounds: SVGFilterPixelRect) -> SVGFilterVector3 {
+        let dx = unitX ?? 1 / scaleX
+        let dy = unitY ?? 1 / scaleY
+        let stepX = dx * scaleX
+        let stepY = dy * scaleY
+        let left = CGFloat(x) - stepX < CGFloat(bounds.minX)
+        let right = CGFloat(x) + stepX >= CGFloat(bounds.maxX)
+        let top = CGFloat(y) - stepY < CGFloat(bounds.minY)
+        let bottom = CGFloat(y) + stepY >= CGFloat(bounds.maxY)
+        guard !(left && right), !(top && bottom), dx > 0, dy > 0 else {
+            return SVGFilterVector3(x: 0, y: 0, z: 1)
+        }
+        let differenceX: [Float] = left ? [0, -1, 1] : right ? [-1, 1, 0] : [-1, 0, 1]
+        let smoothY: [Float] = top ? [0, 2, 1] : bottom ? [1, 2, 0] : [1, 2, 1]
+        let differenceY: [Float] = top ? [0, -1, 1] : bottom ? [-1, 1, 0] : [-1, 0, 1]
+        let smoothX: [Float] = left ? [0, 2, 1] : right ? [1, 2, 0] : [1, 2, 1]
+        var sumX: Float = 0
+        var sumY: Float = 0
+        for row in 0..<3 {
+            for column in 0..<3 {
+                let alpha = sampleBilinear(
+                    image,
+                    x: CGFloat(x) + CGFloat(column - 1) * stepX,
+                    y: CGFloat(y) + CGFloat(row - 1) * stepY,
+                    edge: .none,
+                    bounds: bounds
+                )[3]
+                sumX += smoothY[row] * differenceX[column] * alpha
+                sumY += differenceY[row] * smoothX[column] * alpha
+            }
+        }
+        let horizontalEdge = left || right
+        let verticalEdge = top || bottom
+        let factors: (CGFloat, CGFloat)
+        switch (horizontalEdge, verticalEdge) {
+        case (true, true): factors = (CGFloat(2) / 3, CGFloat(2) / 3)
+        case (true, false): factors = (CGFloat(1) / 2, CGFloat(1) / 3)
+        case (false, true): factors = (CGFloat(1) / 3, CGFloat(1) / 2)
+        case (false, false): factors = (CGFloat(1) / 4, CGFloat(1) / 4)
+        }
+        return normalized(
+            -surfaceScale * factors.0 * CGFloat(sumX) / dx,
+            -surfaceScale * factors.1 * CGFloat(sumY) / dy,
+            1
+        )
+    }
+
+    private static func lightAt(_ light: SVGFilterLight, x: CGFloat, y: CGFloat, z: CGFloat) -> (SVGFilterVector3, CGFloat) {
+        switch light {
+        case let .distant(lightX, lightY, lightZ):
+            return (normalized(lightX, lightY, lightZ), 1)
+        case let .point(lightX, lightY, lightZ):
+            return (normalized(lightX - x, lightY - y, lightZ - z), 1)
+        case let .spot(lightX, lightY, lightZ, pointsAtX, pointsAtY, pointsAtZ, exponent, coneAngle):
+            let direction = normalized(lightX - x, lightY - y, lightZ - z)
+            let spot = normalized(pointsAtX - lightX, pointsAtY - lightY, pointsAtZ - lightZ)
+            let cosine = -(direction.x * spot.x + direction.y * spot.y + direction.z * spot.z)
+            guard cosine > 0 else { return (direction, 0) }
+            if let coneAngle, cosine < cos(coneAngle * .pi / 180) { return (direction, 0) }
+            return (direction, pow(cosine, exponent))
+        }
+    }
+
+    private static func lighting(_ image: SVGFilterBitmap, diffuse: Bool, surfaceScale: CGFloat, constant: CGFloat, specularExponent: CGFloat, unitX: CGFloat?, unitY: CGFloat?, color: SVGFilterColor, light: SVGFilterLight?, scaleX: CGFloat, scaleY: CGFloat, bounds: SVGFilterPixelRect) -> SVGFilterBitmap {
+        var result = SVGFilterBitmap(width: image.width, height: image.height)
+        guard let light else { return result }
+        let lightColor = [color.red, color.green, color.blue].map { Float(min(1, max(0, $0))) }
+        let startY = max(0, bounds.minY)
+        let endY = min(image.height, bounds.maxY)
+        let startX = max(0, bounds.minX)
+        let endX = min(image.width, bounds.maxX)
+        guard startX < endX, startY < endY else { return result }
+        for y in startY..<endY {
+            for x in startX..<endX {
+                let index = (y * image.width + x) * 4
+                let height = surfaceScale * CGFloat(image.values[index + 3])
+                let normal = surfaceNormal(image, x: x, y: y, surfaceScale: surfaceScale, unitX: unitX, unitY: unitY, scaleX: scaleX, scaleY: scaleY, bounds: bounds)
+                let (direction, lightScale) = lightAt(light, x: CGFloat(x) / scaleX, y: CGFloat(y) / scaleY, z: height)
+                let intensity: CGFloat
+                if diffuse {
+                    intensity = constant * max(0, normal.x * direction.x + normal.y * direction.y + normal.z * direction.z)
+                } else {
+                    let half = normalized(direction.x, direction.y, direction.z + 1)
+                    intensity = constant * pow(max(0, normal.x * half.x + normal.y * half.y + normal.z * half.z), specularExponent)
+                }
+                let channels = lightColor.map { clamped($0 * Float(lightScale * intensity)) }
+                if diffuse {
+                    write([channels[0], channels[1], channels[2], 1], to: &result, x: x, y: y)
+                } else {
+                    let alpha = max(channels[0], channels[1], channels[2])
+                    write([channels[0], channels[1], channels[2], alpha], to: &result, x: x, y: y)
+                }
+            }
+        }
+        return result
+    }
+
     private static func over(_ source: SVGFilterBitmap, _ destination: SVGFilterBitmap) -> SVGFilterBitmap {
         var result = source
         for index in stride(from: 0, to: result.values.count, by: 4) {
@@ -2971,6 +3151,36 @@ private enum SVGFilterBitmapRuntime {
                 output = converted(generated, linear: linear, encode: true)
             case let .image(key, _, _, _):
                 output = filterImages[key] ?? transparent
+            case let .diffuseLighting(value, surfaceScale, diffuseConstant, unitX, unitY, color, light, _, _, _):
+                output = converted(lighting(
+                    input(value),
+                    diffuse: true,
+                    surfaceScale: surfaceScale,
+                    constant: diffuseConstant,
+                    specularExponent: 1,
+                    unitX: unitX,
+                    unitY: unitY,
+                    color: color,
+                    light: light,
+                    scaleX: scaleX,
+                    scaleY: scaleY,
+                    bounds: inputRegion(value)
+                ), linear: linear, encode: true)
+            case let .specularLighting(value, surfaceScale, specularConstant, specularExponent, unitX, unitY, color, light, _, _, _):
+                output = converted(lighting(
+                    input(value),
+                    diffuse: false,
+                    surfaceScale: surfaceScale,
+                    constant: specularConstant,
+                    specularExponent: specularExponent,
+                    unitX: unitX,
+                    unitY: unitY,
+                    color: color,
+                    light: light,
+                    scaleX: scaleX,
+                    scaleY: scaleY,
+                    bounds: inputRegion(value)
+                ), linear: linear, encode: true)
             case let .gaussianBlur(value, sigmaX, sigmaY, edge, _, _, _):
                 output = converted(blur(converted(input(value), linear: linear, encode: false), sigmaX: sigmaX * scaleX, sigmaY: sigmaY * scaleY, edge: edge, bounds: inputRegion(value)), linear: linear, encode: true)
             case let .offset(value, dx, dy, _, _, _):
