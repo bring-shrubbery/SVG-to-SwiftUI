@@ -73,6 +73,8 @@ Color and compositing nodes support all 16 `feBlend` modes; `feColorMatrix` matr
 
 Spatial and generated-image nodes support `feConvolveMatrix`, `feMorphology`, `feDisplacementMap`, `feTile`, `feTurbulence`, and `feImage`. This includes kernel targets/divisors/edge modes, anisotropic and fractional radii, channel-selected displacement, fractional tile regions, deterministic seeded and stitched noise, embedded raster data, resolved SVG documents, and local fragment `<use>` semantics with `preserveAspectRatio`. Generated code never fetches resources at runtime. Configurable kernel, octave, output-pixel, resource-byte, and nesting limits bound conversion and rendering work.
 
+Lighting nodes support `feDiffuseLighting` and `feSpecularLighting` with `feDistantLight`, `fePointLight`, and `feSpotLight`. The generated runtime implements SVG surface normals for interior, edge, and corner pixels; `kernelUnitLength`; spotlight cones; `lighting-color`/`currentColor`; primitive units and transforms; and the required diffuse/specular alpha behavior.
+
 Generated Swift uses the same deterministic premultiplied-RGBA image-buffer runtime as the visual regression host. Source vector commands are rasterized only at app render time and at the active display scale; conversion never snapshots the full SVG. Filters run before viewport/clip paths, masks, element opacity, and blending, and their regions contribute to reported painted bounds. Unsupported primitives remain typed pass-through graph nodes with diagnostics until their dedicated tickets land.
 
 ### Linear and radial gradients
@@ -245,7 +247,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] SVG clipping paths, clip rules, coordinate systems, transforms, unions, and nested intersections
 - [x] SVG masks, Level 1 blend modes, group compositing, and isolation
 - [x] SVG markers, vertex placement, orientation, units, context paint, viewports, and painter order
-- [x] Static filter graphs, color/compositing, convolution, morphology, displacement, tiling, turbulence, and filter images
+- [x] Static filter graphs, color/compositing, convolution, morphology, displacement, tiling, turbulence, filter images, and diffuse/specular lighting
 - [x] Embedded CSS cascade, custom properties, and computed presentation styles
 - [x] Basic static SVG `<text>` and `<tspan>` rendering
 - [x] Static SVG `<image>` rendering with deterministic raster/SVG resource resolution

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 72" width="180" height="72">
+  <defs>
+    <filter id="spot" filterUnits="userSpaceOnUse" x="0" y="0" width="180" height="72" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" result="bump"/>
+      <feDiffuseLighting in="bump" surfaceScale="5" diffuseConstant="1.4" lighting-color="#fff3b0" result="cone">
+        <feSpotLight x="34" y="10" z="32" pointsAtX="72" pointsAtY="38" pointsAtZ="0" specularExponent="6" limitingConeAngle="30"/>
+      </feDiffuseLighting>
+      <feComposite in="cone" in2="SourceAlpha" operator="in"/>
+    </filter>
+  </defs>
+  <rect width="180" height="72" fill="#161b26"/>
+  <g filter="url(#spot)" fill="#fff">
+    <circle cx="36" cy="38" r="20"/>
+    <circle cx="90" cy="38" r="20"/>
+    <circle cx="144" cy="38" r="20"/>
+  </g>
+</svg>

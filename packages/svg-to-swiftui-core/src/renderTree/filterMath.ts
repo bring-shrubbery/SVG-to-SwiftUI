@@ -5,6 +5,7 @@ import type {
   FilterComponentTransferFunctions,
   FilterCompositeOperator,
   FilterEdgeMode,
+  FilterLightSource,
   FilterMorphologyOperator,
   FilterTurbulenceType,
 } from "./types";
@@ -25,6 +26,8 @@ export interface FilterPixelRegion {
   width: number;
   height: number;
 }
+
+export type FilterVector3 = readonly [x: number, y: number, z: number];
 
 type RGB = [number, number, number];
 
@@ -492,6 +495,154 @@ export function tileFilterBitmap(
       const sourceX = inputRegion.x + positiveModulo(x + 0.5 - inputRegion.x, inputRegion.width) - 0.5;
       const sourceY = inputRegion.y + positiveModulo(y + 0.5 - inputRegion.y, inputRegion.height) - 0.5;
       setPixel(result, x, y, sampleBilinear(image, sourceX, sourceY, "none"));
+    }
+  }
+  return result;
+}
+
+function normalizeVector(x: number, y: number, z: number): FilterVector3 {
+  const length = Math.hypot(x, y, z);
+  return length > 0 ? [x / length, y / length, z / length] : [0, 0, 0];
+}
+
+function regionContains(region: FilterPixelRegion, x: number, y: number): boolean {
+  return x >= region.x && y >= region.y && x < region.x + region.width && y < region.y + region.height;
+}
+
+function sampleRegionAlpha(image: FilterBitmap, x: number, y: number, region: FilterPixelRegion): number {
+  const minX = Math.floor(x);
+  const minY = Math.floor(y);
+  const fractionX = x - minX;
+  const fractionY = y - minY;
+  const alpha = (sampleX: number, sampleY: number) =>
+    regionContains(region, sampleX, sampleY) ? pixelAt(image, sampleX, sampleY)[3] : 0;
+  const top = alpha(minX, minY) * (1 - fractionX) + alpha(minX + 1, minY) * fractionX;
+  const bottom = alpha(minX, minY + 1) * (1 - fractionX) + alpha(minX + 1, minY + 1) * fractionX;
+  return clamp(top * (1 - fractionY) + bottom * fractionY);
+}
+
+export interface SurfaceNormalParameters {
+  surfaceScale: number;
+  /** Authored filter-coordinate distance. Omitted values use one device pixel. */
+  kernelUnitLengthX?: number;
+  kernelUnitLengthY?: number;
+  /** Device pixels per filter-coordinate unit. */
+  scaleX?: number;
+  scaleY?: number;
+  region?: FilterPixelRegion;
+}
+
+/** SVG lighting surface normal using the specification's distinct corner, edge, and interior Sobel kernels. */
+export function surfaceNormal(
+  image: FilterBitmap,
+  x: number,
+  y: number,
+  parameters: SurfaceNormalParameters,
+): FilterVector3 {
+  const scaleX = parameters.scaleX ?? 1;
+  const scaleY = parameters.scaleY ?? 1;
+  const dx = parameters.kernelUnitLengthX ?? 1 / scaleX;
+  const dy = parameters.kernelUnitLengthY ?? 1 / scaleY;
+  const stepX = dx * scaleX;
+  const stepY = dy * scaleY;
+  const region = parameters.region ?? { x: 0, y: 0, width: image.width, height: image.height };
+  const left = x - stepX < region.x;
+  const right = x + stepX >= region.x + region.width;
+  const top = y - stepY < region.y;
+  const bottom = y + stepY >= region.y + region.height;
+  if ((left && right) || (top && bottom) || dx <= 0 || dy <= 0) return [0, 0, 1];
+
+  const differenceX = left ? [0, -1, 1] : right ? [-1, 1, 0] : [-1, 0, 1];
+  const smoothY = top ? [0, 2, 1] : bottom ? [1, 2, 0] : [1, 2, 1];
+  const differenceY = top ? [0, -1, 1] : bottom ? [-1, 1, 0] : [-1, 0, 1];
+  const smoothX = left ? [0, 2, 1] : right ? [1, 2, 0] : [1, 2, 1];
+  let sumX = 0;
+  let sumY = 0;
+  for (let row = 0; row < 3; row++) {
+    for (let column = 0; column < 3; column++) {
+      const alpha = sampleRegionAlpha(image, x + (column - 1) * stepX, y + (row - 1) * stepY, region);
+      sumX += smoothY[row]! * differenceX[column]! * alpha;
+      sumY += differenceY[row]! * smoothX[column]! * alpha;
+    }
+  }
+  const horizontalEdge = left || right;
+  const verticalEdge = top || bottom;
+  const factorX = horizontalEdge ? (verticalEdge ? 2 / 3 : 1 / 2) : verticalEdge ? 1 / 3 : 1 / 4;
+  const factorY = verticalEdge ? (horizontalEdge ? 2 / 3 : 1 / 2) : horizontalEdge ? 1 / 3 : 1 / 4;
+  return normalizeVector(
+    (-parameters.surfaceScale * factorX * sumX) / dx,
+    (-parameters.surfaceScale * factorY * sumY) / dy,
+    1,
+  );
+}
+
+export interface LightingParameters extends SurfaceNormalParameters {
+  type: "diffuse" | "specular";
+  constant: number;
+  specularExponent?: number;
+  /** RGB components already expressed in color-interpolation-filters space. */
+  color: readonly [red: number, green: number, blue: number];
+  light?: FilterLightSource;
+}
+
+function lightAt(
+  light: FilterLightSource,
+  x: number,
+  y: number,
+  z: number,
+): { direction: FilterVector3; colorScale: number } {
+  if (light.type === "distant") return { direction: normalizeVector(light.x, light.y, light.z), colorScale: 1 };
+  const direction = normalizeVector(light.x - x, light.y - y, light.z - z);
+  if (light.type === "point") return { direction, colorScale: 1 };
+  const spotDirection = normalizeVector(
+    light.pointsAtX - light.x,
+    light.pointsAtY - light.y,
+    light.pointsAtZ - light.z,
+  );
+  const cosine = -(direction[0] * spotDirection[0] + direction[1] * spotDirection[1] + direction[2] * spotDirection[2]);
+  if (cosine <= 0) return { direction, colorScale: 0 };
+  if (light.limitingConeAngle !== undefined) {
+    const limit = Math.cos((light.limitingConeAngle * Math.PI) / 180);
+    if (cosine < limit) return { direction, colorScale: 0 };
+  }
+  return { direction, colorScale: cosine ** light.specularExponent };
+}
+
+/** Deterministic CPU reference for feDiffuseLighting and feSpecularLighting. */
+export function lightingFilterBitmap(image: FilterBitmap, parameters: LightingParameters): FilterBitmap {
+  const result = emptyLike(image);
+  if (!parameters.light) return result;
+  const scaleX = parameters.scaleX ?? 1;
+  const scaleY = parameters.scaleY ?? 1;
+  const region = parameters.region ?? { x: 0, y: 0, width: image.width, height: image.height };
+  const startX = Math.max(0, Math.floor(region.x));
+  const startY = Math.max(0, Math.floor(region.y));
+  const endX = Math.min(image.width, Math.ceil(region.x + region.width));
+  const endY = Math.min(image.height, Math.ceil(region.y + region.height));
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      const alpha = pixelAt(image, x, y)[3];
+      const height = parameters.surfaceScale * alpha;
+      const normal = surfaceNormal(image, x, y, parameters);
+      const light = lightAt(parameters.light, x / scaleX, y / scaleY, height);
+      let intensity: number;
+      if (parameters.type === "diffuse") {
+        intensity =
+          parameters.constant *
+          Math.max(0, normal[0] * light.direction[0] + normal[1] * light.direction[1] + normal[2] * light.direction[2]);
+      } else {
+        const half = normalizeVector(light.direction[0], light.direction[1], light.direction[2] + 1);
+        intensity =
+          parameters.constant *
+          Math.max(0, normal[0] * half[0] + normal[1] * half[1] + normal[2] * half[2]) **
+            (parameters.specularExponent ?? 1);
+      }
+      const channels = parameters.color.map((channel) => clamp(channel * light.colorScale * intensity));
+      if (parameters.type === "diffuse") setPixel(result, x, y, [channels[0]!, channels[1]!, channels[2]!, 1]);
+      else {
+        const outputAlpha = Math.max(channels[0]!, channels[1]!, channels[2]!);
+        setPixel(result, x, y, [channels[0]!, channels[1]!, channels[2]!, outputAlpha]);
+      }
     }
   }
   return result;

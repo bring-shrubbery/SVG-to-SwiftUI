@@ -23,6 +23,8 @@ import type {
   FilterImageSource,
   FilterInput,
   FilterInstance,
+  FilterLightSource,
+  FilterLightSourceSpec,
   FilterPrimitive,
   FilterPrimitiveRegionSpec,
   FilterPrimitiveSpec,
@@ -234,6 +236,60 @@ function numberPair(
     );
     return [fallback, fallback];
   }
+}
+
+function positiveNumberPair(
+  element: ElementNode,
+  name: string,
+  diagnostics: RenderDiagnostic[],
+): [number, number] | undefined {
+  if (!hasAttribute(element, name)) return undefined;
+  const values = numberList(element, name, diagnostics);
+  if (values && values.length >= 1 && values.length <= 2 && values.every((value) => value > 0))
+    return [values[0]!, values[1] ?? values[0]!];
+  diagnostic(
+    diagnostics,
+    element,
+    `invalid-filter-${name.toLowerCase()}`,
+    `${name} requires one or two positive numbers; using the device-pixel default.`,
+  );
+  return undefined;
+}
+
+function nonNegativeNumber(
+  element: ElementNode,
+  name: string,
+  fallback: number,
+  diagnostics: RenderDiagnostic[],
+): number {
+  const value = numberValue(element, name, fallback, diagnostics);
+  if (value >= 0) return value;
+  diagnostic(
+    diagnostics,
+    element,
+    `negative-filter-${name.toLowerCase()}`,
+    `${name} cannot be negative; using ${fallback}.`,
+  );
+  return fallback;
+}
+
+function rangedNumber(
+  element: ElementNode,
+  name: string,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  diagnostics: RenderDiagnostic[],
+): number {
+  const value = numberValue(element, name, fallback, diagnostics);
+  if (value >= minimum && value <= maximum) return value;
+  diagnostic(
+    diagnostics,
+    element,
+    `invalid-filter-${name.toLowerCase()}-range`,
+    `${name} must be between ${minimum} and ${maximum}; using ${fallback}.`,
+  );
+  return fallback;
 }
 
 function integerPair(
@@ -473,6 +529,76 @@ function floodColor(element: ElementNode, presentation: Presentation, diagnostic
   return { ...color, alpha: color.alpha * parseOpacity(rawOpacity) };
 }
 
+function lightingColor(element: ElementNode, presentation: Presentation, diagnostics: RenderDiagnostic[]): RGBAColor {
+  const rawColor = String(presentation["lighting-color"] ?? "white").trim();
+  const colorSource = rawColor.toLowerCase() === "currentcolor" ? String(presentation.color ?? "black") : rawColor;
+  const parsed = parseRGBAColor(colorSource);
+  if (!parsed)
+    diagnostic(diagnostics, element, "invalid-lighting-color", `Invalid lighting-color '${rawColor}'; using white.`);
+  const color = parsed ?? { red: 1, green: 1, blue: 1, alpha: 1 };
+  return { ...color, alpha: 1 };
+}
+
+function lightSource(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterLightSourceSpec | undefined {
+  const sources: FilterLightSourceSpec[] = [];
+  for (const child of children(element)) {
+    const tag = child.tagName?.toLowerCase() ?? "";
+    if (["title", "desc", "metadata", "script", "animate", "set"].includes(tag)) continue;
+    if (tag === "fedistantlight") {
+      sources.push({
+        type: "distant",
+        azimuth: numberValue(child, "azimuth", 0, diagnostics),
+        elevation: numberValue(child, "elevation", 0, diagnostics),
+      });
+    } else if (tag === "fepointlight") {
+      sources.push({
+        type: "point",
+        x: numberValue(child, "x", 0, diagnostics),
+        y: numberValue(child, "y", 0, diagnostics),
+        z: numberValue(child, "z", 0, diagnostics),
+      });
+    } else if (tag === "fespotlight") {
+      sources.push({
+        type: "spot",
+        x: numberValue(child, "x", 0, diagnostics),
+        y: numberValue(child, "y", 0, diagnostics),
+        z: numberValue(child, "z", 0, diagnostics),
+        pointsAtX: numberValue(child, "pointsAtX", 0, diagnostics),
+        pointsAtY: numberValue(child, "pointsAtY", 0, diagnostics),
+        pointsAtZ: numberValue(child, "pointsAtZ", 0, diagnostics),
+        specularExponent: rangedNumber(child, "specularExponent", 1, 1, 128, diagnostics),
+        ...(hasAttribute(child, "limitingConeAngle")
+          ? { limitingConeAngle: numberValue(child, "limitingConeAngle", 0, diagnostics) }
+          : {}),
+      });
+    } else {
+      diagnostic(
+        diagnostics,
+        child,
+        "unsupported-filter-light-source",
+        `<${child.tagName}> is not a supported SVG filter light source.`,
+      );
+    }
+  }
+  if (sources.length === 0) {
+    diagnostic(
+      diagnostics,
+      element,
+      "missing-filter-light-source",
+      `<${element.tagName}> requires exactly one feDistantLight, fePointLight, or feSpotLight child; rendering transparent black.`,
+    );
+    return undefined;
+  }
+  if (sources.length > 1)
+    diagnostic(
+      diagnostics,
+      element,
+      "multiple-filter-light-sources",
+      `<${element.tagName}> has multiple light sources; using the first source in document order.`,
+    );
+  return sources[0];
+}
+
 function filterImageSource(
   element: ElementNode,
   definitions: Map<string, ElementNode>,
@@ -695,19 +821,7 @@ function buildPrimitiveSpecs(
         );
         invalid = true;
       }
-      let kernelUnitLength: [number, number] | undefined;
-      if (hasAttribute(element, "kernelUnitLength")) {
-        const values = numberList(element, "kernelUnitLength", diagnostics);
-        if (values && values.length >= 1 && values.length <= 2 && values.every((value) => value > 0))
-          kernelUnitLength = [values[0]!, values[1] ?? values[0]!];
-        else
-          diagnostic(
-            diagnostics,
-            element,
-            "invalid-filter-kernel-unit-length",
-            "kernelUnitLength requires one or two positive numbers; using the device-pixel default.",
-          );
-      }
+      const kernelUnitLength = positiveNumberPair(element, "kernelUnitLength", diagnostics);
       spec = invalid
         ? { type: "passthrough", input, element: element.tagName ?? "feConvolveMatrix", ...common }
         : {
@@ -820,6 +934,31 @@ function buildPrimitiveSpecs(
       };
     } else if (tag === "feimage") {
       spec = { type: "image", image: filterImageSource(element, definitions, config, diagnostics), ...common };
+    } else if (tag === "fediffuselighting") {
+      const kernelUnitLength = positiveNumberPair(element, "kernelUnitLength", diagnostics);
+      spec = {
+        type: "diffuseLighting",
+        input,
+        surfaceScale: numberValue(element, "surfaceScale", 1, diagnostics),
+        diffuseConstant: nonNegativeNumber(element, "diffuseConstant", 1, diagnostics),
+        ...(kernelUnitLength ? { kernelUnitLengthX: kernelUnitLength[0], kernelUnitLengthY: kernelUnitLength[1] } : {}),
+        color: lightingColor(element, resolved, diagnostics),
+        light: lightSource(element, diagnostics),
+        ...common,
+      };
+    } else if (tag === "fespecularlighting") {
+      const kernelUnitLength = positiveNumberPair(element, "kernelUnitLength", diagnostics);
+      spec = {
+        type: "specularLighting",
+        input,
+        surfaceScale: numberValue(element, "surfaceScale", 1, diagnostics),
+        specularConstant: nonNegativeNumber(element, "specularConstant", 1, diagnostics),
+        specularExponent: rangedNumber(element, "specularExponent", 1, 1, 128, diagnostics),
+        ...(kernelUnitLength ? { kernelUnitLengthX: kernelUnitLength[0], kernelUnitLengthY: kernelUnitLength[1] } : {}),
+        color: lightingColor(element, resolved, diagnostics),
+        light: lightSource(element, diagnostics),
+        ...common,
+      };
     } else if (tag === "fegaussianblur") {
       const [stdDeviationX, stdDeviationY] = numberPair(element, "stdDeviation", 0, diagnostics);
       spec = {
@@ -1072,6 +1211,43 @@ function paintColor(paint: Paint, opacity: number): RGBAColor {
   return color ? { ...color, alpha: color.alpha * opacity } : CLEAR;
 }
 
+function resolveLightSource(
+  source: FilterLightSourceSpec | undefined,
+  unitsValue: FilterUnits,
+  bounds: RenderBounds | undefined,
+): FilterLightSource | undefined {
+  if (!source) return undefined;
+  const scaleX = unitsValue === "objectBoundingBox" ? (bounds?.width ?? 0) : 1;
+  const scaleY = unitsValue === "objectBoundingBox" ? (bounds?.height ?? 0) : 1;
+  const originX = unitsValue === "objectBoundingBox" ? (bounds?.x ?? 0) : 0;
+  const originY = unitsValue === "objectBoundingBox" ? (bounds?.y ?? 0) : 0;
+  if (source.type === "distant") {
+    const azimuth = (source.azimuth * Math.PI) / 180;
+    const elevation = (source.elevation * Math.PI) / 180;
+    return {
+      type: "distant",
+      x: Math.cos(azimuth) * Math.cos(elevation) * scaleX,
+      y: Math.sin(azimuth) * Math.cos(elevation) * scaleY,
+      z: Math.sin(elevation),
+    };
+  }
+  const position = {
+    x: originX + source.x * scaleX,
+    y: originY + source.y * scaleY,
+    z: source.z,
+  };
+  if (source.type === "point") return { type: "point", ...position };
+  return {
+    type: "spot",
+    ...position,
+    pointsAtX: originX + source.pointsAtX * scaleX,
+    pointsAtY: originY + source.pointsAtY * scaleY,
+    pointsAtZ: source.pointsAtZ,
+    specularExponent: source.specularExponent,
+    ...(source.limitingConeAngle === undefined ? {} : { limitingConeAngle: source.limitingConeAngle }),
+  };
+}
+
 /** Resolve filter regions and primitive-unit parameters for one referencing render node. */
 export function resolveFilterInstance(resource: FilterResource, node: RenderNode): FilterInstance {
   const bounds = objectBoundingBox(node);
@@ -1094,6 +1270,7 @@ export function resolveFilterInstance(resource: FilterResource, node: RenderNode
   };
   const scaleX = resource.primitiveUnits === "objectBoundingBox" ? (bounds?.width ?? 0) : 1;
   const scaleY = resource.primitiveUnits === "objectBoundingBox" ? (bounds?.height ?? 0) : 1;
+  const scaleZ = Math.sqrt(Math.abs(scaleX * scaleY));
   const primitives: FilterPrimitive[] = [];
   for (const spec of resource.primitives) {
     const common = {
@@ -1118,6 +1295,19 @@ export function resolveFilterInstance(resource: FilterResource, node: RenderNode
               kernelUnitLengthX: spec.kernelUnitLengthX * scaleX,
               kernelUnitLengthY: spec.kernelUnitLengthY! * scaleY,
             }),
+        ...common,
+      });
+    else if (spec.type === "diffuseLighting" || spec.type === "specularLighting")
+      primitives.push({
+        ...spec,
+        surfaceScale: spec.surfaceScale * scaleZ,
+        ...(spec.kernelUnitLengthX === undefined
+          ? {}
+          : {
+              kernelUnitLengthX: spec.kernelUnitLengthX * scaleX,
+              kernelUnitLengthY: spec.kernelUnitLengthY! * scaleY,
+            }),
+        light: resolveLightSource(spec.light, resource.primitiveUnits, bounds),
         ...common,
       });
     else if (spec.type === "morphology")
