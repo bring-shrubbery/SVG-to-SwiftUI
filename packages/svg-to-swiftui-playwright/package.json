@@ -1,6 +1,6 @@
 {
   "name": "@svg-to-swiftui/playwright",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Secure conversion-time Chromium renderer for SVG foreignObject snapshots.",
   "type": "module",
   "main": "dist/index.js",
@@ -25,7 +25,7 @@
     "pngjs": "^7.0.0"
   },
   "peerDependencies": {
-    "svg-to-swiftui-core": ">=0.4.0"
+    "svg-to-swiftui-core": ">=0.5.0"
   },
   "devDependencies": {
     "@svg-to-swiftui/tsconfig": "workspace:*",
