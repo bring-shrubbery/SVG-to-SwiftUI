@@ -41,7 +41,9 @@ describe("typed SVG render tree", () => {
     ]);
     expect(nodes.find((node) => node.type === "group" && node.referenceId === "mark")).toBeDefined();
     expect(document.resources.definitions.get("mark")?.tagName).toBe("path");
-    expect(document.diagnostics).toEqual([]);
+    expect(document.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "dynamic-navigation", source: { element: "a" } })]),
+    );
   });
 
   test("stores computed inherited styles and semantic paints", () => {

@@ -261,12 +261,6 @@ export function handleElement(element: ElementNode, options: TranspilerOptions):
       break;
 
     default:
-      console.error(
-        [
-          `Element <${element.tagName}> is not supported!`,
-          "Please open a Github issue for this or send a PR with the implementation!",
-        ].join("\n"),
-      );
       options.strokeExpansion = prevExpansion;
       options.normalizeWindingCW = prevNormalize;
       options.fillRule = prevFillRule;

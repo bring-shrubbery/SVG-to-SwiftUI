@@ -1,4 +1,4 @@
-import { convert } from "../index";
+import { convert, convertWithDiagnostics } from "../index";
 import { loadContentFile } from "./utils";
 
 test("conversion-1", () => {
@@ -283,10 +283,17 @@ describe("structural SVG elements", () => {
     errorSpy.mockRestore();
   });
 
-  test("rejects missing and circular use references", () => {
-    expect(() => convert(`<svg viewBox="0 0 10 10"><use href="#missing" /></svg>`)).toThrow("missing element #missing");
-    expect(() =>
-      convert(`<svg viewBox="0 0 10 10"><defs><g id="loop"><use href="#loop" /></g></defs><use href="#loop" /></svg>`),
-    ).toThrow("circular reference");
+  test("diagnoses missing and circular use references with permissive fallbacks", () => {
+    expect(convertWithDiagnostics(`<svg viewBox="0 0 10 10"><use href="#missing" /></svg>`).diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "missing-use-reference" })]),
+    );
+    expect(
+      convertWithDiagnostics(
+        `<svg viewBox="0 0 10 10"><defs><g id="loop"><use href="#loop" /></g></defs><use href="#loop" /></svg>`,
+      ).diagnostics,
+    ).toEqual(expect.arrayContaining([expect.objectContaining({ code: "cyclic-use-reference" })]));
+    expect(() => convert(`<svg viewBox="0 0 10 10"><use href="#missing" /></svg>`, { strict: true })).toThrow(
+      "missing-use-reference",
+    );
   });
 });

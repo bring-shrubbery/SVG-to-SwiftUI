@@ -1,3 +1,5 @@
+import type { RenderDiagnostic } from "./renderTree/types";
+
 export interface SwiftUIGeneratorConfig {
   structName?: string;
   precision?: number;
@@ -7,6 +9,8 @@ export interface SwiftUIGeneratorConfig {
   preserveColors?: boolean;
   /** Fail when the semantic render tree contains unsupported visible content. */
   strict?: boolean;
+  /** Receives each finalized diagnostic once, in deterministic source order. */
+  onDiagnostic?: (diagnostic: RenderDiagnostic) => void;
   /** Outer CSS viewport used to resolve percentage-based root width/height and viewport units. */
   outerViewport?: { width: number; height: number };
   /** Select a static <view id="…"> fragment, with or without a leading #. */

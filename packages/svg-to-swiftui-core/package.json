@@ -7,7 +7,9 @@
   "module": "dist/index.mjs",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "conformance/svg2-static-profile.json",
+    "conformance/REPORT.md"
   ],
   "license": "MIT",
   "keywords": [
@@ -38,6 +40,9 @@
     "visual-test": "bun run visual-tests/run-visual-tests.ts",
     "visual-test:verify": "bun visual-tests/verify-manifest.ts",
     "visual-test:update-manifest": "bun visual-tests/update-manifest.ts",
+    "conformance:verify": "bun conformance/verify.ts",
+    "conformance:report": "bun conformance/generate-report.ts",
+    "conformance:benchmark": "bun conformance/benchmark.ts",
     "test:react-icons": "bun run visual-tests/test-all-react-icons.ts",
     "coverage": "jest --ci --coverage",
     "lint": "biome check .",

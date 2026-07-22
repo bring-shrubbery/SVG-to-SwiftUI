@@ -12,6 +12,7 @@ This tool is for use cases, where creating an SF symbol is not viable, e.g. for 
 
 - [Web App (SVG to SwiftUI)](https://svg-to-swiftui.quassum.com?utm_source=github&utm_medium=readme)
 - [Figma Plugin](https://dub.sh/figma-to-swiftui)
+- [Static SVG2 conformance report](packages/svg-to-swiftui-core/conformance/REPORT.md)
 
 ## Usage
 

@@ -12204,6 +12204,12 @@
       "expectedMode": "view",
       "tags": ["circle", "geometry", "rect", "view", "viewport"]
     },
+    "w3c-svg2-basic-shapes": {
+      "width": 160,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": ["circle", "ellipse", "geometry", "line", "polygon", "polyline", "rect", "stroke", "view", "w3c"]
+    },
     "wave": {
       "width": 128,
       "height": 43,
