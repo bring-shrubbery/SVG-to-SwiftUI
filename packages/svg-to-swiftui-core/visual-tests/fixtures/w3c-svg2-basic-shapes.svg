@@ -1,0 +1,10 @@
+<!-- Static subset adapted from the SVG 2 Shapes examples: https://www.w3.org/TR/SVG2/shapes.html
+     W3C document use is attributed under https://www.w3.org/copyright/document-license-2023/ -->
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120">
+  <rect x="5" y="5" width="150" height="110" rx="8" fill="#eef2ff" stroke="#312e81" stroke-width="3"/>
+  <circle cx="38" cy="38" r="20" fill="#ef4444"/>
+  <ellipse cx="103" cy="38" rx="31" ry="17" fill="#22c55e"/>
+  <line x1="18" y1="76" x2="142" y2="76" stroke="#0f172a" stroke-width="4"/>
+  <polyline points="18,102 38,84 58,102 78,84" fill="none" stroke="#2563eb" stroke-width="4"/>
+  <polygon points="105,104 122,83 144,104" fill="#f59e0b"/>
+</svg>

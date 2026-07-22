@@ -80,7 +80,19 @@ interface BuildContext {
 }
 
 const GEOMETRY_ELEMENTS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
-const CONTAINER_ELEMENTS = new Set(["g", "a"]);
+const CONTAINER_ELEMENTS = new Set(["g", "a", "unknown"]);
+const DYNAMIC_ELEMENTS = new Set([
+  "animate",
+  "animatemotion",
+  "animatetransform",
+  "audio",
+  "canvas",
+  "discard",
+  "iframe",
+  "mpath",
+  "set",
+  "video",
+]);
 const NON_RENDERING_ELEMENTS = new Set([
   "defs",
   "symbol",
@@ -98,6 +110,7 @@ const NON_RENDERING_ELEMENTS = new Set([
   "mask",
   "marker",
   "filter",
+  ...DYNAMIC_ELEMENTS,
 ]);
 
 function sourceLocation(element: ElementNode): SourceLocation {
@@ -2007,11 +2020,29 @@ function buildUse(
 ): RenderNode[] {
   const properties = element.properties ?? {};
   const href = properties.href ?? properties["xlink:href"];
-  if (href === undefined || !String(href).startsWith("#")) throw new Error("<use> must reference a local element id.");
+  if (href === undefined) {
+    addDiagnostic(context, element, "missing-use-reference", "<use> requires an href local fragment reference.");
+    return [];
+  }
+  if (!String(href).startsWith("#")) {
+    addDiagnostic(
+      context,
+      element,
+      "external-use-reference",
+      `<use> external reference '${String(href)}' is denied by the static embedded-only fallback.`,
+    );
+    return [];
+  }
   const id = String(href).slice(1);
   const referenced = context.resources.definitions.get(id);
-  if (!referenced) throw new Error(`<use> references missing element #${id}.`);
-  if (context.activeReferences.has(id)) throw new Error(`<use> contains a circular reference to #${id}.`);
+  if (!referenced) {
+    addDiagnostic(context, element, "missing-use-reference", `<use> references missing element #${id}.`);
+    return [];
+  }
+  if (context.activeReferences.has(id)) {
+    addDiagnostic(context, element, "cyclic-use-reference", `<use> contains a circular reference to #${id}.`);
+    return [];
+  }
   const childContext = { ...context, activeReferences: new Set(context.activeReferences).add(id) };
   if (referenced.tagName === "symbol" || referenced.tagName === "svg") {
     return [buildViewportUse(element, referenced, id, inherited, coordinate, context, childContext)];
@@ -2122,8 +2153,36 @@ export function buildRenderDocument(
   };
   const diagnoseDynamicContent = (element: ElementNode): void => {
     const tag = (element.tagName ?? "").toLowerCase();
-    if (tag === "script")
+    if (tag === "script") {
       addDiagnostic(context, element, "unsupported-script", "SVG scripts are not executed by the static renderer.");
+    } else if (DYNAMIC_ELEMENTS.has(tag)) {
+      addDiagnostic(
+        context,
+        element,
+        `dynamic-${tag}`,
+        `Element <${element.tagName}> is dynamic and is not evaluated by the static renderer.`,
+      );
+    } else if (
+      tag === "a" &&
+      (element.properties?.href !== undefined || element.properties?.["xlink:href"] !== undefined)
+    ) {
+      addDiagnostic(
+        context,
+        element,
+        "dynamic-navigation",
+        "Link navigation is outside the static profile; linked child graphics are rendered without interaction.",
+      );
+    }
+    for (const name of Object.keys(element.properties ?? {}).sort()) {
+      if (!/^on/i.test(name)) continue;
+      context.diagnostics.push({
+        code: "dynamic-event-handler",
+        message: `Event handler '${name}' is not executed by the static renderer.`,
+        severity: "warning",
+        source: sourceLocation(element),
+        attribute: name,
+      });
+    }
     if (tag === "foreignobject") return;
     for (const child of childElements(element)) diagnoseDynamicContent(child);
   };

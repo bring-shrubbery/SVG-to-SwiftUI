@@ -134,7 +134,7 @@ describe("typed SVG pattern resources", () => {
         "negative-pattern-width",
         "negative-pattern-height",
         "cyclic-pattern-content-reference",
-        "cyclic-pattern-use-reference",
+        "cyclic-use-reference",
         "invalid-pattern-paint-server",
       ]),
     );

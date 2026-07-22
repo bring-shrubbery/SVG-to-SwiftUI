@@ -40,6 +40,22 @@ jobs:
       - name: Verify visual fixture manifest
         run: bun run visual-test:verify
 
+      - name: Verify SVG2 static conformance inventory
+        run: bun run conformance:verify
+
+      - name: Verify Shape fast-path budget
+        run: bun run conformance:benchmark
+
+      - name: Generate conformance report
+        run: bun run conformance:report
+
+      - name: Publish conformance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: svg2-static-conformance-report
+          path: packages/svg-to-swiftui-core/conformance/REPORT.md
+          if-no-files-found: error
+
   visual:
     name: Full RGBA visual tests on macOS
     needs: build

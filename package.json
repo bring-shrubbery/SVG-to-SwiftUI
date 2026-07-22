@@ -24,7 +24,10 @@
     "postinstall": "bun run lint:ws",
     "typecheck": "turbo typecheck",
     "visual-test": "bun run --filter svg-to-swiftui-core visual-test",
-    "visual-test:verify": "bun run --filter svg-to-swiftui-core visual-test:verify"
+    "visual-test:verify": "bun run --filter svg-to-swiftui-core visual-test:verify",
+    "conformance:verify": "bun run --filter svg-to-swiftui-core conformance:verify",
+    "conformance:report": "bun run --filter svg-to-swiftui-core conformance:report",
+    "conformance:benchmark": "bun run --filter svg-to-swiftui-core conformance:benchmark"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",

@@ -11,6 +11,13 @@ export interface SourceLocation {
   id?: string;
 }
 
+/** One-based source coordinates plus the zero-based UTF-16 offset. */
+export interface SourcePosition {
+  line: number;
+  column: number;
+  offset: number;
+}
+
 export type DiagnosticSeverity = "warning" | "error";
 
 export interface CSSDiagnosticContext {
@@ -28,6 +35,15 @@ export interface RenderDiagnostic {
   severity: DiagnosticSeverity;
   source: SourceLocation;
   css?: CSSDiagnosticContext;
+  /** Attribute/property that caused the diagnostic, when one can be identified. */
+  attribute?: string;
+  property?: string;
+  /** Best-effort position of the owning element in the original SVG source. */
+  location?: SourcePosition;
+  /** Ordered local/external resource identifiers involved in the failure. */
+  referenceChain?: readonly string[];
+  /** Stable behavior contract for permissive and strict conversion. */
+  fallback?: { permissive: string; strict: string };
 }
 
 /** Static accessibility semantics mapped onto the closest generated SwiftUI view. */

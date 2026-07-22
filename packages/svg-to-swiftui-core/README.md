@@ -9,6 +9,28 @@ This is the core transpiler code that you can use to convert raw SVG code into n
 
 Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to request the legacy single-shape output when the SVG does not require view-only features such as viewport clipping, or `preserveColors: true` to retain the original paint for a single-color SVG. Set `strict: true` to fail conversion when visible SVG content is represented but not supported by the current SwiftUI backend.
 
+### Static profile and detailed results
+
+The supported target is the complete static appearance of SVG 2 plus Filter Effects Level 1. Timelines, scripts, event handlers, navigation, media playback, embedded browsing contexts, and live mutation are intentionally outside this profile. `<foreignObject>` is supported as a secure conversion-time snapshot. The versioned [machine-readable matrix](conformance/svg2-static-profile.json) classifies every SVG2 element, attribute, presentation property, and Level 1 filter primitive; the generated [human report](conformance/REPORT.md) links its implementation and evidence.
+
+Use `convertDetailed()` when callers need more than the legacy Swift source string:
+
+```ts
+const result = convertDetailed(svg, {
+  onDiagnostic: (diagnostic) => telemetry.push(diagnostic),
+});
+
+result.source;       // generated Swift
+result.outputMode;   // "shape" or "view"
+result.artifacts;    // deterministic extracted files
+result.diagnostics; // stable source-ordered diagnostics
+result.conformance; // manifest version + exercised vocabulary
+```
+
+`convertDetailedAsync()` performs the same operation with caller-owned async resources and foreign-object snapshots. A diagnostic contains a stable code/severity/message, element and optional ID, attribute/property, best-effort line/column/offset, reference chain, and strict/permissive fallback. Permissive mode returns output with warnings; `strict: true` reports the same diagnostics through `onDiagnostic` and then fails before returning generated source.
+
+Shape output is the compact, tintable geometry fast path. View output is selected whenever exact appearance requires source colors, independent compositing, paint servers, filters, text, images, accessibility, viewport clipping, or snapshots. The generated View backend requires SwiftUI Canvas (iOS 15, macOS 12, tvOS 15, watchOS 8 or newer).
+
 ### Lengths and viewports
 
 Geometry, strokes, nested viewports, and `<symbol>/<use>` share one typed coordinate resolver. Supported lengths are user units/`px`, `%`, `in`, `cm`, `mm`, `q`, `pt`, `pc`, `em`, `ex`, `ch`, `rem`, `vw`, `vh`, `vmin`, and `vmax`. Absolute units use 96 CSS px per inch. Horizontal, vertical, and “other” percentages use viewport width, height, and normalized diagonal respectively.
@@ -75,7 +97,7 @@ Spatial and generated-image nodes support `feConvolveMatrix`, `feMorphology`, `f
 
 Lighting nodes support `feDiffuseLighting` and `feSpecularLighting` with `feDistantLight`, `fePointLight`, and `feSpotLight`. The generated runtime implements SVG surface normals for interior, edge, and corner pixels; `kernelUnitLength`; spotlight cones; `lighting-color`/`currentColor`; primitive units and transforms; and the required diffuse/specular alpha behavior.
 
-Generated Swift uses the same deterministic premultiplied-RGBA image-buffer runtime as the visual regression host. Source vector commands are rasterized only at app render time and at the active display scale; conversion never snapshots the full SVG. Filters run before viewport/clip paths, masks, element opacity, and blending, and their regions contribute to reported painted bounds. Unsupported primitives remain typed pass-through graph nodes with diagnostics until their dedicated tickets land.
+Generated Swift uses the same deterministic premultiplied-RGBA image-buffer runtime as the visual regression host. Source vector commands are rasterized only at app render time and at the active display scale; conversion never snapshots the full SVG. Filters run before viewport/clip paths, masks, element opacity, and blending, and their regions contribute to reported painted bounds. Safety limits emit diagnostics and stop oversized work deterministically.
 
 ### Linear and radial gradients
 
@@ -207,6 +229,9 @@ bun run visual-test -- --tag opacity            # one feature family
 bun run visual-test -- --changed                # changed fixture SVGs
 bun run visual-test -- --fresh                  # ignore render caches
 bun run visual-test:verify                       # manifest + codegen integrity (all platforms)
+bun run conformance:verify                       # complete SVG2 classification + evidence
+bun run conformance:benchmark                    # compact Shape fast-path budget
+bun run conformance:report                       # regenerate conformance/REPORT.md
 bun run --filter svg-to-swiftui-core visual-test:update-manifest
 ```
 
@@ -214,7 +239,13 @@ Reference caches are content-addressed from SVG bytes and render options. Swift 
 
 The default antialiasing allowance is 24/255 per channel, at most 3% pixels outside that allowance, and mean premultiplied RGB/alpha error no greater than 3/255. These limits accommodate resvg/CoreGraphics edge rasterization differences while still rejecting solid-color, layer-order, and opacity errors. Fixture-specific overrides must keep every channel enabled and include a reason in the manifest.
 
+## Migration from 0.4
+
+Existing `convert()`, `convertAsync()`, and diagnostics APIs remain source-compatible. Their generated Swift is unchanged for already-supported SVGs. New code can adopt `convertDetailed()`/`convertDetailedAsync()` for explicit output mode, artifacts, conformance data, and richer diagnostics. If a 0.4 integration relied on ignored animation, event, or navigation markup, permissive conversion now reports it and strict conversion rejects it. No core conversion path performs ambient network or filesystem I/O; keep using an explicit resource resolver.
+
 ## Roadmap
+
+The static roadmap is complete and tracked in the [generated conformance report](conformance/REPORT.md). Dynamic animation and interaction remain explicitly out of scope.
 
 - [x] SVG `<path>` element
   - [x] Line commands
@@ -253,7 +284,7 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 - [x] Static SVG `<image>` rendering with deterministic raster/SVG resource resolution
 - [x] Advanced SVG text positioning, bidi/vertical layout, `textLength`, and `<textPath>`
 - [x] Static SVG `<foreignObject>` rendering through secure conversion-time snapshots
-- [ ] Automatic animation support
+- Dynamic animation and interaction are intentionally outside the static conversion profile.
 
 ## Built With
 
