@@ -4,5 +4,6 @@
 - `lucide-*` fixtures come from the MIT-licensed [Lucide](https://github.com/lucide-icons/lucide) corpus imported by the repository tooling.
 - `simple-icons-*` fixtures come from the CC0-licensed [Simple Icons](https://github.com/simple-icons/simple-icons) corpus imported by the repository tooling.
 - `*-realistic-export.svg` fixtures are independently authored, synthetic design-tool export shapes. They do not contain third-party artwork.
+- `ghostscript-tiger.svg` is the [Ghostscript Tiger](https://commons.wikimedia.org/wiki/File:Ghostscript_Tiger.svg), derived from Ghostscript's `tiger.eps` and authored by the Ghostscript authors. The fixture is separately licensed under AGPL-3.0-or-later; see [`LICENSES/AGPL-3.0-or-later.txt`](../../../LICENSES/AGPL-3.0-or-later.txt).
 
 Every vendored fixture is deterministic, contains no external network dependency, and is covered by the repository's fixture manifest.

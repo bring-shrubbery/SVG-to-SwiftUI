@@ -680,6 +680,12 @@
       },
       "toleranceReason": "The isolated WebKit XHTML snapshot is resampled once by CoreGraphics, producing small edge-antialiasing differences while retaining matching layout and color."
     },
+    "ghostscript-tiger": {
+      "width": 450,
+      "height": 450,
+      "expectedMode": "view",
+      "tags": ["complex-artwork", "g", "geometry", "path", "stroke", "transform", "view"]
+    },
     "gradient-coordinate-units": {
       "width": 128,
       "height": 58,
