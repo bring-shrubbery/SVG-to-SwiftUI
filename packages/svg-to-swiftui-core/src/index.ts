@@ -27,6 +27,37 @@ export type {
 } from "./renderTree/animation";
 export { sampleNumericAnimation } from "./renderTree/animation";
 export type {
+  AnimationAttributeSpec,
+  AnimationCalculation,
+  AnimationColor,
+  AnimationSandwichLayer,
+  AnimationTransformComponent,
+  AnimationValueContext,
+  AnimationValueFamily,
+  AnimationValueSample,
+  AnimationValueSet,
+  CubicBezier,
+  TypedAnimationValue,
+} from "./renderTree/animationValues";
+export {
+  addAnimationValues,
+  animationAttributeSpec,
+  animationValueDistance,
+  animationValuesEqual,
+  composeAnimationSandwich,
+  cubicBezierProgress,
+  interpolateAnimationValue,
+  normalizeAnimationValue,
+  parseAnimationValue,
+  parseAnimationValueSet,
+  parseKeySplines,
+  parseKeyTimes,
+  sampleAnimationValue,
+  serializeAnimationValue,
+  swiftAnimationValueLiteral,
+  validateAnimationCalculation,
+} from "./renderTree/animationValues";
+export type {
   DeterministicTimingEvent,
   SMILProgramSample,
   SMILTimingInterval,

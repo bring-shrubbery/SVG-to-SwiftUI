@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <rect width="128" height="80" fill="#0f172a"/>
+  <circle cx="12" cy="18" r="6" fill="#34d399">
+    <animate attributeName="cx" from="12" to="84" dur="1s" fill="freeze"/>
+    <animate attributeName="cx" by="20" begin=".25s" dur=".5s" additive="sum" fill="remove"/>
+  </circle>
+  <circle cx="12" cy="42" r="6" fill="#fbbf24">
+    <animate attributeName="cx" from="12" by="36" dur="1s" fill="freeze"/>
+    <animate attributeName="cx" to="108" begin=".5s" dur=".5s" fill="freeze"/>
+  </circle>
+  <circle cx="12" cy="66" r="6" fill="#c084fc">
+    <animate attributeName="cx" values="0;16" dur=".25s" repeatCount="4" additive="sum" accumulate="sum" fill="freeze"/>
+  </circle>
+</svg>

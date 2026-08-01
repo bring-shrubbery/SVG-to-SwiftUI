@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <rect width="128" height="80" fill="#0f172a"/>
+  <rect x="10%" y="8" width="18" height="12" rx="2" fill="#38bdf8">
+    <animate attributeName="x" from="10%" to="75%" dur="1s" fill="freeze"/>
+  </rect>
+  <circle cx="18" cy="40" r="9" fill="rgba(248 113 113 / .25)" opacity=".25">
+    <animate attributeName="opacity" values=".25;1;.5" dur="1s"/>
+    <animate attributeName="fill" values="rgba(248 113 113 / .25);rgba(74 222 128 / 1);rgba(96 165 250 / .5)" dur="1s"/>
+  </circle>
+  <svg x="62" y="50" width="54" height="22" viewBox="0 0 54 22" overflow="visible">
+    <rect x="1" y="1" width="18" height="18" fill="#facc15"/>
+    <animate attributeName="viewBox" values="0 0 54 22;18 0 36 22" dur="1s" fill="freeze"/>
+  </svg>
+</svg>

@@ -1,4 +1,17 @@
 import type { ElementNode } from "svg-parser";
+import { defaultFontMetrics } from "../lengths";
+import { parseViewBox } from "../viewports";
+import {
+  type AnimationCalculation,
+  type AnimationValueContext,
+  type AnimationValueSet,
+  animationAttributeSpec,
+  parseAnimationValueSet,
+  parseKeySplines,
+  parseKeyTimes,
+  sampleAnimationValue,
+  validateAnimationCalculation,
+} from "./animationValues";
 import { sampleSMILTiming } from "./smilTiming";
 import type { RenderDiagnostic, SourceLocation } from "./types";
 
@@ -21,16 +34,9 @@ export type AnimationDuration =
   | { type: "invalid"; syntax: string };
 
 export type AnimationValue =
+  | AnimationValueSet
   | {
-      type: "number";
-      base: number;
-      from?: number;
-      to?: number;
-      by?: number;
-      values?: readonly number[];
-    }
-  | {
-      type: "unsupported";
+      family: "unsupported";
       base?: string;
       from?: string;
       to?: string;
@@ -66,14 +72,10 @@ export interface AnimationDefinition {
   attributeName?: string;
   timing: AnimationTiming;
   value: AnimationValue;
-  composition: {
-    additive: "replace" | "sum";
-    accumulate: "none" | "sum";
-    calcMode: "discrete" | "linear" | "paced" | "spline";
-  };
+  composition: AnimationCalculation;
   documentOrder: number;
   dependencies: readonly string[];
-  runtimeSupport: "numeric-linear" | "numeric-discrete" | "pending" | "invalid";
+  runtimeSupport: "scalar" | "pending" | "invalid";
 }
 
 export interface AnimationProgram {
@@ -250,6 +252,7 @@ function parseValue(
   animation: ElementNode,
   target: ElementNode | undefined,
   attributeName: string | undefined,
+  context: AnimationValueContext,
 ): AnimationValue {
   const fromRaw = property(animation, "from");
   const toRaw = property(animation, "to");
@@ -258,28 +261,22 @@ function parseValue(
     ?.split(";")
     .map((value) => value.trim());
   const baseRaw = attributeName && target ? property(target, attributeName) : undefined;
-  const base = numeric(baseRaw) ?? 0;
-  const from = numeric(fromRaw);
-  const to = numeric(toRaw);
-  const by = numeric(byRaw);
-  const values = valuesRaw?.map(numeric);
-  if (
-    (fromRaw === undefined || from !== undefined) &&
-    (toRaw === undefined || to !== undefined) &&
-    (byRaw === undefined || by !== undefined) &&
-    (!values || values.every((value) => value !== undefined))
-  ) {
-    return {
-      type: "number",
-      base,
-      ...(from === undefined ? {} : { from }),
-      ...(to === undefined ? {} : { to }),
-      ...(by === undefined ? {} : { by }),
-      ...(values ? { values: values as number[] } : {}),
-    };
+  if (attributeName) {
+    const parsed = parseAnimationValueSet(
+      attributeName,
+      {
+        base: baseRaw ?? "0",
+        ...(fromRaw === undefined ? {} : { from: fromRaw }),
+        ...(toRaw === undefined ? {} : { to: toRaw }),
+        ...(byRaw === undefined ? {} : { by: byRaw }),
+        ...(valuesRaw ? { values: valuesRaw } : {}),
+      },
+      context,
+    );
+    if (parsed) return parsed;
   }
   return {
-    type: "unsupported",
+    family: "unsupported",
     ...(baseRaw === undefined ? {} : { base: baseRaw }),
     ...(fromRaw === undefined ? {} : { from: fromRaw }),
     ...(toRaw === undefined ? {} : { to: toRaw }),
@@ -291,7 +288,7 @@ function parseValue(
 function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSupport">): boolean {
   if (definition.kind !== "animate" || !definition.target?.renderable || !definition.attributeName) return false;
   if (!definition.target.key.startsWith("id:") || !["cx", "x"].includes(definition.attributeName)) return false;
-  if (definition.value.type !== "number") return false;
+  if (!["number", "integer", "opacity", "length", "angle"].includes(definition.value.family)) return false;
   if (
     definition.timing.duration.type === "invalid" ||
     definition.timing.duration.type === "media" ||
@@ -307,15 +304,47 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
     (!Number.isFinite(definition.timing.repeatCount.value) || definition.timing.repeatCount.value <= 0)
   )
     return false;
-  if (definition.composition.additive !== "replace" || definition.composition.accumulate !== "none") return false;
-  if (definition.composition.calcMode === "discrete") return (definition.value.values?.length ?? 0) >= 2;
-  if (definition.composition.calcMode !== "linear") return false;
-  if (definition.value.from === undefined || definition.value.to === undefined) return false;
-  return true;
+  if (definition.value.family === "unsupported" || definition.value.form === "invalid") return false;
+  const scalar = (value: AnimationValueSet["base"] | undefined) =>
+    value === undefined || ["number", "integer", "opacity", "length", "angle"].includes(value.family);
+  if (
+    !scalar(definition.value.base) ||
+    !scalar(definition.value.from) ||
+    !scalar(definition.value.to) ||
+    !scalar(definition.value.by) ||
+    definition.value.values?.some((value) => !scalar(value))
+  )
+    return false;
+  const count = definition.value.values?.length ?? 2;
+  return validateAnimationCalculation(count, definition.composition).length === 0;
 }
 
 /** Parse declarative SVG animation into immutable, typed compiler input. */
-export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiagnostic[]): AnimationProgram {
+export function buildAnimationProgram(
+  root: ElementNode,
+  diagnostics: RenderDiagnostic[],
+  targetContexts: ReadonlyMap<string, AnimationValueContext> = new Map(),
+): AnimationProgram {
+  let parsedRootViewBox: ReturnType<typeof parseViewBox>;
+  try {
+    parsedRootViewBox = parseViewBox(property(root, "viewBox"));
+  } catch {
+    parsedRootViewBox = undefined;
+  }
+  const viewport = {
+    width: parsedRootViewBox?.width ?? numeric(property(root, "width")) ?? 300,
+    height: parsedRootViewBox?.height ?? numeric(property(root, "height")) ?? 150,
+  };
+  const animationValueContext: AnimationValueContext = {
+    length: {
+      viewport,
+      rootViewport: viewport,
+      fontMetrics: defaultFontMetrics(),
+      percentageBasis: "viewport-diagonal",
+      axis: "other",
+    },
+    colorSpace: property(root, "color-interpolation")?.toLowerCase() === "linearrgb" ? "linearRGB" : "sRGB",
+  };
   const parents = new Map<ElementNode, ElementNode>();
   const order = new Map<ElementNode, number>();
   const definitions = new Map<string, ElementNode>();
@@ -445,7 +474,28 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
         : "always",
       fill: fillValue === "freeze" ? "freeze" : "remove",
     };
-    const value = parseValue(element, targetElement, attributeName);
+    const value = parseValue(
+      element,
+      targetElement,
+      attributeName,
+      (target?.source.id ? targetContexts.get(target.source.id) : undefined) ?? animationValueContext,
+    );
+    const calcModeSource = property(element, "calcMode");
+    const defaultCalcMode = kind === "set" ? "discrete" : kind === "animateMotion" ? "paced" : "linear";
+    const calcMode = ["discrete", "linear", "paced", "spline"].includes(calcModeSource ?? "")
+      ? (calcModeSource as AnimationCalculation["calcMode"])
+      : defaultCalcMode;
+    const keyTimesSource = property(element, "keyTimes");
+    const keySplinesSource = property(element, "keySplines");
+    const keyPointsSource = property(element, "keyPoints");
+    const composition: AnimationCalculation = {
+      additive: property(element, "additive") === "sum" ? "sum" : "replace",
+      accumulate: property(element, "accumulate") === "sum" ? "sum" : "none",
+      calcMode,
+      ...(keyTimesSource === undefined ? {} : { keyTimes: parseKeyTimes(keyTimesSource) ?? [] }),
+      ...(keySplinesSource === undefined ? {} : { keySplines: parseKeySplines(keySplinesSource) ?? [] }),
+      ...(keyPointsSource === undefined ? {} : { keyPoints: parseKeyTimes(keyPointsSource) ?? [] }),
+    };
     const dependencies = [...timing.begin, ...timing.end]
       .filter(
         (time): time is Extract<AnimationTime, { type: "syncbase" | "repeat" }> =>
@@ -461,17 +511,12 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
       ...(attributeName ? { attributeName } : {}),
       timing,
       value,
-      composition: {
-        additive: property(element, "additive") === "sum" ? ("sum" as const) : ("replace" as const),
-        accumulate: property(element, "accumulate") === "sum" ? ("sum" as const) : ("none" as const),
-        calcMode: (property(element, "calcMode") as AnimationDefinition["composition"]["calcMode"]) ?? "linear",
-      },
+      composition,
       documentOrder,
       dependencies,
     };
     let runtimeSupport: AnimationDefinition["runtimeSupport"] = target ? "pending" : "invalid";
-    if (isRuntimeSupported(baseDefinition))
-      runtimeSupport = baseDefinition.composition.calcMode === "discrete" ? "numeric-discrete" : "numeric-linear";
+    if (isRuntimeSupported(baseDefinition)) runtimeSupport = "scalar";
     const definition: AnimationDefinition = { ...baseDefinition, runtimeSupport };
     animations.push(definition);
 
@@ -562,19 +607,95 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
     const fill = property(element, "fill");
     if (fill && !["remove", "freeze"].includes(fill))
       diagnostic(diagnostics, element, "invalid-animation-fill", `Invalid animation fill value '${fill}'.`, "fill");
-    if (value.type === "unsupported")
+    if (calcModeSource !== undefined && !["discrete", "linear", "paced", "spline"].includes(calcModeSource))
       diagnostic(
         diagnostics,
         element,
-        "unsupported-animation-value",
-        "This animation value family is not implemented yet.",
+        "invalid-animation-calc-mode",
+        `Invalid calcMode '${calcModeSource}'; using ${defaultCalcMode}.`,
+        "calcMode",
       );
-    if (runtimeSupport === "pending" && value.type !== "unsupported")
+    if (calcMode !== "paced" && keyTimesSource !== undefined && parseKeyTimes(keyTimesSource) === undefined)
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-key-times",
+        "keyTimes must be a semicolon-separated list of values from 0 through 1.",
+        "keyTimes",
+      );
+    if (calcMode === "spline" && keySplinesSource !== undefined && parseKeySplines(keySplinesSource) === undefined)
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-key-splines",
+        "Each keySplines segment must contain four control values from 0 through 1.",
+        "keySplines",
+      );
+    if (keyPointsSource !== undefined && parseKeyTimes(keyPointsSource) === undefined)
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-key-points",
+        "keyPoints must be a semicolon-separated list of values from 0 through 1.",
+        "keyPoints",
+      );
+    if (value.family === "unsupported")
+      diagnostic(
+        diagnostics,
+        element,
+        animationAttributeSpec(attributeName ?? "") ? "invalid-animation-value" : "unknown-animation-attribute",
+        animationAttributeSpec(attributeName ?? "")
+          ? "The authored animation values are invalid for the target attribute's value family."
+          : `The animation value family for '${attributeName ?? ""}' is unknown; the compiler will not guess.`,
+        "attributeName",
+      );
+    if (value.family !== "unsupported") {
+      if (value.form === "invalid")
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-animation-value-form",
+          "Animation requires values, from/to, from/by, to, or by.",
+        );
+      const count = value.values?.length ?? 2;
+      for (const error of validateAnimationCalculation(count, composition))
+        diagnostic(
+          diagnostics,
+          element,
+          `invalid-animation-${error.toLowerCase()}`,
+          `The ${error} constraint is invalid for ${count} animation value(s); the animation has no effect.`,
+          error.startsWith("keySplines") ? "keySplines" : "keyTimes",
+        );
+      const probe = sampleAnimationValue(value, composition, 0.5, 0, value.base);
+      if (probe?.fallback === "incompatible-values")
+        diagnostic(
+          diagnostics,
+          element,
+          "incompatible-animation-values",
+          "The animation values have incompatible list or path structures; permissive mode uses discrete changes.",
+          value.values ? "values" : "to",
+        );
+      if (
+        (composition.additive === "sum" ||
+          composition.accumulate === "sum" ||
+          value.form === "by" ||
+          value.form === "from-by") &&
+        !value.attribute.additive
+      )
+        diagnostic(
+          diagnostics,
+          element,
+          "unsupported-animation-addition",
+          "The target value family does not define addition; additive and accumulate are ignored.",
+          composition.additive === "sum" ? "additive" : "accumulate",
+        );
+    }
+    if (runtimeSupport === "pending" && value.family !== "unsupported")
       diagnostic(
         diagnostics,
         element,
         "unsupported-animation-semantics",
-        `Animation <${element.tagName}> uses timing or composition semantics not implemented by this ticket.`,
+        `Animation <${element.tagName}> is parsed by the value engine but target wiring is delivered by a later ticket.`,
       );
   }
 
@@ -586,18 +707,7 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
     group.push(animation);
     compositions.set(key, group);
   }
-  for (const group of compositions.values()) {
-    if (group.length < 2) continue;
-    for (const animation of group) animation.runtimeSupport = "pending";
-    const owner = animationElements.find(({ element }) => order.get(element) === group[0]?.documentOrder)?.element;
-    if (owner)
-      diagnostic(
-        diagnostics,
-        owner,
-        "unsupported-animation-composition",
-        "Multiple animations target the same property; deterministic composition is implemented by a later ticket.",
-      );
-  }
+  for (const group of compositions.values()) group.sort((left, right) => left.documentOrder - right.documentOrder);
 
   const byId = new Map(animations.map((animation) => [animation.stableId, animation]));
   const visiting = new Set<string>();
@@ -653,20 +763,33 @@ export function declarativeAnimationTag(tagName: string | undefined): boolean {
 /** Reference sampler for the first compiler slice and exact clock-boundary tests. */
 export function sampleNumericAnimation(animation: AnimationDefinition, documentTime: number): number | undefined {
   if (
-    !["numeric-linear", "numeric-discrete"].includes(animation.runtimeSupport) ||
-    animation.value.type !== "number" ||
+    animation.runtimeSupport !== "scalar" ||
+    animation.value.family === "unsupported" ||
     animation.timing.duration.type !== "seconds" ||
     animation.timing.begin[0]?.type !== "offset"
   )
     return undefined;
   const sample = sampleSMILTiming(animation.timing, documentTime, [animation.timing.begin[0].seconds]);
-  if (sample.state === "inactive" || sample.state === "completed") return animation.value.base;
-  if (sample.simpleProgress === undefined) return animation.value.base;
-  const progress = sample.simpleProgress;
-  if (animation.runtimeSupport === "numeric-discrete") {
-    const values = animation.value.values!;
-    return values[Math.min(values.length - 1, Math.floor(progress * values.length + 1e-12))];
-  }
-  if (animation.value.from === undefined || animation.value.to === undefined) return undefined;
-  return animation.value.from + (animation.value.to - animation.value.from) * progress;
+  const scalar = (value: AnimationValueSet["base"]): number | undefined => {
+    switch (value.family) {
+      case "number":
+      case "integer":
+      case "opacity":
+      case "length":
+      case "angle":
+        return value.value;
+      default:
+        return undefined;
+    }
+  };
+  if (sample.state === "inactive" || sample.state === "completed" || sample.simpleProgress === undefined)
+    return scalar(animation.value.base);
+  const result = sampleAnimationValue(
+    animation.value,
+    animation.composition,
+    sample.simpleProgress,
+    sample.repeatIteration,
+    animation.value.base,
+  );
+  return result ? scalar(result.value) : undefined;
 }

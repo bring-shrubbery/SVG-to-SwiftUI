@@ -105,6 +105,64 @@
         "sampleTimesMicroseconds": [0, 99999, 100000, 199999, 200000, 399999, 400000, 499999, 500000]
       }
     },
+    "reference-smil-value-families": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 128,
+      "height": 80,
+      "tags": ["color", "color-alpha", "length", "number", "opacity", "paint", "percentage", "smil-values", "viewbox"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000]
+      }
+    },
+    "reference-smil-lists-path": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 128,
+      "height": 80,
+      "tags": ["discrete", "length-list", "list", "paint", "path", "points", "smil-values"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000]
+      }
+    },
+    "reference-smil-calculation-modes": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 128,
+      "height": 64,
+      "tags": ["key-splines", "key-times", "paced", "smil-values", "spline"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 99999, 100000, 349999, 350000, 499999, 500000, 699999, 700000, 999999, 1000000]
+      }
+    },
+    "reference-smil-composition": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 128,
+      "height": 80,
+      "tags": [
+        "accumulate",
+        "additive",
+        "animation-sandwich",
+        "by",
+        "from-by",
+        "from-to",
+        "smil-values",
+        "to",
+        "values"
+      ],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000]
+      }
+    },
     "benchmark-01-numeric-cx": {
       "mode": "comparison",
       "referenceBackend": "webkit",
@@ -159,6 +217,32 @@
           900000, 999999, 1000000, 1199999, 1200000, 1249999, 1250000, 1333333, 1333334, 1466666, 1466667, 1499999,
           1500000, 1599999, 1600000, 1733333, 1733334, 1866666, 1866667, 1999999, 2000000, 2099999, 2100000, 2199999,
           2200000, 2449999, 2450000, 2699999, 2700000
+        ]
+      }
+    },
+    "benchmark-04-interpolation-composition": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": [
+        "accumulate",
+        "additive",
+        "animation-sandwich",
+        "benchmark-04",
+        "key-splines",
+        "key-times",
+        "paced",
+        "smil-values",
+        "spline"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000, 1249999, 1250000, 1499999, 1500000,
+          1749999, 1750000, 1999999, 2000000
         ]
       }
     }

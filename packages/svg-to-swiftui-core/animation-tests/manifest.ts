@@ -6,6 +6,7 @@ const ANIMATION_TESTS_DIR = __dirname;
 export const ANIMATION_FIXTURES_DIR = resolve(ANIMATION_TESTS_DIR, "fixtures");
 export const ANIMATION_MANIFEST_PATH = resolve(ANIMATION_TESTS_DIR, "animation-fixture-manifest.json");
 export const SMIL_TIMING_EXPECTATIONS_PATH = resolve(ANIMATION_TESTS_DIR, "smil-timing-expectations.json");
+export const ANIMATION_VALUE_GOLDENS_PATH = resolve(ANIMATION_TESTS_DIR, "animation-value-goldens.json");
 
 export type AnimationFixtureMode = "comparison" | "reference-probe";
 export type ExpectedOutputMode = "shape" | "view";
@@ -31,6 +32,34 @@ const REQUIRED_SMIL_TIMING_PROBE_TAGS = [
   "restart-when-not-active",
   "syncbase",
   "zero-duration",
+] as const;
+
+const REQUIRED_SMIL_VALUE_PROBE_TAGS = [
+  "accumulate",
+  "additive",
+  "animation-sandwich",
+  "by",
+  "color",
+  "color-alpha",
+  "discrete",
+  "from-by",
+  "from-to",
+  "key-splines",
+  "key-times",
+  "length",
+  "length-list",
+  "list",
+  "number",
+  "opacity",
+  "paced",
+  "paint",
+  "path",
+  "percentage",
+  "points",
+  "spline",
+  "to",
+  "values",
+  "viewbox",
 ] as const;
 
 function validateBackground(value: string | null): void {
@@ -95,6 +124,24 @@ export interface SMILTimingExpectationSet {
     beginBoundary?: boolean;
     endBoundary?: boolean;
     repeatBoundary?: boolean;
+  }>;
+}
+
+interface AnimationValueGoldenFile {
+  version: 1;
+  tolerance: number;
+  literalCases: Array<{
+    name: string;
+    attributeName: string;
+    source: string;
+    expected: string;
+  }>;
+  cases: Array<{
+    name: string;
+    form: string;
+    calcMode: string;
+    clamp: string;
+    expected: number;
   }>;
 }
 
@@ -173,6 +220,10 @@ export function loadSMILTimingExpectations(): Record<string, SMILTimingExpectati
   return JSON.parse(readFileSync(SMIL_TIMING_EXPECTATIONS_PATH, "utf8")) as Record<string, SMILTimingExpectationSet>;
 }
 
+export function loadAnimationValueGoldens(): AnimationValueGoldenFile {
+  return JSON.parse(readFileSync(ANIMATION_VALUE_GOLDENS_PATH, "utf8")) as AnimationValueGoldenFile;
+}
+
 export function loadAnimationFixtures(): LoadedAnimationFixture[] {
   const manifest = readManifest();
   if (manifest.version !== 1) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
@@ -210,10 +261,12 @@ export function validateAnimationManifest(): string[] {
   let manifest: AnimationManifestFile;
   let fixtures: LoadedAnimationFixture[];
   let timingExpectations: Record<string, SMILTimingExpectationSet>;
+  let valueGoldens: AnimationValueGoldenFile;
   try {
     manifest = readManifest();
     fixtures = loadAnimationFixtures();
     timingExpectations = loadSMILTimingExpectations();
+    valueGoldens = loadAnimationValueGoldens();
   } catch (error) {
     return [error instanceof Error ? error.message : String(error)];
   }
@@ -232,6 +285,46 @@ export function validateAnimationManifest(): string[] {
   );
   for (const tag of REQUIRED_SMIL_TIMING_PROBE_TAGS)
     if (!timingProbeTags.has(tag)) errors.push(`SMIL timing reference probes do not cover required tag: ${tag}`);
+  const valueProbeTags = new Set(
+    fixtures
+      .filter((fixture) => fixture.mode === "reference-probe" && fixture.tags.includes("smil-values"))
+      .flatMap((fixture) => fixture.tags),
+  );
+  for (const tag of REQUIRED_SMIL_VALUE_PROBE_TAGS)
+    if (!valueProbeTags.has(tag)) errors.push(`SMIL value reference probes do not cover required tag: ${tag}`);
+  if (valueGoldens.version !== 1) errors.push(`Unsupported animation value golden version: ${valueGoldens.version}`);
+  if (!Number.isFinite(valueGoldens.tolerance) || valueGoldens.tolerance <= 0)
+    errors.push("Animation value golden tolerance must be finite and positive");
+  if (new Set(valueGoldens.cases.map((item) => item.name)).size !== valueGoldens.cases.length)
+    errors.push("Animation value golden names must be unique");
+  if (new Set(valueGoldens.literalCases.map((item) => item.name)).size !== valueGoldens.literalCases.length)
+    errors.push("Animation value literal golden names must be unique");
+  for (const required of [
+    "angle",
+    "color",
+    "discrete",
+    "integer",
+    "length",
+    "length-list",
+    "number",
+    "number-list",
+    "opacity",
+    "paint",
+    "path",
+    "points",
+    "transform",
+    "viewBox",
+  ])
+    if (!valueGoldens.literalCases.some((item) => item.name === required))
+      errors.push(`Animation value literal goldens do not cover family: ${required}`);
+  for (const required of ["values", "from-to", "from-by", "by", "to"])
+    if (!valueGoldens.cases.some((item) => item.form === required))
+      errors.push(`Animation value goldens do not cover form: ${required}`);
+  for (const required of ["discrete", "linear", "paced", "spline"])
+    if (!valueGoldens.cases.some((item) => item.calcMode === required))
+      errors.push(`Animation value goldens do not cover calcMode: ${required}`);
+  for (const item of valueGoldens.cases)
+    if (!Number.isFinite(item.expected)) errors.push(`Animation value golden ${item.name} has a non-finite result`);
 
   for (const fixture of fixtures) {
     const prefix = `${fixture.name}:`;
