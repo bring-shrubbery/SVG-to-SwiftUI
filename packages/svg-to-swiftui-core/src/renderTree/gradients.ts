@@ -131,6 +131,7 @@ function stopsFor(
   element: ElementNode,
   presentations: Map<ElementNode, Presentation>,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string | undefined,
 ): GradientStop[] {
   const result: GradientStop[] = [];
   let previous = 0;
@@ -152,6 +153,12 @@ function stopsFor(
       offset,
       color: { ...color, alpha: color.alpha * parseOpacity(opacitySource) },
       source: sourceLocation(stop),
+      ...(animationTargetKey?.(stop) ? { animationTargetKey: animationTargetKey(stop) } : {}),
+      animationBaseValues: {
+        offset: String(offset),
+        "stop-color": colorSource,
+        "stop-opacity": opacitySource,
+      },
     });
   }
   return result;
@@ -173,6 +180,7 @@ export function resolvePaintServers(
   styleResolver: SVGStyleResolver,
   rootPresentation: Presentation,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string | undefined,
 ): Map<string, PaintServer> {
   const presentations = new Map<ElementNode, Presentation>();
 
@@ -302,7 +310,7 @@ export function resolvePaintServers(
     }
 
     const stopOwner = chain.find((candidate) => children(candidate).some((child) => child.tagName === "stop"));
-    const stops = stopOwner ? stopsFor(stopOwner, presentations, diagnostics) : [];
+    const stops = stopOwner ? stopsFor(stopOwner, presentations, diagnostics, animationTargetKey) : [];
     const base = {
       id,
       units,

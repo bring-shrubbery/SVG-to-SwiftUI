@@ -144,8 +144,8 @@ describe("generated animation clock", () => {
     expect(swift).toContain("init(documentTime: Double? = nil, respectsReducedMotion: Bool = false)");
     expect(swift).toContain("TimelineView(.animation(paused:");
     expect(swift).toContain("content(at: Self.sanitizedDocumentTime(documentTime))");
-    expect(swift).toContain("svgAnimatedNumber(documentTime: documentTime");
-    expect(swift).toContain(".offset(x:");
+    expect(swift).toContain("svgAnimatedValue(documentTime: documentTime");
+    expect(swift).toContain("Layer0(documentTime: documentTime)");
     expect(swift.match(/TimelineView/g)).toHaveLength(1);
   });
 

@@ -252,6 +252,8 @@ SMIL scheduling is compiled separately from drawing. See the [SMIL timing contra
 
 Typed interpolation, paced/spline sampling, additive composition, and repeat accumulation are documented in the [SVG animation value contract](docs/animation-values.md).
 
+`<animate>` and `<set>` now drive native geometry, presentation, text, viewport, inheritance, and gradient-stop rendering. See the [property contract](docs/animate-set-properties.md) and generated [animation attribute report](conformance/ANIMATION_REPORT.md) for exact implemented and pending properties.
+
 Optional MP4 files are review artifacts only. They are encoded after the lossless comparisons and never decide whether a test passes. Animation compiler support is being implemented in dependency order under the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94).
 
 ## Migration from 0.4

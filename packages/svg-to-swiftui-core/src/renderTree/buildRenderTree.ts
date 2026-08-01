@@ -25,8 +25,7 @@ import type { SVGElementProperties, ViewBoxData } from "../types";
 import { getSVGElement, resolveSVGProperties } from "../utils";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { SVGAccessibilityResolver } from "./accessibility";
-import { buildAnimationProgram, declarativeAnimationTag } from "./animation";
-import type { AnimationValueContext } from "./animationValues";
+import { type AnimationTargetSnapshot, buildAnimationProgram, declarativeAnimationTag } from "./animation";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { SVGConditionalProcessor } from "./conditionalProcessing";
 import { resolveFilterInstance, resolveFilterResources } from "./filters";
@@ -79,6 +78,7 @@ interface BuildContext {
   conditional: SVGConditionalProcessor;
   accessibility: SVGAccessibilityResolver;
   includeAccessibility: boolean;
+  animationTargetKeys: WeakMap<ElementNode, string>;
 }
 
 const GEOMETRY_ELEMENTS = new Set(["path", "circle", "ellipse", "rect", "line", "polyline", "polygon"]);
@@ -118,6 +118,10 @@ const NON_RENDERING_ELEMENTS = new Set([
 function sourceLocation(element: ElementNode): SourceLocation {
   const id = element.properties?.id;
   return { element: element.tagName ?? "unknown", ...(id === undefined ? {} : { id: String(id) }) };
+}
+
+function animationTargetKey(element: ElementNode, context: BuildContext): string {
+  return context.animationTargetKeys.get(element) ?? `unindexed:${element.tagName ?? "unknown"}`;
 }
 
 function addDiagnostic(
@@ -482,6 +486,8 @@ function computeStyle(
   element: ElementNode,
   context: BuildContext,
   isLine = false,
+  inheritedProperties: StyleResolution["inheritedProperties"] = {},
+  currentColorProperties: StyleResolution["currentColorProperties"] = {},
 ): ComputedStyle {
   effective["font-size"] = fontMetrics.fontSize;
   const styleCoordinate = { ...coordinate, fontMetrics };
@@ -619,6 +625,8 @@ function computeStyle(
     },
     presentation: effective,
     provenance,
+    inheritedProperties,
+    currentColorProperties,
   };
 }
 
@@ -657,6 +665,8 @@ function resolvedPresentation(
       element,
       context,
       element.tagName === "line",
+      resolution.inheritedProperties,
+      resolution.currentColorProperties,
     ),
     provenance: resolution.provenance,
   };
@@ -1530,6 +1540,7 @@ function buildText(
 
   return {
     type: "text",
+    animationTargetKey: animationTargetKey(element, context),
     text: textContent(element),
     chunks,
     attributes: { ...(element.properties ?? {}) } as Record<string, string | number>,
@@ -1725,6 +1736,7 @@ function buildImage(
   )!;
   return {
     type: "image",
+    animationTargetKey: animationTargetKey(element, context),
     href,
     viewport: { x, y, width, height },
     preserveAspectRatio,
@@ -1778,6 +1790,7 @@ function buildForeignObject(
 
   return {
     type: "foreignObject",
+    animationTargetKey: animationTargetKey(element, context),
     key,
     viewport,
     snapshotDocument: snapshot.document,
@@ -1878,6 +1891,7 @@ function buildGroup(
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   return {
     type: "group",
+    animationTargetKey: animationTargetKey(element, context),
     children: children.flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
     style: resolved.style,
     transform: transform ?? computedTransform(element, resolved, context),
@@ -1913,6 +1927,7 @@ function buildNestedSVG(
   };
   return {
     type: "group",
+    animationTargetKey: animationTargetKey(element, context),
     children: zeroSized
       ? []
       : childElements(element).flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
@@ -1973,6 +1988,7 @@ function buildViewportUse(
   };
   const referencedGroup: RenderGroup = {
     type: "group",
+    animationTargetKey: animationTargetKey(referenced, childContext),
     children: zeroSized
       ? []
       : childElements(referenced).flatMap((child) =>
@@ -1991,6 +2007,7 @@ function buildViewportUse(
   };
   return {
     type: "group",
+    animationTargetKey: animationTargetKey(use, context),
     children: zeroSized ? [] : [referencedGroup],
     style: useResolved.style,
     transform,
@@ -2057,6 +2074,7 @@ function buildUse(
   return [
     {
       type: "group",
+      animationTargetKey: animationTargetKey(element, context),
       children: buildNode(
         referenced,
         resolved.effective,
@@ -2104,7 +2122,9 @@ function buildNode(
       ? [
           {
             type: "shape",
+            animationTargetKey: animationTargetKey(element, context),
             geometry: resolvedGeometry,
+            geometryAuthored: { ...(element.properties ?? {}) } as Record<string, string | number>,
             style: resolved.style,
             transform,
             source: sourceLocation(element),
@@ -2140,6 +2160,15 @@ export function buildRenderDocument(
 ): RenderDocument {
   const resources = createRegistry(svg);
   const diagnostics = [...initialDiagnostics];
+  const animationTargetKeys = new WeakMap<ElementNode, string>();
+  let sourceOrder = 0;
+  const indexAnimationTargets = (element: ElementNode): void => {
+    const id = element.properties?.id;
+    animationTargetKeys.set(element, id === undefined ? `source:${sourceOrder}` : `id:${String(id)}`);
+    sourceOrder++;
+    for (const child of childElements(element)) indexAnimationTargets(child);
+  };
+  indexAnimationTargets(svg);
   const styleResolver = new SVGStyleResolver(svg, diagnostics);
   const conditional = new SVGConditionalProcessor(config.staticEnvironment, diagnostics);
   const accessibility = new SVGAccessibilityResolver(resources, conditional.environment, diagnostics);
@@ -2152,6 +2181,7 @@ export function buildRenderDocument(
     conditional,
     accessibility,
     includeAccessibility: true,
+    animationTargetKeys,
   };
   const diagnoseDynamicContent = (element: ElementNode): void => {
     const tag = (element.tagName ?? "").toLowerCase();
@@ -2202,6 +2232,7 @@ export function buildRenderDocument(
     styleResolver,
     resolved.effective,
     diagnostics,
+    (element) => animationTargetKeys.get(element),
   );
   for (const [id, paint] of resolvePatternPaintServers(
     svg,
@@ -2435,6 +2466,7 @@ export function buildRenderDocument(
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
     type: "group",
+    animationTargetKey: animationTargetKey(svg, context),
     children:
       properties.zeroSized || !conditional.matches(svg)
         ? []
@@ -2623,6 +2655,7 @@ export function buildRenderDocument(
     ].reduce(multiplyTransforms);
     const group: RenderGroup = {
       type: "group",
+      animationTargetKey: animationTargetKey(resource.element, context),
       children: built,
       // display on the marker element is forced to none only for direct rendering;
       // referenced shadow content still consumes all other computed properties.
@@ -2932,6 +2965,7 @@ export function buildRenderDocument(
       }
       const rootGroup: RenderGroup = {
         type: "group",
+        animationTargetKey: animationTargetKey(resource.element, context),
         children: built,
         // display does not apply to the clipPath element itself. Other computed
         // properties still inherit normally into its graphics children.
@@ -3139,25 +3173,112 @@ export function buildRenderDocument(
   }
   diagnosePaintReferences(children);
 
-  const animationTargetContexts = new Map<string, AnimationValueContext>();
-  const collectAnimationTargetContexts = (nodes: RenderNode[]): void => {
+  const paintAnimationSource = (paint: Paint): string => {
+    if (paint.type === "none") return "none";
+    if (paint.type === "solid") return paint.value;
+    if (paint.type === "context") return `context-${paint.source}`;
+    return `url(#${paint.id})${paint.fallback ? ` ${paint.fallback}` : ""}`;
+  };
+  const animationBaseValues = (node: RenderNode): Record<string, string> => {
+    const values: Record<string, string> = {};
+    for (const [name, value] of Object.entries(node.style.presentation)) {
+      if (typeof value === "string" || typeof value === "number") values[name] = String(value);
+    }
+    Object.assign(values, {
+      fill: paintAnimationSource(node.style.fill),
+      stroke: paintAnimationSource(node.style.stroke),
+      color: node.style.color,
+      opacity: String(node.style.opacity),
+      "fill-opacity": String(node.style.fillOpacity),
+      "stroke-opacity": String(node.style.strokeOpacity),
+      display: node.style.display,
+      visibility: node.style.visibility,
+      "fill-rule": node.style.fillRule,
+      "clip-rule": node.style.clipRule,
+      "stroke-width": String(node.style.strokeStyle.width),
+      "stroke-linecap": node.style.strokeStyle.lineCap,
+      "stroke-linejoin": node.style.strokeStyle.lineJoin,
+      "stroke-miterlimit": String(node.style.strokeStyle.miterLimit),
+      "stroke-dashoffset": String(node.style.strokeStyle.dashOffset),
+      "stroke-dasharray": node.style.strokeStyle.dashArray?.join(" ") ?? "none",
+      "vector-effect": node.style.strokeStyle.vectorEffect,
+      "mix-blend-mode": node.style.blendMode,
+      isolation: node.style.isolation,
+    });
+    if (node.type === "shape") {
+      for (const [name, value] of Object.entries(node.geometry)) {
+        if (name !== "type" && value !== undefined) values[name] = String(value);
+      }
+    }
+    if (node.type === "text" || node.type === "image" || node.type === "foreignObject") {
+      for (const [name, value] of Object.entries(node.attributes)) values[name] = String(value);
+    }
+    if (node.type === "image" || node.type === "foreignObject") {
+      for (const [name, value] of Object.entries(node.viewport)) values[name] = String(value);
+    }
+    if (node.type === "group" && node.viewport) {
+      if (node.viewport.viewBox) {
+        const box = node.viewport.viewBox;
+        values.viewBox = `${box.x} ${box.y} ${box.width} ${box.height}`;
+      }
+      values.preserveAspectRatio = `${node.viewport.preserveAspectRatio.align} ${node.viewport.preserveAspectRatio.meetOrSlice}`;
+    }
+    if (node === root) {
+      const box = properties.viewBox;
+      values.viewBox = `${box.x} ${box.y} ${box.width} ${box.height}`;
+      values.preserveAspectRatio = `${properties.preserveAspectRatio.align} ${properties.preserveAspectRatio.meetOrSlice}`;
+    }
+    return values;
+  };
+  const animationTargetSnapshots = new Map<string, AnimationTargetSnapshot>();
+  const collectAnimationTargetSnapshots = (nodes: RenderNode[]): void => {
     for (const node of nodes) {
-      if (node.source.id)
-        animationTargetContexts.set(node.source.id, {
+      if (node.animationTargetKey && !animationTargetSnapshots.has(node.animationTargetKey))
+        animationTargetSnapshots.set(node.animationTargetKey, {
+          key: node.animationTargetKey,
+          tagName: node.source.element,
+          context: {
+            length: {
+              viewport: node.paintContext.viewport,
+              rootViewport: node.paintContext.rootViewport,
+              fontMetrics: node.paintContext.fontMetrics,
+              percentageBasis: "viewport-diagonal",
+              axis: "other",
+            },
+            colorSpace:
+              String(node.style.presentation["color-interpolation"] ?? "sRGB").toLowerCase() === "linearrgb"
+                ? "linearRGB"
+                : "sRGB",
+          },
+          baseValues: animationBaseValues(node),
+        });
+      if (node.type === "group") collectAnimationTargetSnapshots(node.children);
+    }
+  };
+  collectAnimationTargetSnapshots(children);
+  for (const paint of resources.paints.values()) {
+    if (paint.type !== "linearGradient" && paint.type !== "radialGradient") continue;
+    for (const stop of paint.stops) {
+      if (!stop.animationTargetKey || animationTargetSnapshots.has(stop.animationTargetKey)) continue;
+      animationTargetSnapshots.set(stop.animationTargetKey, {
+        key: stop.animationTargetKey,
+        tagName: "stop",
+        binding: "resource",
+        context: {
           length: {
-            viewport: node.paintContext.viewport,
-            rootViewport: node.paintContext.rootViewport,
-            fontMetrics: node.paintContext.fontMetrics,
+            viewport: properties.userViewport,
+            rootViewport: { width: properties.width, height: properties.height },
+            fontMetrics: defaultFontMetrics(),
             percentageBasis: "viewport-diagonal",
             axis: "other",
           },
-          colorSpace: "sRGB",
-        });
-      if (node.type === "group") collectAnimationTargetContexts(node.children);
+          colorSpace: paint.colorInterpolation,
+        },
+        baseValues: stop.animationBaseValues ?? {},
+      });
     }
-  };
-  collectAnimationTargetContexts(children);
-  const animationProgram = buildAnimationProgram(svg, diagnostics, animationTargetContexts);
+  }
+  const animationProgram = buildAnimationProgram(svg, diagnostics, animationTargetSnapshots);
 
   return {
     viewport: {

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#101827"/>
+  <defs>
+    <linearGradient id="animated-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop id="animated-gradient-stop" offset="0" stop-color="#f43f5e" stop-opacity="1">
+        <animate attributeName="offset" values="0;.55;0" dur="2s" fill="freeze"/>
+        <animate attributeName="stop-color" values="#f43f5e;#38bdf8;#f43f5e" dur="2s" fill="freeze"/>
+        <animate attributeName="stop-opacity" values="1;.45;1" dur="2s" fill="freeze"/>
+      </stop>
+      <stop offset="1" stop-color="#f8fafc"/>
+    </linearGradient>
+    <g id="shared-symbol">
+      <rect x="0" y="0" width="14" height="10" rx="2" fill="#f8fafc">
+        <animate attributeName="y" values="0;8;0" dur="2s" fill="freeze"/>
+      </rect>
+    </g>
+  </defs>
+  <g opacity="1">
+    <animate attributeName="opacity" values="1;.55;1" dur="2s" fill="freeze"/>
+    <rect id="morphing-rect" x="10" y="10" width="30" height="22" rx="3" fill="#fb7185">
+      <animate attributeName="x" from="10" to="52" dur="2s" fill="freeze"/>
+      <animate attributeName="width" from="30" to="46" dur="2s" fill="freeze"/>
+      <animate attributeName="rx" from="3" to="10" dur="2s" fill="freeze"/>
+      <animate attributeName="fill" values="#fb7185;#60a5fa;#a78bfa" dur="2s" fill="freeze"/>
+      <animate attributeName="fill-opacity" values="1;.55;1" dur="2s" fill="freeze"/>
+    </rect>
+    <circle id="pulsing-circle" cx="28" cy="55" r="10" fill="#34d399">
+      <animate attributeName="cy" values="55;68;55" dur="2s" fill="freeze"/>
+      <animate attributeName="r" values="10;16;10" dur="2s" fill="freeze"/>
+      <set attributeName="visibility" to="hidden" begin=".5s" dur=".25s"/>
+    </circle>
+    <line id="growing-line" x1="10" y1="88" x2="45" y2="88" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 2">
+      <animate attributeName="x2" from="45" to="105" dur="2s" fill="freeze"/>
+      <animate attributeName="stroke-width" from="2" to="7" dur="2s" fill="freeze"/>
+      <animate attributeName="stroke-dasharray" values="4 2;10 3;4 2" dur="2s" fill="freeze"/>
+      <set attributeName="stroke-linecap" to="round" begin="1s" dur="1s" fill="freeze"/>
+    </line>
+    <polygon id="morphing-polygon" points="112,12 145,12 139,38 118,38" fill="#22d3ee">
+      <animate attributeName="points" values="112,12 145,12 139,38 118,38;108,18 150,8 144,43 114,36;112,12 145,12 139,38 118,38" dur="2s" fill="freeze"/>
+    </polygon>
+    <path id="morphing-path" d="M108 56 L145 56 L138 76 L115 76 Z" fill="#f97316">
+      <animate attributeName="d" values="M108 56 L145 56 L138 76 L115 76 Z;M103 62 L151 51 L142 81 L112 73 Z;M108 56 L145 56 L138 76 L115 76 Z" dur="2s" fill="freeze"/>
+    </path>
+  </g>
+  <text id="animated-text" x="55" y="84" font-family="Helvetica" font-size="8" fill="#f8fafc">SVG
+    <animate attributeName="x" from="55" to="76" dur="2s" fill="freeze"/>
+    <animate attributeName="font-size" from="8" to="12" dur="2s" fill="freeze"/>
+    <animate attributeName="letter-spacing" from="0" to="2" dur="2s" fill="freeze"/>
+    <animate attributeName="fill" from="#f8fafc" to="#38bdf8" dur="2s" fill="freeze"/>
+  </text>
+  <use href="#shared-symbol" x="112" y="91"/>
+  <use xlink:href="#shared-symbol" x="134" y="91"/>
+  <svg id="nested-viewport" x="60" y="90" width="40" height="20" viewBox="0 0 80 40">
+    <rect id="nested-target" x="4" y="8" width="18" height="20" fill="#e879f9"/>
+  </svg>
+  <animate href="#nested-viewport" attributeName="viewBox" values="0 0 80 40;12 4 60 32;0 0 80 40" dur="2s" fill="freeze"/>
+  <animate href="#nested-target" attributeName="x" from="4" to="52" dur="2s" fill="freeze"/>
+  <rect id="href-target" x="10" y="104" width="28" height="8" fill="#94a3b8"/>
+  <set href="#href-target" attributeName="display" to="none" begin=".75s" dur=".25s"/>
+  <rect x="105" y="104" width="45" height="8" rx="2" fill="url(#animated-gradient)"/>
+</svg>

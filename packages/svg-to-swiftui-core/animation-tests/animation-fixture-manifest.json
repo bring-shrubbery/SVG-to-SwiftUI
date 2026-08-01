@@ -245,6 +245,37 @@
           1749999, 1750000, 1999999, 2000000
         ]
       }
+    },
+    "benchmark-05-animate-set-properties": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 160,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "animate",
+        "benchmark-05",
+        "computed-presentation",
+        "geometry",
+        "gradient-stop",
+        "href-target",
+        "nested-viewport",
+        "paint",
+        "resource-presentation",
+        "set",
+        "stroke",
+        "text",
+        "use",
+        "viewbox"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 499999, 500000, 749999, 750000, 999999, 1000000, 1499999, 1500000, 1999999, 2000000
+        ]
+      },
+      "expectDistinctReferenceFrames": true
     }
   }
 }

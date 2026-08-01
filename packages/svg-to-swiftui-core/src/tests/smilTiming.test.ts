@@ -294,7 +294,9 @@ describe("shared timing benchmark expectations", () => {
     expect(swift).toContain("private struct SVGTimingSample");
     expect(swift).toContain("intervals: [(begin: 0.2, end: 1.4)]");
     expect(swift).toContain("repeatingDuration: 1.2");
-    expect(swift).toContain("values: [16, 48, 80]");
+    expect(swift).toContain("components: [16]");
+    expect(swift).toContain("components: [48]");
+    expect(swift).toContain("components: [80]");
   });
 
   test("precompiles advanced offset and syncbase intervals into generated Swift", () => {
@@ -307,6 +309,6 @@ describe("shared timing benchmark expectations", () => {
     );
     expect(swift).toContain("intervals: [(begin: 0, end: 0.9), (begin: 1.2, end: 2.1)]");
     expect(swift).toContain("intervals: [(begin: 1, end: 1.5), (begin: 2.2, end: 2.7)]");
-    expect(swift.match(/Self\.svgAnimatedNumber\(documentTime:/g)).toHaveLength(2);
+    expect(swift.match(/AdvancedTiming\.svgAnimatedValue\(documentTime:/g)).toHaveLength(2);
   });
 });

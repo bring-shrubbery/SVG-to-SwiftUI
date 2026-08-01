@@ -62,6 +62,21 @@ const REQUIRED_SMIL_VALUE_PROBE_TAGS = [
   "viewbox",
 ] as const;
 
+const REQUIRED_ANIMATE_SET_BENCHMARK_TAGS = [
+  "computed-presentation",
+  "geometry",
+  "gradient-stop",
+  "href-target",
+  "nested-viewport",
+  "paint",
+  "resource-presentation",
+  "set",
+  "stroke",
+  "text",
+  "use",
+  "viewbox",
+] as const;
+
 function validateBackground(value: string | null): void {
   if (value !== null && !/^#([\da-f]{6}|[\da-f]{8})$/i.test(value))
     throw new Error(`Background must be null, #RRGGBB, or #RRGGBBAA: ${value}`);
@@ -292,6 +307,14 @@ export function validateAnimationManifest(): string[] {
   );
   for (const tag of REQUIRED_SMIL_VALUE_PROBE_TAGS)
     if (!valueProbeTags.has(tag)) errors.push(`SMIL value reference probes do not cover required tag: ${tag}`);
+  const animateSetBenchmarkTags = new Set(
+    fixtures
+      .filter((fixture) => fixture.mode === "comparison" && fixture.tags.includes("benchmark-05"))
+      .flatMap((fixture) => fixture.tags),
+  );
+  for (const tag of REQUIRED_ANIMATE_SET_BENCHMARK_TAGS)
+    if (!animateSetBenchmarkTags.has(tag))
+      errors.push(`Animate/set comparison benchmark does not cover required tag: ${tag}`);
   if (valueGoldens.version !== 1) errors.push(`Unsupported animation value golden version: ${valueGoldens.version}`);
   if (!Number.isFinite(valueGoldens.tolerance) || valueGoldens.tolerance <= 0)
     errors.push("Animation value golden tolerance must be finite and positive");
