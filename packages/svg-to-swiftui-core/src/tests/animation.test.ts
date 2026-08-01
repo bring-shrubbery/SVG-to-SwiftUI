@@ -125,6 +125,43 @@ describe("typed SVG animation program", () => {
     );
     expect(() => convert(source, { strict: true })).toThrow(/unknown-animation-attribute/);
   });
+
+  test("parses animateTransform types and emits stable arity/type diagnostics", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 100 60">
+        <g id="target" transform="matrix(1 0.2 0 1 4 5)">
+          <animateTransform attributeName="transform" type="translate" values="0 0;20 10;40 0" calcMode="paced" dur="2s"/>
+          <animateTransform attributeName="transform" type="rotate" from="0 20 10" to="90 20 10" additive="sum" accumulate="sum" repeatCount="2" dur="1s"/>
+        </g>
+      </svg>`);
+    expect(document.animationProgram.animations).toHaveLength(2);
+    expect(document.animationProgram.animations[0]).toMatchObject({
+      kind: "animateTransform",
+      transformType: "translate",
+      attributeName: "transform",
+      runtimeSupport: "typed",
+      value: { family: "transform", form: "values" },
+    });
+    expect(document.animationProgram.animations[1]).toMatchObject({
+      transformType: "rotate",
+      composition: { additive: "sum", accumulate: "sum" },
+      runtimeSupport: "typed",
+    });
+
+    const invalid = convertWithDiagnostics(`
+      <svg viewBox="0 0 20 20">
+        <rect id="a" width="2" height="2"><animateTransform attributeName="transform" type="matrix" from="1 0 0 1 0 0" to="1 0 0 1 2 2" dur="1s"/></rect>
+        <rect id="b" width="2" height="2"><animateTransform attributeName="transform" type="rotate" from="0 1" to="90 1" dur="1s"/></rect>
+        <rect id="c" width="2" height="2"><animateTransform type="scale" from="1" to="2" dur="1s"/></rect>
+      </svg>`);
+    expect(invalid.diagnostics.map((item) => item.code)).toEqual(
+      expect.arrayContaining([
+        "invalid-animation-transform-type",
+        "invalid-animation-transform-value",
+        "missing-animation-attribute",
+      ]),
+    );
+  });
 });
 
 describe("generated animation clock", () => {
@@ -157,5 +194,22 @@ describe("generated animation clock", () => {
     expect(first).toContain("struct StaticBox: Shape");
     expect(first).not.toContain("TimelineView");
     expect(first).not.toContain("documentTime");
+  });
+
+  test("generates pure-time animateTransform matrices around the complete effect subtree", () => {
+    const swift = convert(
+      `<svg viewBox="0 0 80 40"><g transform="skewX(8)">
+        <animateTransform attributeName="transform" type="translate" from="0 0" to="20 0" dur="1s"/>
+        <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="180 20 20" additive="sum" dur="1s"/>
+        <rect x="5" y="5" width="20" height="15" fill="red" filter="url(#missing)"/>
+      </g></svg>`,
+      { structName: "AnimatedTransform", strict: false },
+    );
+    expect(swift).toContain("svgAnimationTransform(");
+    expect(swift).toContain("svgAnimatedTransformCorrection(");
+    expect(swift).toContain("svgComposeValue(");
+    expect(swift).toContain(".transformEffect(AnimatedTransform.svgAnimatedTransformCorrection");
+    expect(swift.match(/svgAnimatedValue\(documentTime: documentTime/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(swift).not.toContain("@State private var");
   });
 });

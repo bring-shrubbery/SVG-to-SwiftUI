@@ -3,7 +3,7 @@ import { parseRGBAColor, type RGBAColor, swiftUIColor } from "../colorUtils";
 import { handleElement } from "../elementHandlers";
 import { lengthContext, type ParsedSVGLength, resolveSVGLength } from "../lengths";
 import { createFunctionTemplate, createStructTemplate } from "../templates";
-import { multiplyTransforms, wrapWithTransform } from "../transformUtils";
+import { IDENTITY_TRANSFORM, multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
 import { viewBoxTransform } from "../viewports";
 import {
@@ -488,6 +488,35 @@ function buildViewNodes(
     attributeName: string,
     base: TypedAnimationValue,
   ): string | undefined => animatedValueExpressionFromAnimations(animationsFor(node, attributeName), base);
+
+  const transformCorrectionExpression = (
+    node: RenderNode,
+    transforms: RenderNode["transform"][],
+    animatedSuffix?: string,
+  ): string | undefined => {
+    const metadata = node.transformAnimation ?? { base: node.transform, suffix: IDENTITY_TRANSFORM };
+    const baseValue: TypedAnimationValue = {
+      family: "transform",
+      components: [
+        {
+          kind: "matrix",
+          values: [
+            metadata.base.a,
+            metadata.base.b,
+            metadata.base.c,
+            metadata.base.d,
+            metadata.base.e,
+            metadata.base.f,
+          ],
+        },
+      ],
+    };
+    const animatedBase = animatedValueExpression(node, "transform", baseValue);
+    if (!animatedBase && !animatedSuffix) return undefined;
+    const ancestors = transforms.reduce(multiplyTransforms, IDENTITY_TRANSFORM);
+    const staticTransform = multiplyTransforms(ancestors, node.transform);
+    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base)}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
+  };
 
   const numericBase = (
     node: RenderNode,
@@ -1205,10 +1234,11 @@ function buildViewNodes(
       const animatedPreserve = viewportViewBox
         ? animatedDiscrete(node, "preserveAspectRatio", preserveSource)
         : undefined;
-      const animationTransform =
+      const animatedViewportSuffix =
         viewBoxBase && viewportRect && (animatedViewBox || animatedPreserve)
-          ? `${context.rootName}.svgAnimatedViewBoxTransform(value: ${animatedViewBox ?? swiftAnimationValueLiteral(viewBoxBase, context.precision, `${context.rootName}.`)}, base: ${swiftAnimationValueLiteral(viewBoxBase, context.precision, `${context.rootName}.`)}, rect: CGRect(x: ${formatNumber(viewportRect.x)}, y: ${formatNumber(viewportRect.y)}, width: ${formatNumber(viewportRect.width)}, height: ${formatNumber(viewportRect.height)}), outer: ${swiftTransform(node.viewport?.clipTransform ?? { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })}, staticTransform: ${swiftTransform(node.transform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}), preserveAspectRatio: ${animatedPreserve ?? swiftString(preserveSource)})`
+          ? `${context.rootName}.svgMultiplyTransform(${swiftTransform(node.transformAnimation?.viewportPrefix ?? IDENTITY_TRANSFORM)}, ${context.rootName}.svgViewBoxMatrix(${animatedViewBox ?? swiftAnimationValueLiteral(viewBoxBase, context.precision, `${context.rootName}.`)}, rect: CGRect(x: ${formatNumber(viewportRect.x)}, y: ${formatNumber(viewportRect.y)}, width: ${formatNumber(viewportRect.width)}, height: ${formatNumber(viewportRect.height)}), preserveAspectRatio: ${animatedPreserve ?? swiftString(preserveSource)}))`
           : undefined;
+      const animationTransform = transformCorrectionExpression(node, ancestorTransforms, animatedViewportSuffix);
       let viewportClip: string | undefined;
       if (node.viewport?.clip) {
         const { rect, clipTransform } = node.viewport;
@@ -1326,6 +1356,7 @@ function buildViewNodes(
         animated: textAnimated,
       });
       const targetTransforms = [...ancestorTransforms, node.transform];
+      const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
       const filter = buildFilter(node.filter, targetTransforms);
@@ -1352,6 +1383,7 @@ function buildViewNodes(
           ? { animationOffsetY: animationOffset(node, ["y", "dy"], [node.attributes.y ?? 0, node.attributes.dy ?? 0]) }
           : {}),
         ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
+        ...(animationTransform ? { animationTransform } : {}),
       });
       continue;
     }
@@ -1394,6 +1426,7 @@ function buildViewNodes(
         ...(subdocumentName ? { subdocumentName } : {}),
       });
       const targetTransforms = [...ancestorTransforms, node.transform];
+      const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
       const filter = buildFilter(node.filter, targetTransforms);
@@ -1414,6 +1447,7 @@ function buildViewNodes(
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
         ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
+        ...(animationTransform ? { animationTransform } : {}),
       });
       continue;
     }
@@ -1597,6 +1631,7 @@ function buildViewNodes(
     }
     if (paints.length > 0) {
       const targetTransforms = [...ancestorTransforms, node.transform];
+      const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
       const filter = buildFilter(node.filter, targetTransforms);
@@ -1617,6 +1652,7 @@ function buildViewNodes(
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
         ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
+        ...(animationTransform ? { animationTransform } : {}),
       });
     }
   }
@@ -4463,6 +4499,36 @@ function createView(
         `${indentation}CGAffineTransform(a: left.a * right.a + left.c * right.b, b: left.b * right.a + left.d * right.b, c: left.a * right.c + left.c * right.d, d: left.b * right.c + left.d * right.d, tx: left.a * right.tx + left.c * right.ty + left.tx, ty: left.b * right.tx + left.d * right.ty + left.ty)`,
         "}",
         "",
+        "private static func svgAnimationTransform(_ value: SVGAnimationRuntimeValue) -> CGAffineTransform {",
+        `${indentation}guard value.kind == .transform else { return .identity }`,
+        `${indentation}var result = CGAffineTransform.identity`,
+        `${indentation}var offset = 0`,
+        `${indentation}for entry in value.signature.split(separator: ";").map(String.init) {`,
+        `${indentation}${indentation}let digits = String(entry.reversed().prefix { $0.isNumber }.reversed())`,
+        `${indentation}${indentation}let count = Int(digits) ?? 0`,
+        `${indentation}${indentation}let kind = String(entry.dropLast(digits.count))`,
+        `${indentation}${indentation}guard offset + count <= value.components.count else { return result }`,
+        `${indentation}${indentation}let values = Array(value.components[offset..<(offset + count)])`,
+        `${indentation}${indentation}offset += count`,
+        `${indentation}${indentation}let component: CGAffineTransform`,
+        `${indentation}${indentation}switch kind {`,
+        `${indentation}${indentation}case "matrix": component = values.count == 6 ? CGAffineTransform(a: values[0], b: values[1], c: values[2], d: values[3], tx: values[4], ty: values[5]) : .identity`,
+        `${indentation}${indentation}case "translate": component = CGAffineTransform(translationX: values.first ?? 0, y: values.count > 1 ? values[1] : 0)`,
+        `${indentation}${indentation}case "scale": component = CGAffineTransform(scaleX: values.first ?? 0, y: values.count > 1 ? values[1] : (values.first ?? 0))`,
+        `${indentation}${indentation}case "rotate":`,
+        `${indentation}${indentation}${indentation}let angle = (values.first ?? 0) * .pi / 180`,
+        `${indentation}${indentation}${indentation}let cosine = cos(angle); let sine = sin(angle)`,
+        `${indentation}${indentation}${indentation}let centerX = values.count > 1 ? values[1] : 0; let centerY = values.count > 2 ? values[2] : 0`,
+        `${indentation}${indentation}${indentation}component = CGAffineTransform(a: cosine, b: sine, c: -sine, d: cosine, tx: centerX - centerX * cosine + centerY * sine, ty: centerY - centerX * sine - centerY * cosine)`,
+        `${indentation}${indentation}case "skewX": component = CGAffineTransform(a: 1, b: 0, c: tan((values.first ?? 0) * .pi / 180), d: 1, tx: 0, ty: 0)`,
+        `${indentation}${indentation}case "skewY": component = CGAffineTransform(a: 1, b: tan((values.first ?? 0) * .pi / 180), c: 0, d: 1, tx: 0, ty: 0)`,
+        `${indentation}${indentation}default: component = .identity`,
+        `${indentation}${indentation}}`,
+        `${indentation}${indentation}result = svgMultiplyTransform(result, component)`,
+        `${indentation}}`,
+        `${indentation}return result`,
+        "}",
+        "",
         "private static func svgViewBoxMatrix(_ value: SVGAnimationRuntimeValue, rect: CGRect, preserveAspectRatio: String) -> CGAffineTransform {",
         `${indentation}let box = value.components + [0, 0, 1, 1]`,
         `${indentation}let boxWidth = max(0.000000000001, box[2])`,
@@ -4494,6 +4560,13 @@ function createView(
         "",
         "private static func svgAnimatedViewBoxTransform(value: SVGAnimationRuntimeValue, base: SVGAnimationRuntimeValue, rect: CGRect, outer: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect, preserveAspectRatio: String) -> CGAffineTransform {",
         `${indentation}let animatedUser = svgMultiplyTransform(outer, svgViewBoxMatrix(value, rect: rect, preserveAspectRatio: preserveAspectRatio))`,
+        `${indentation}let animatedOutput = svgOutputTransform(animatedUser, size: outputSize, coordinateSpace: coordinateSpace)`,
+        `${indentation}let staticOutput = svgOutputTransform(staticTransform, size: outputSize, coordinateSpace: coordinateSpace)`,
+        `${indentation}return svgMultiplyTransform(animatedOutput, staticOutput.inverted())`,
+        "}",
+        "",
+        "private static func svgAnimatedTransformCorrection(animatedBase: CGAffineTransform, animatedSuffix: CGAffineTransform, ancestors: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect) -> CGAffineTransform {",
+        `${indentation}let animatedUser = svgMultiplyTransform(ancestors, svgMultiplyTransform(animatedBase, animatedSuffix))`,
         `${indentation}let animatedOutput = svgOutputTransform(animatedUser, size: outputSize, coordinateSpace: coordinateSpace)`,
         `${indentation}let staticOutput = svgOutputTransform(staticTransform, size: outputSize, coordinateSpace: coordinateSpace)`,
         `${indentation}return svgMultiplyTransform(animatedOutput, staticOutput.inverted())`,
@@ -4538,6 +4611,14 @@ function createView(
         "private static func svgAddValue(_ left: SVGAnimationRuntimeValue, _ right: SVGAnimationRuntimeValue) -> SVGAnimationRuntimeValue? {",
         `${indentation}guard svgValuesCompatible(left, right) else { return nil }`,
         `${indentation}return SVGAnimationRuntimeValue(kind: left.kind, components: zip(left.components, right.components).map { $0 + $1 }, signature: left.signature, source: right.source)`,
+        "}",
+        "",
+        "private static func svgComposeValue(_ left: SVGAnimationRuntimeValue, _ right: SVGAnimationRuntimeValue) -> SVGAnimationRuntimeValue? {",
+        `${indentation}if left.kind == .transform && right.kind == .transform {`,
+        `${indentation}${indentation}let signature = [left.signature, right.signature].filter { !$0.isEmpty }.joined(separator: ";")`,
+        `${indentation}${indentation}return SVGAnimationRuntimeValue(kind: .transform, components: left.components + right.components, signature: signature, source: right.source)`,
+        `${indentation}}`,
+        `${indentation}return svgAddValue(left, right)`,
         "}",
         "",
         "private static func svgClampValue(_ value: SVGAnimationRuntimeValue, _ clamp: SVGAnimationClamp) -> SVGAnimationRuntimeValue {",
@@ -4593,7 +4674,7 @@ function createView(
         `${indentation}if accumulate && repeatIteration > 0, let endpoint = values.last {`,
         `${indentation}${indentation}for _ in 0..<repeatIteration { accumulated = svgAddValue(accumulated, endpoint) ?? accumulated }`,
         `${indentation}}`,
-        `${indentation}let result = additive && form != .to ? (svgAddValue(underlying, accumulated) ?? accumulated) : accumulated`,
+        `${indentation}let result = additive && form != .to ? (svgComposeValue(underlying, accumulated) ?? accumulated) : accumulated`,
         `${indentation}return svgClampValue(result, clamp)`,
         "}",
         "",

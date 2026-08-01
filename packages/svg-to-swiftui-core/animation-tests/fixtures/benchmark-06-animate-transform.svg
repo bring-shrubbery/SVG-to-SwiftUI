@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#0f172a"/>
+  <defs>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f43f5e"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <pattern id="grid" width="6" height="6" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="#1e293b"/>
+      <circle cx="3" cy="3" r="1.2" fill="#fbbf24"/>
+    </pattern>
+    <clipPath id="round-clip"><rect x="0" y="0" width="34" height="24" rx="7"/></clipPath>
+    <mask id="fade-mask">
+      <linearGradient id="mask-gradient"><stop stop-color="white"/><stop offset="1" stop-color="#555"/></linearGradient>
+      <rect width="34" height="24" fill="url(#mask-gradient)"/>
+    </mask>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1"/>
+    </filter>
+    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 L6 3 L0 6 Z" fill="context-stroke"/>
+    </marker>
+    <g id="badge"><circle r="7" fill="#a78bfa"/><path d="M-3 0 L0 3 L4 -3" fill="none" stroke="white" stroke-width="1.5"/></g>
+  </defs>
+
+  <g id="sandwich" transform="translate(3 0)">
+    <animateTransform attributeName="transform" type="translate" values="0 0;18 3;0 0" calcMode="paced" dur="2s" fill="freeze"/>
+    <animateTransform attributeName="transform" type="rotate" values="0 30 20;18 30 20;0 30 20" additive="sum" calcMode="spline" keyTimes="0;.5;1" keySplines=".42 0 .58 1;.42 0 .58 1" dur="2s" fill="freeze"/>
+    <rect x="8" y="8" width="42" height="24" rx="5" fill="url(#shine)" stroke="#f8fafc" stroke-width="1.5"/>
+    <circle cx="18" cy="20" r="5" fill="#f8fafc"/>
+  </g>
+
+  <g transform="translate(78 20)">
+    <g id="scale-target">
+      <animateTransform attributeName="transform" type="scale" from=".55 .8" to="1.25 1.05" dur="1s" repeatCount="2" accumulate="sum" fill="freeze"/>
+      <rect x="-14" y="-10" width="28" height="20" rx="4" fill="#34d399" stroke="#052e2b" stroke-width="2"/>
+    </g>
+  </g>
+
+  <g transform="translate(128 20)">
+    <g id="skew-target">
+      <animateTransform attributeName="transform" type="skewX" values="-18;18;-18" dur="2s" fill="freeze"/>
+      <animateTransform attributeName="transform" type="skewY" from="0" by="10" additive="sum" dur="2s" fill="freeze"/>
+      <rect x="-13" y="-10" width="26" height="20" rx="3" fill="#fb923c"/>
+    </g>
+  </g>
+
+  <g transform="translate(8 45)">
+    <g id="effects-target" clip-path="url(#round-clip)" mask="url(#fade-mask)" filter="url(#soft)">
+      <animateTransform attributeName="transform" type="translate" values="0 0;12 4;0 0" dur="2s" fill="freeze"/>
+      <rect width="34" height="24" fill="url(#grid)"/>
+      <circle cx="10" cy="12" r="7" fill="#22d3ee"/>
+    </g>
+  </g>
+
+  <path id="marker-line" d="M62 58 C78 42 92 72 108 56" fill="none" stroke="#fbbf24" stroke-width="2" vector-effect="non-scaling-stroke" marker-end="url(#arrow)">
+    <animateTransform attributeName="transform" type="translate" values="0 0;4 5;0 0" dur="2s" fill="freeze"/>
+  </path>
+
+  <text id="rotating-text" x="126" y="61" font-family="Helvetica" font-size="10" font-weight="700" fill="#f8fafc">SVG
+    <animateTransform attributeName="transform" type="rotate" from="-12 136 58" to="12 136 58" dur="2s" fill="freeze"/>
+  </text>
+
+  <use id="moving-use" href="#badge" x="22" y="91">
+    <animateTransform attributeName="transform" type="translate" values="0 0;22 -5;0 0" dur="2s" fill="freeze"/>
+  </use>
+  <use xlink:href="#badge" x="61" y="91" transform="rotate(-12 61 91)"/>
+
+  <svg id="nested-transform-viewport" x="82" y="76" width="64" height="34" viewBox="0 0 64 34" overflow="hidden">
+    <g id="nested-transform" transform="translate(4 4)">
+      <animateTransform attributeName="transform" type="rotate" values="0 28 13;30 28 13;0 28 13" dur="2s" fill="freeze"/>
+      <rect width="56" height="26" rx="6" fill="#312e81" stroke="#818cf8" stroke-width="2"/>
+      <path d="M8 13 H48" stroke="#e0e7ff" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </svg>
+</svg>
