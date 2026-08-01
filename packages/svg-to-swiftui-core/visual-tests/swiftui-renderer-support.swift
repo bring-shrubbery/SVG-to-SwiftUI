@@ -3,6 +3,17 @@ import AppKit
 import CoreText
 import SwiftUI
 
+private struct _SVGDocumentTimeMicrosecondsKey: EnvironmentKey {
+    static let defaultValue: Int64 = 0
+}
+
+extension EnvironmentValues {
+    var _svgDocumentTimeMicroseconds: Int64 {
+        get { self[_SVGDocumentTimeMicrosecondsKey.self] }
+        set { self[_SVGDocumentTimeMicrosecondsKey.self] = newValue }
+    }
+}
+
 // Generated shapes use these helpers to preserve SVG winding semantics. The
 // production output stays self-contained while this host supplies the same
 // operations against the real SwiftUI.Path type.
@@ -135,6 +146,8 @@ struct _VisualTask: Decodable {
     let backgroundA: Double
     let fonts: [String]
     let output: String
+    let timeMicroseconds: Int64?
+    let timeReceipt: String?
 }
 
 enum _VisualRenderError: Error, CustomStringConvertible {
@@ -182,6 +195,7 @@ func _renderVisualTask(_ task: _VisualTask, factories: [() -> AnyView]) throws {
         .frame(width: task.width, height: task.height, alignment: .topLeading)
         .background(background)
         .environment(\.colorScheme, .light)
+        .environment(\._svgDocumentTimeMicroseconds, task.timeMicroseconds ?? 0)
     let renderer = ImageRenderer(content: content)
     renderer.proposedSize = ProposedViewSize(width: task.width, height: task.height)
     renderer.scale = task.scale
@@ -214,4 +228,11 @@ func _renderVisualTask(_ task: _VisualTask, factories: [() -> AnyView]) throws {
         throw _VisualRenderError.pngEncodingFailed
     }
     try png.write(to: URL(fileURLWithPath: task.output))
+    if let receipt = task.timeReceipt {
+        try String(task.timeMicroseconds ?? 0).write(
+            to: URL(fileURLWithPath: receipt),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
 }

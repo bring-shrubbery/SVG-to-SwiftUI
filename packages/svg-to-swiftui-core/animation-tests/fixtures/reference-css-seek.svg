@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <style>
+    @keyframes travel { from { transform: translateX(0px); } to { transform: translateX(64px); } }
+    #dot { animation: travel 1s linear both paused; }
+  </style>
+  <rect width="96" height="48" rx="8" fill="#0f172a"/>
+  <circle id="dot" cx="16" cy="24" r="10" fill="#f97316"/>
+</svg>

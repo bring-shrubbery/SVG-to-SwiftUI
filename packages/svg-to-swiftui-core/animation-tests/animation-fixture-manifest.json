@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "defaults": {
+    "scale": 2,
+    "background": null,
+    "fonts": [],
+    "fontFamilies": [],
+    "tolerance": {
+      "channel": 24,
+      "maxOutsidePercent": 3,
+      "maxMeanRgbError": 3,
+      "maxMeanAlphaError": 3
+    }
+  },
+  "fixtures": {
+    "harness-static-clock": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 64,
+      "expectedMode": "view",
+      "tags": ["clock-transport", "compiler-pipeline", "static-control"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 333333, 1000000]
+      }
+    },
+    "reference-css-seek": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "tags": ["css-animation", "reference-seek"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 500000, 1000000]
+      },
+      "expectDistinctReferenceFrames": true
+    },
+    "reference-smil-seek": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "tags": ["animate", "reference-seek", "smil"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 500000, 1000000]
+      },
+      "expectDistinctReferenceFrames": true
+    }
+  }
+}

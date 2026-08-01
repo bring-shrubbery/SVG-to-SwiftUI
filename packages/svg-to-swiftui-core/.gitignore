@@ -3,3 +3,4 @@ dist
 src/**/*.js
 .eslintcache
 visual-tests/renders/
+animation-tests/renders/

@@ -40,6 +40,9 @@ jobs:
       - name: Verify visual fixture manifest
         run: bun run visual-test:verify
 
+      - name: Verify animation fixture manifest
+        run: bun run animation-test:verify
+
       - name: Verify SVG2 static conformance inventory
         run: bun run conformance:verify
 
@@ -74,13 +77,30 @@ jobs:
       - name: Restore content-validated visual cache
         uses: actions/cache@v4
         with:
-          path: packages/svg-to-swiftui-core/visual-tests/renders
-          key: rgba-visual-${{ runner.os }}-${{ hashFiles('bun.lock', 'packages/svg-to-swiftui-core/src/**', 'packages/svg-to-swiftui-core/visual-tests/**') }}
+          path: |
+            packages/svg-to-swiftui-core/visual-tests/renders
+            packages/svg-to-swiftui-core/animation-tests/renders
+          key: rgba-visual-${{ runner.os }}-${{ hashFiles('bun.lock', 'packages/svg-to-swiftui-core/src/**', 'packages/svg-to-swiftui-core/visual-tests/**', 'packages/svg-to-swiftui-core/animation-tests/**') }}
           restore-keys: |
             rgba-visual-${{ runner.os }}-
 
       - name: Run SwiftUI RGBA visual tests
         run: bun run visual-test
+
+      - name: Run temporal SwiftUI RGBA frame tests
+        run: bun run animation-test -- --videos
+
+      - name: Retain animated SVG review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animated-svg-review
+          path: |
+            packages/svg-to-swiftui-core/animation-tests/renders/summary.json
+            packages/svg-to-swiftui-core/animation-tests/renders/**/*.mp4
+            packages/svg-to-swiftui-core/animation-tests/renders/**/*-diff.png
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Retain failed visual artifacts
         if: failure()
