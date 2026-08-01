@@ -2380,7 +2380,7 @@ export function buildRenderDocument(
           },
           resources,
           children: nodes,
-          animationProgram: { animations: [], evaluationOrder: [] },
+          animationProgram: { animations: [], evaluationOrder: [], dependencyCycles: [] },
           diagnostics: [],
         };
         localCandidates.push({

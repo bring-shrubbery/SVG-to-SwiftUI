@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <rect width="96" height="48" rx="8" fill="#0f172a"/>
+  <path d="M12 16H84M12 32H84" stroke="#334155" stroke-width="2"/>
+  <circle id="lead-dot" cx="12" cy="16" r="6" fill="#22c55e">
+    <animate id="lead-timing" attributeName="cx" values="12;48;84" calcMode="discrete"
+      begin="0s;1.2s" dur="400ms" repeatCount="2.5" repeatDur="900ms"
+      min="300ms" max="1s" restart="always" fill="freeze"/>
+  </circle>
+  <circle id="dependent-dot" cx="12" cy="32" r="6" fill="#f472b6">
+    <animate attributeName="cx" values="12;84" calcMode="discrete"
+      begin="lead-timing.end+100ms" dur="500ms" fill="freeze"/>
+  </circle>
+</svg>

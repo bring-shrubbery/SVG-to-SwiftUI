@@ -248,6 +248,8 @@ The animation harness extends the same compiler pipeline across an exact microse
 
 Generated animated views expose deterministic and production clock paths. See the [animation clock contract](docs/animation-clock.md) for restart, pause/resume, Reduced Motion, and exact-time behavior.
 
+SMIL scheduling is compiled separately from drawing. See the [SMIL timing contract](docs/smil-timing.md) for supported syntax, state samples, deterministic events, dependency ordering, and strict/permissive fallbacks.
+
 Optional MP4 files are review artifacts only. They are encoded after the lossless comparisons and never decide whether a test passes. Animation compiler support is being implemented in dependency order under the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94).
 
 ## Migration from 0.4

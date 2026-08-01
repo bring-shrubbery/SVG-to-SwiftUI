@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <rect width="96" height="48" rx="8" fill="#0f172a"/>
+  <circle cx="12" cy="12" r="5" fill="#38bdf8">
+    <animate id="source-timing" attributeName="cx" from="12" to="84" dur="500ms" repeatCount="2" fill="freeze"/>
+  </circle>
+  <circle cx="12" cy="24" r="5" fill="#f59e0b">
+    <animate attributeName="cx" from="12" to="84" begin="source-timing.repeat(1)" dur="500ms" fill="freeze"/>
+  </circle>
+  <circle cx="12" cy="36" r="5" fill="#f472b6">
+    <animate attributeName="cx" from="12" to="84" begin="source-timing.end+100ms" dur="500ms" fill="freeze"/>
+  </circle>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <rect width="96" height="48" rx="8" fill="#172033"/>
+  <circle id="trigger" cx="16" cy="24" r="8" fill="#64748b"/>
+  <rect x="32" y="16" width="16" height="16" rx="3" fill="#ef4444">
+    <animate attributeName="x" values="32;56;72" calcMode="discrete"
+      begin="trigger.click+100ms" dur="400ms" fill="freeze"/>
+  </rect>
+</svg>

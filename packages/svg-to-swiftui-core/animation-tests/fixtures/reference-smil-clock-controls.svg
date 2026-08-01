@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <rect width="96" height="48" rx="8" fill="#111827"/>
+  <path d="M12 16H84M12 32H84" stroke="#374151" stroke-width="2"/>
+  <circle cx="12" cy="16" r="6" fill="#22c55e">
+    <animate attributeName="cx" values="12;48;84" calcMode="discrete"
+      begin="-200ms;00:00:01.2;00:01.2" dur="400ms" repeatCount="2.5" repeatDur="900ms"
+      min="300ms" max="1s" restart="always" fill="freeze"/>
+  </circle>
+  <circle cx="12" cy="32" r="6" fill="#a78bfa">
+    <animate attributeName="cx" from="12" to="84" begin="200ms;500ms;1.5s"
+      dur="600ms" restart="whenNotActive" fill="freeze"/>
+  </circle>
+</svg>

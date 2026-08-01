@@ -6,12 +6,19 @@ struct AnimationFrameTask: Decodable {
     let output: String
 }
 
+struct AnimationEventTask: Decodable {
+    let timeMicroseconds: Int64
+    let name: String
+    let targetId: String?
+}
+
 struct AnimationRenderTask: Decodable {
     let input: String
     let width: Int
     let height: Int
     let pixelWidth: Int
     let pixelHeight: Int
+    let events: [AnimationEventTask]
     let frames: [AnimationFrameTask]
 }
 
@@ -52,10 +59,25 @@ final class AnimationSnapshotRenderer: NSObject, WKNavigationDelegate {
         let frame = task.frames[frameIndex]
         let seconds = Double(frame.timeMicroseconds) / 1_000_000
         let milliseconds = Double(frame.timeMicroseconds) / 1_000
+        let events = task.events
+            .filter { $0.timeMicroseconds <= frame.timeMicroseconds }
+            .map { event in
+                let target = event.targetId.map { "document.getElementById(\(javascriptString($0)))" } ?? "root"
+                let key = "\(event.timeMicroseconds):\(event.targetId ?? ""):\(event.name)"
+                return "{ key: \(javascriptString(key)), time: \(Double(event.timeMicroseconds) / 1_000_000), target: \(target), name: \(javascriptString(event.name)) }"
+            }
+            .joined(separator: ",")
         let script = """
         (() => {
           const root = document.documentElement;
           if (typeof root.pauseAnimations === 'function') root.pauseAnimations();
+          window.__svgTimingEvents = window.__svgTimingEvents || new Set();
+          for (const event of [\(events)]) {
+            if (window.__svgTimingEvents.has(event.key) || !event.target) continue;
+            if (typeof root.setCurrentTime === 'function') root.setCurrentTime(event.time);
+            event.target.dispatchEvent(new Event(event.name));
+            window.__svgTimingEvents.add(event.key);
+          }
           if (typeof root.setCurrentTime === 'function') root.setCurrentTime(\(seconds));
           for (const animation of document.getAnimations()) {
             animation.pause();
@@ -128,6 +150,12 @@ final class AnimationSnapshotRenderer: NSObject, WKNavigationDelegate {
         fputs("\(message)\n", stderr)
         exit(1)
     }
+}
+
+private func javascriptString(_ value: String) -> String {
+    let data = try! JSONSerialization.data(withJSONObject: [value])
+    let array = String(data: data, encoding: .utf8)!
+    return String(array.dropFirst().dropLast())
 }
 
 let arguments = CommandLine.arguments

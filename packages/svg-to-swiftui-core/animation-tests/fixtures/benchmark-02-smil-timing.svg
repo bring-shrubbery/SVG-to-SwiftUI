@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <rect width="96" height="48" rx="8" fill="#0f172a"/>
+  <path d="M16 24H80" stroke="#334155" stroke-width="2"/>
+  <circle id="timed-dot" cx="16" cy="24" r="9" fill="#f59e0b">
+    <animate attributeName="cx" values="16;48;80" calcMode="discrete" begin="200ms" dur="600ms" repeatCount="2" fill="freeze"/>
+  </circle>
+</svg>

@@ -232,6 +232,7 @@ function renderReferenceFrames(fixture: LoadedAnimationFixture, source: string):
       height: fixture.height,
       pixelWidth: Math.round(fixture.width * fixture.scale),
       pixelHeight: Math.round(fixture.height * fixture.scale),
+      events: fixture.events,
       frames: fixture.frames.map((frame) => ({
         timeMicroseconds: frame.timeMicroseconds,
         output: referencePath(fixture, frame.stem),
@@ -431,6 +432,7 @@ async function main(): Promise<void> {
           scale: fixture.scale,
           background: fixture.background,
           referenceBackend: fixture.referenceBackend,
+          events: fixture.events,
           frames: fixture.frames,
         }),
         ...fixture.fonts.map((font) => readFileSync(resolve(__dirname, font))),
