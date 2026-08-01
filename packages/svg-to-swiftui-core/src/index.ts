@@ -21,15 +21,18 @@ export type {
   AnimationKind,
   AnimationProgram,
   AnimationTarget,
+  AnimationTargetSnapshot,
   AnimationTime,
   AnimationTiming,
   AnimationValue,
 } from "./renderTree/animation";
-export { sampleNumericAnimation } from "./renderTree/animation";
+export { sampleAnimatedPresentationValue, sampleNumericAnimation } from "./renderTree/animation";
 export type {
+  AnimationAttributeRegistryEntry,
   AnimationAttributeSpec,
   AnimationCalculation,
   AnimationColor,
+  AnimationInvalidationCategory,
   AnimationSandwichLayer,
   AnimationTransformComponent,
   AnimationValueContext,
@@ -40,6 +43,7 @@ export type {
   TypedAnimationValue,
 } from "./renderTree/animationValues";
 export {
+  ANIMATION_ATTRIBUTE_REGISTRY,
   addAnimationValues,
   animationAttributeSpec,
   animationValueDistance,
@@ -52,6 +56,7 @@ export {
   parseAnimationValueSet,
   parseKeySplines,
   parseKeyTimes,
+  resolveAnimationAttribute,
   sampleAnimationValue,
   serializeAnimationValue,
   swiftAnimationValueLiteral,

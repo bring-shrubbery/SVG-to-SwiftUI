@@ -22,11 +22,29 @@ export type AnimationValueFamily =
   | "discrete";
 
 export interface AnimationAttributeSpec {
+  canonicalName: string;
   family: AnimationValueFamily;
   animatable: boolean;
   additive: boolean;
   axis?: LengthAxis;
   clamp?: "unit" | "nonnegative";
+  namespaces: readonly ("XML" | "CSS")[];
+  invalidates: readonly AnimationInvalidationCategory[];
+}
+
+export type AnimationInvalidationCategory =
+  | "visibility"
+  | "geometry"
+  | "paint"
+  | "bounds"
+  | "resource"
+  | "filter-buffer"
+  | "text-layout"
+  | "viewport";
+
+export interface AnimationAttributeRegistryEntry extends AnimationAttributeSpec {
+  targetElements: readonly string[] | "graphics" | "text" | "filter-primitives" | "any";
+  runtimeBinding: "render-node" | "gradient-stop" | "pending-resource" | "pending-follow-up";
 }
 
 export interface AnimationValueContext {
@@ -187,43 +205,223 @@ const DISCRETE_ATTRIBUTES = new Set([
   "visibility",
 ]);
 
-/** Registry shared by SMIL and CSS frontends. Unknown properties are never guessed. */
+const GEOMETRY_ATTRIBUTES = new Set([
+  "cx",
+  "cy",
+  "d",
+  "height",
+  "pathLength",
+  "points",
+  "r",
+  "rx",
+  "ry",
+  "width",
+  "x",
+  "x1",
+  "x2",
+  "y",
+  "y1",
+  "y2",
+]);
+const TEXT_ATTRIBUTES = new Set([
+  "alignment-baseline",
+  "dominant-baseline",
+  "dx",
+  "dy",
+  "font-family",
+  "font-size",
+  "font-style",
+  "font-weight",
+  "glyph-orientation-horizontal",
+  "glyph-orientation-vertical",
+  "letter-spacing",
+  "rotate",
+  "startOffset",
+  "text-anchor",
+  "text-decoration",
+  "textLength",
+  "word-spacing",
+  "x",
+  "y",
+]);
+const FILTER_ATTRIBUTES = new Set([
+  ...NUMBER_ATTRIBUTES,
+  ...INTEGER_ATTRIBUTES,
+  "flood-color",
+  "flood-opacity",
+  "lighting-color",
+  "values",
+]);
+const PAINT_ATTRIBUTES = new Set([
+  "color",
+  "fill",
+  "fill-opacity",
+  "fill-rule",
+  "flood-color",
+  "flood-opacity",
+  "lighting-color",
+  "opacity",
+  "stop-color",
+  "stop-opacity",
+  "stroke",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "stroke-miterlimit",
+  "stroke-opacity",
+  "stroke-width",
+]);
+const RESOURCE_ATTRIBUTES = new Set(["clip-path", "filter", "marker-end", "marker-mid", "marker-start", "mask"]);
+const CSS_ONLY_ATTRIBUTES = new Set(["mix-blend-mode", "isolation"]);
+const XML_ONLY_ATTRIBUTES = new Set(["viewBox", "preserveAspectRatio"]);
+const ANIMATE_SET_RENDER_ATTRIBUTES = new Set([
+  "color",
+  "cx",
+  "cy",
+  "d",
+  "display",
+  "dx",
+  "dy",
+  "fill",
+  "fill-opacity",
+  "font-size",
+  "height",
+  "letter-spacing",
+  "opacity",
+  "points",
+  "preserveAspectRatio",
+  "r",
+  "rx",
+  "ry",
+  "stroke",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "stroke-linecap",
+  "stroke-linejoin",
+  "stroke-miterlimit",
+  "stroke-opacity",
+  "stroke-width",
+  "viewBox",
+  "visibility",
+  "width",
+  "word-spacing",
+  "x",
+  "x1",
+  "x2",
+  "y",
+  "y1",
+  "y2",
+]);
+const GRADIENT_STOP_ATTRIBUTES = new Set(["offset", "stop-color", "stop-opacity"]);
+
+function registryEntry(
+  canonicalName: string,
+  family: AnimationValueFamily,
+  additive: boolean,
+  options: Pick<AnimationAttributeSpec, "axis" | "clamp"> = {},
+): AnimationAttributeRegistryEntry {
+  const invalidates = new Set<AnimationInvalidationCategory>();
+  if (canonicalName === "display" || canonicalName === "visibility") invalidates.add("visibility");
+  if (GEOMETRY_ATTRIBUTES.has(canonicalName)) {
+    invalidates.add("geometry");
+    invalidates.add("bounds");
+  }
+  if (TEXT_ATTRIBUTES.has(canonicalName)) {
+    invalidates.add("text-layout");
+    invalidates.add("bounds");
+  }
+  if (PAINT_ATTRIBUTES.has(canonicalName)) invalidates.add("paint");
+  if (RESOURCE_ATTRIBUTES.has(canonicalName)) invalidates.add("resource");
+  if (FILTER_ATTRIBUTES.has(canonicalName) || canonicalName === "filter") invalidates.add("filter-buffer");
+  if (canonicalName === "viewBox" || canonicalName === "preserveAspectRatio") {
+    invalidates.add("viewport");
+    invalidates.add("geometry");
+    invalidates.add("bounds");
+  }
+  if (invalidates.size === 0) invalidates.add("paint");
+  return {
+    canonicalName,
+    family,
+    animatable: true,
+    additive,
+    namespaces: CSS_ONLY_ATTRIBUTES.has(canonicalName)
+      ? ["CSS"]
+      : XML_ONLY_ATTRIBUTES.has(canonicalName)
+        ? ["XML"]
+        : ["XML", "CSS"],
+    invalidates: [...invalidates],
+    targetElements: GRADIENT_STOP_ATTRIBUTES.has(canonicalName)
+      ? ["stop"]
+      : FILTER_ATTRIBUTES.has(canonicalName)
+        ? "filter-primitives"
+        : TEXT_ATTRIBUTES.has(canonicalName)
+          ? "any"
+          : canonicalName === "viewBox" || canonicalName === "preserveAspectRatio"
+            ? ["svg", "symbol", "view", "marker", "pattern"]
+            : "any",
+    runtimeBinding: ANIMATE_SET_RENDER_ATTRIBUTES.has(canonicalName)
+      ? "render-node"
+      : GRADIENT_STOP_ATTRIBUTES.has(canonicalName)
+        ? "gradient-stop"
+        : FILTER_ATTRIBUTES.has(canonicalName) || RESOURCE_ATTRIBUTES.has(canonicalName)
+          ? "pending-resource"
+          : "pending-follow-up",
+    ...options,
+  };
+}
+
+const registry = new Map<string, AnimationAttributeRegistryEntry>();
+const register = (
+  names: Iterable<string>,
+  family: AnimationValueFamily,
+  additive: boolean,
+  options: (name: string) => Pick<AnimationAttributeSpec, "axis" | "clamp"> = () => ({}),
+) => {
+  for (const name of names) registry.set(name, registryEntry(name, family, additive, options(name)));
+};
+register(NUMBER_ATTRIBUTES, "number", true);
+register(INTEGER_ATTRIBUTES, "integer", true);
+register(OPACITY_ATTRIBUTES, "opacity", true, () => ({ clamp: "unit" }));
+register(HORIZONTAL_LENGTH_ATTRIBUTES, "length", true, () => ({ axis: "horizontal" }));
+register(VERTICAL_LENGTH_ATTRIBUTES, "length", true, () => ({ axis: "vertical" }));
+register(OTHER_LENGTH_ATTRIBUTES, "length", true, (name) => ({
+  axis: "other",
+  ...(["r", "rx", "ry", "stroke-width"].includes(name) ? { clamp: "nonnegative" as const } : {}),
+}));
+register(ANGLE_ATTRIBUTES, "angle", true);
+register(COLOR_ATTRIBUTES, "color", true);
+register(LENGTH_LIST_ATTRIBUTES, "length-list", true, () => ({ axis: "other" }));
+register(DISCRETE_ATTRIBUTES, "discrete", false);
+registry.set("stroke-miterlimit", registryEntry("stroke-miterlimit", "number", true, { clamp: "nonnegative" }));
+registry.set("offset", registryEntry("offset", "opacity", true, { clamp: "unit" }));
+registry.set("points", registryEntry("points", "points", true));
+registry.set("d", registryEntry("d", "path", false));
+registry.set("viewBox", registryEntry("viewBox", "viewBox", true));
+registry.set("transform", registryEntry("transform", "transform", true));
+registry.set("fill", registryEntry("fill", "paint", true));
+registry.set("stroke", registryEntry("stroke", "paint", true));
+registry.set("values", registryEntry("values", "number-list", true));
+registry.set("keyPoints", registryEntry("keyPoints", "number-list", true));
+registry.set("rotate", registryEntry("rotate", "number-list", true));
+
+/** Machine-readable registry shared by SMIL, CSS animation, code generation, and conformance reporting. */
+export const ANIMATION_ATTRIBUTE_REGISTRY: readonly AnimationAttributeRegistryEntry[] = [...registry.values()].sort(
+  (left, right) => left.canonicalName.localeCompare(right.canonicalName),
+);
+
+/** Unknown properties are never guessed or normalized by accidental casing. */
 export function animationAttributeSpec(attributeName: string): AnimationAttributeSpec | undefined {
-  if (attributeName === "stroke-miterlimit")
-    return { family: "number", animatable: true, additive: true, clamp: "nonnegative" };
-  if (attributeName === "offset") return { family: "opacity", animatable: true, additive: true, clamp: "unit" };
-  if (NUMBER_ATTRIBUTES.has(attributeName)) return { family: "number", animatable: true, additive: true };
-  if (INTEGER_ATTRIBUTES.has(attributeName)) return { family: "integer", animatable: true, additive: true };
-  if (OPACITY_ATTRIBUTES.has(attributeName))
-    return { family: "opacity", animatable: true, additive: true, clamp: "unit" };
-  if (HORIZONTAL_LENGTH_ATTRIBUTES.has(attributeName))
-    return { family: "length", animatable: true, additive: true, axis: "horizontal" };
-  if (VERTICAL_LENGTH_ATTRIBUTES.has(attributeName))
-    return { family: "length", animatable: true, additive: true, axis: "vertical" };
-  if (OTHER_LENGTH_ATTRIBUTES.has(attributeName))
-    return {
-      family: "length",
-      animatable: true,
-      additive: true,
-      axis: "other",
-      ...(["r", "rx", "ry", "stroke-width", "stroke-miterlimit"].includes(attributeName)
-        ? { clamp: "nonnegative" as const }
-        : {}),
-    };
-  if (ANGLE_ATTRIBUTES.has(attributeName)) return { family: "angle", animatable: true, additive: true };
-  if (COLOR_ATTRIBUTES.has(attributeName)) return { family: "color", animatable: true, additive: true };
-  if (LENGTH_LIST_ATTRIBUTES.has(attributeName))
-    return { family: "length-list", animatable: true, additive: true, axis: "other" };
-  if (attributeName === "points") return { family: "points", animatable: true, additive: true };
-  if (attributeName === "d") return { family: "path", animatable: true, additive: false };
-  if (attributeName === "viewBox") return { family: "viewBox", animatable: true, additive: true };
-  if (attributeName === "transform") return { family: "transform", animatable: true, additive: true };
-  if (attributeName === "fill" || attributeName === "stroke")
-    return { family: "paint", animatable: true, additive: true };
-  if (attributeName === "values" || attributeName === "keyPoints")
-    return { family: "number-list", animatable: true, additive: true };
-  if (DISCRETE_ATTRIBUTES.has(attributeName)) return { family: "discrete", animatable: true, additive: false };
-  return undefined;
+  return registry.get(attributeName);
+}
+
+export function resolveAnimationAttribute(
+  attributeName: string,
+  attributeType: "auto" | "XML" | "CSS" = "auto",
+): AnimationAttributeRegistryEntry | undefined {
+  const spec = registry.get(attributeName);
+  if (!spec) return undefined;
+  return attributeType === "auto" || spec.namespaces.includes(attributeType) ? spec : undefined;
 }
 
 function numbers(source: string): number[] | undefined {

@@ -9,7 +9,8 @@
   "files": [
     "dist",
     "conformance/svg2-static-profile.json",
-    "conformance/REPORT.md"
+    "conformance/REPORT.md",
+    "conformance/ANIMATION_REPORT.md"
   ],
   "license": "MIT",
   "keywords": [
@@ -41,6 +42,8 @@
     "visual-test:verify": "bun visual-tests/verify-manifest.ts",
     "animation-test": "bun run animation-tests/run-animation-tests.ts",
     "animation-test:verify": "bun animation-tests/verify-manifest.ts",
+    "animation-conformance:report": "bun conformance/generate-animation-report.ts",
+    "animation-conformance:verify": "bun conformance/verify-animation-report.ts",
     "visual-test:update-manifest": "bun visual-tests/update-manifest.ts",
     "conformance:verify": "bun conformance/verify.ts",
     "conformance:report": "bun conformance/generate-report.ts",

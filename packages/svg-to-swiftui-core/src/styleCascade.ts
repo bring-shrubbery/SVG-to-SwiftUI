@@ -17,6 +17,10 @@ export type Presentation = Record<string, string | number>;
 export interface StyleResolution {
   values: Presentation;
   provenance: Readonly<Record<string, CSSDiagnosticContext>>;
+  /** Properties whose computed value came from the parent presentation. */
+  inheritedProperties: Readonly<Record<string, true>>;
+  /** Paint properties whose winning authored value depends on `color`. */
+  currentColorProperties: Readonly<Record<string, true>>;
 }
 
 type StyleNode = ElementNode | TextNode | string;
@@ -581,6 +585,7 @@ export class SVGStyleResolver {
 
     const values: Presentation = {};
     const provenance: Record<string, CSSDiagnosticContext> = {};
+    const inheritedProperties: Record<string, true> = {};
     for (const name of new Set([
       ...Object.keys(inheritedCustom),
       ...[...winners.keys()].filter((property) => property.startsWith("--")),
@@ -596,6 +601,7 @@ export class SVGStyleResolver {
       let value: string | number;
       if (!winner) {
         const contextualOverflow = property === "overflow" && ["svg", "symbol"].includes(element.tagName ?? "");
+        if (definition.inherited && inherited[property] !== undefined) inheritedProperties[property] = true;
         value =
           definition.inherited && inherited[property] !== undefined
             ? inherited[property]!
@@ -612,13 +618,17 @@ export class SVGStyleResolver {
             winner.css,
           );
           value = definition.inherited && inherited[property] !== undefined ? inherited[property]! : definition.initial;
+          if (definition.inherited && inherited[property] !== undefined) inheritedProperties[property] = true;
         } else {
           const keyword = substituted.trim().toLowerCase();
-          if (keyword === "inherit") value = inherited[property] ?? definition.initial;
-          else if (keyword === "initial") value = definition.initial;
+          if (keyword === "inherit") {
+            value = inherited[property] ?? definition.initial;
+            if (inherited[property] !== undefined) inheritedProperties[property] = true;
+          } else if (keyword === "initial") value = definition.initial;
           else if (keyword === "unset" || keyword === "revert" || keyword === "revert-layer") {
             value =
               definition.inherited && inherited[property] !== undefined ? inherited[property]! : definition.initial;
+            if (definition.inherited && inherited[property] !== undefined) inheritedProperties[property] = true;
           } else value = substituted;
         }
         provenance[property] = winner.css;
@@ -626,6 +636,10 @@ export class SVGStyleResolver {
       values[property] = value;
     }
 
+    const currentColorProperties: Record<string, true> = {};
+    for (const property of ["fill", "stroke", "stop-color", "flood-color", "lighting-color", "solid-color"] as const) {
+      if (/\bcurrentcolor\b/i.test(String(values[property] ?? ""))) currentColorProperties[property] = true;
+    }
     const rawColor = values.color ?? STYLE_PROPERTY_DEFINITIONS.color.initial;
     const color =
       String(rawColor).trim().toLowerCase() === "currentcolor"
@@ -635,6 +649,6 @@ export class SVGStyleResolver {
     for (const property of ["fill", "stroke", "stop-color", "flood-color", "lighting-color", "solid-color"] as const) {
       values[property] = resolveCurrentColor(values[property]!, color);
     }
-    return { values, provenance };
+    return { values, provenance, inheritedProperties, currentColorProperties };
   }
 }

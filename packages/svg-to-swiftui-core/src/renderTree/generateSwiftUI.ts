@@ -6,7 +6,13 @@ import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
 import { viewBoxTransform } from "../viewports";
-import type { TypedAnimationValue } from "./animationValues";
+import {
+  addAnimationValues,
+  animationAttributeSpec,
+  parseAnimationValue,
+  swiftAnimationValueLiteral,
+  type TypedAnimationValue,
+} from "./animationValues";
 import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
@@ -38,6 +44,7 @@ export interface GeneratedSwiftUI {
 interface ShapeHelper {
   name: string;
   lines: string[];
+  animated?: boolean;
 }
 
 type GeneratedViewNode =
@@ -46,6 +53,7 @@ type GeneratedViewNode =
       helper: string;
       swiftColor: string;
       cgColor: RGBAColor;
+      cgColorExpression?: string;
       tileContained?: boolean;
       clipUnions?: string[][];
     }
@@ -55,6 +63,7 @@ type GeneratedViewNode =
       gradient: ResolvedGradient;
       paintOpacity: number;
       coordinateSpace: ViewBoxData;
+      stopsExpression?: string;
     }
   | {
       type: "pattern";
@@ -77,7 +86,7 @@ type GeneratedViewNode =
   | {
       type: "group";
       children: GeneratedViewNode[];
-      opacity: number;
+      opacity: number | string;
       isolated: boolean;
       blendMode: SVGBlendMode;
       viewportClip?: string;
@@ -87,6 +96,9 @@ type GeneratedViewNode =
       tileContained?: boolean;
       accessibility?: AccessibilityMetadata;
       animationOffsetX?: string;
+      animationOffsetY?: string;
+      presentationCondition?: string;
+      animationTransform?: string;
     };
 
 interface GeneratedMask {
@@ -124,7 +136,20 @@ interface ViewBuildContext {
   precision: number;
   coordinateSpace: ViewBoxData;
   activePatterns: Set<string>;
-  textHelpers: Array<{ name: string; node: RenderText; transform: RenderNode["transform"] }>;
+  textHelpers: Array<{
+    name: string;
+    node: RenderText;
+    transform: RenderNode["transform"];
+    fillAnimation?: string;
+    fillOpacity?: string;
+    strokeAnimation?: string;
+    strokeOpacity?: string;
+    strokeWidth?: string;
+    fontSize?: string;
+    letterSpacing?: string;
+    wordSpacing?: string;
+    animated: boolean;
+  }>;
   imageHelpers: Array<{
     name: string;
     node: Extract<RenderNode, { type: "image" | "foreignObject" }>;
@@ -302,6 +327,15 @@ function addHelper(context: ViewBuildContext, name: string, lines: string[]): st
   return name;
 }
 
+function addAnimatedHelper(context: ViewBuildContext, name: string, lines: string[]): string {
+  context.helpers.push({ name, lines, animated: true });
+  return `${name}(documentTime: documentTime)`;
+}
+
+function shapeHelperCall(helper: string): string {
+  return helper.includes("(") ? helper : `${helper}()`;
+}
+
 function isContainedInTile(node: RenderNode, pattern: ResolvedPattern): boolean {
   const bounds = renderNodeBounds(node, pattern.contentTransform);
   if (!bounds) return false;
@@ -332,52 +366,95 @@ function buildViewNodes(
   nodes: RenderNode[],
   context: ViewBuildContext,
   ancestorTransforms: RenderNode["transform"][] = [],
+  inheritedAnimationOwners: Readonly<Record<string, RenderNode>> = {},
 ): GeneratedViewNode[] {
   const generated: GeneratedViewNode[] = [];
 
-  const animationOffsetX = (node: RenderNode): string | undefined => {
-    if (!node.source.id) return undefined;
-    const animations = context.document.animationProgram.animations.filter(
-      (candidate) =>
-        candidate.runtimeSupport === "scalar" &&
-        candidate.target?.source.id === node.source.id &&
-        (candidate.attributeName === "cx" || candidate.attributeName === "x"),
-    );
+  const directAnimationsFor = (node: RenderNode, attributeName: string) =>
+    node.animationTargetKey
+      ? context.document.animationProgram.animations.filter(
+          (candidate) =>
+            candidate.runtimeSupport === "typed" &&
+            candidate.target?.key === node.animationTargetKey &&
+            candidate.attributeName === attributeName,
+        )
+      : [];
+
+  const ownedAnimationsFor = (node: RenderNode, attributeName: string) => {
+    const direct = directAnimationsFor(node, attributeName);
+    if (direct.length > 0) return direct;
+    if ((attributeName === "fill" || attributeName === "stroke") && node.style.currentColorProperties[attributeName])
+      return directAnimationsFor(node, "color");
+    return direct;
+  };
+
+  const animationsFor = (node: RenderNode, attributeName: string) => {
+    const direct = ownedAnimationsFor(node, attributeName);
+    if (direct.length > 0 || !node.style.inheritedProperties[attributeName]) return direct;
+    const owner = inheritedAnimationOwners[attributeName];
+    return owner ? ownedAnimationsFor(owner, attributeName) : direct;
+  };
+
+  const inheritedAnimationAttributes = [
+    "color",
+    "fill",
+    "fill-opacity",
+    "font-size",
+    "letter-spacing",
+    "stroke",
+    "stroke-dasharray",
+    "stroke-dashoffset",
+    "stroke-linecap",
+    "stroke-linejoin",
+    "stroke-miterlimit",
+    "stroke-opacity",
+    "stroke-width",
+    "visibility",
+    "word-spacing",
+  ] as const;
+
+  const valueContext = (node: RenderNode) => ({
+    length: {
+      viewport: node.paintContext.viewport,
+      rootViewport: node.paintContext.rootViewport,
+      fontMetrics: node.paintContext.fontMetrics,
+      percentageBasis: "viewport-diagonal" as const,
+      axis: "other" as const,
+    },
+    colorSpace:
+      String(node.style.presentation["color-interpolation"] ?? "sRGB").toLowerCase() === "linearrgb"
+        ? ("linearRGB" as const)
+        : ("sRGB" as const),
+  });
+
+  const animatedValueExpressionFromAnimations = (
+    animations: ReturnType<typeof directAnimationsFor>,
+    base: TypedAnimationValue,
+  ): string | undefined => {
     if (animations.length === 0) return undefined;
-    const scalar = (value: TypedAnimationValue): number | undefined => {
-      switch (value.family) {
-        case "number":
-        case "integer":
-        case "opacity":
-        case "length":
-        case "angle":
-          return value.value;
-        default:
-          return undefined;
-      }
-    };
-    const first = animations[0]!;
-    if (first.value.family === "unsupported") return undefined;
-    const base = scalar(first.value.base);
-    if (base === undefined) return undefined;
-    let expression = formatNumber(base);
+    let expression = swiftAnimationValueLiteral(base, context.precision, `${context.rootName}.`);
     for (const animation of animations) {
       if (animation.value.family === "unsupported") continue;
       const set = animation.value;
-      const authoredValues =
-        set.form === "values"
-          ? set.values
-          : set.form === "from-to"
-            ? [set.from, set.to]
-            : set.form === "from-by"
-              ? [set.from, set.from && set.by ? { ...set.from, value: scalar(set.from)! + scalar(set.by)! } : undefined]
-              : set.form === "by"
-                ? [set.by ? { ...set.by, value: 0 } : undefined, set.by]
-                : set.form === "to"
-                  ? [set.to]
-                  : undefined;
-      const values = authoredValues?.map((value) => (value ? scalar(value) : undefined));
-      if (!values || values.some((value) => value === undefined)) continue;
+      let authoredValues: readonly TypedAnimationValue[] | undefined;
+      let form = set.form;
+      if (animation.kind === "set") {
+        const target = set.to ?? (set.values ? set.values[set.values.length - 1] : undefined);
+        if (!target) continue;
+        authoredValues = [target];
+        form = "values";
+      } else if (set.form === "values") authoredValues = set.values;
+      else if (set.form === "from-to" && set.from && set.to) authoredValues = [set.from, set.to];
+      else if (set.form === "from-by" && set.from && set.by) {
+        const endpoint = addAnimationValues(set.from, set.by);
+        if (endpoint) authoredValues = [set.from, endpoint];
+      } else if (set.form === "by" && set.by) authoredValues = [set.by];
+      else if (set.form === "to" && set.to) authoredValues = [set.to];
+      if (!authoredValues || authoredValues.length === 0) continue;
+      if (base.family === "paint")
+        authoredValues = authoredValues.map((value) =>
+          value.family === "color" ? { family: "paint", value: { type: "color", color: value.value } } : value,
+        );
       const intervals = context.animationIntervals.get(animation.stableId) ?? [];
       const intervalLiteral = intervals
         .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
@@ -401,9 +478,398 @@ function buildViewNodes(
             : set.attribute.clamp === "nonnegative"
               ? "nonnegative"
               : "none";
-      expression = `Self.svgAnimatedNumber(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, values: [${values.map((value) => formatNumber(value!)).join(", ")}], form: .${set.form.replace(/-/g, "")}, calcMode: .${animation.composition.calcMode}, keyTimes: [${keyTimes}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" || set.form === "by" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, clamp: .${clampMode}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
+      expression = `${context.rootName}.svgAnimatedValue(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, values: [${authoredValues.map((value) => swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`)).join(", ")}], form: .${form.replace(/-/g, "")}, calcMode: .${animation.kind === "set" ? "discrete" : animation.composition.calcMode}, keyTimes: [${keyTimes}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" || set.form === "by" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, clamp: .${clampMode}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
     }
-    return `${expression} - ${formatNumber(base)}`;
+    return expression;
+  };
+
+  const animatedValueExpression = (
+    node: RenderNode,
+    attributeName: string,
+    base: TypedAnimationValue,
+  ): string | undefined => animatedValueExpressionFromAnimations(animationsFor(node, attributeName), base);
+
+  const numericBase = (
+    node: RenderNode,
+    attributeName: string,
+    source: string | number,
+  ): TypedAnimationValue | undefined => {
+    const spec = animationAttributeSpec(attributeName);
+    return spec ? parseAnimationValue(spec, String(source), valueContext(node)) : undefined;
+  };
+
+  const animatedNumber = (node: RenderNode, attributeName: string, source: string | number): string | undefined => {
+    const base = numericBase(node, attributeName, source);
+    if (!base || !("value" in base) || typeof base.value !== "number") return undefined;
+    const expression = animatedValueExpression(node, attributeName, base);
+    return expression ? `${context.rootName}.svgAnimationNumber(${expression})` : undefined;
+  };
+
+  const animatedPaint = (node: RenderNode, attributeName: "fill" | "stroke", paint: Paint): string | undefined => {
+    const spec = animationAttributeSpec(attributeName)!;
+    const base = parseAnimationValue(spec, paintValue(paint), valueContext(node));
+    if (!base) return undefined;
+    return animatedValueExpression(node, attributeName, base);
+  };
+
+  const animatedDiscrete = (node: RenderNode, attributeName: string, source: string): string | undefined => {
+    const spec = animationAttributeSpec(attributeName);
+    const base = spec ? parseAnimationValue(spec, source, valueContext(node)) : undefined;
+    if (!base) return undefined;
+    const expression = animatedValueExpression(node, attributeName, base);
+    return expression ? `${context.rootName}.svgAnimationSource(${expression})` : undefined;
+  };
+
+  const animatedGradientStopValues = (stop: GradientStop, node: RenderNode) => {
+    const key = stop.animationTargetKey;
+    const animations = (attributeName: string) =>
+      key
+        ? context.document.animationProgram.animations.filter(
+            (candidate) =>
+              candidate.runtimeSupport === "typed" &&
+              candidate.target?.key === key &&
+              candidate.attributeName === attributeName,
+          )
+        : [];
+    const base = stop.animationBaseValues ?? {};
+    const parsedOffset = parseAnimationValue(
+      animationAttributeSpec("offset")!,
+      base.offset ?? String(stop.offset),
+      valueContext(node),
+    );
+    const parsedColor = parseAnimationValue(
+      animationAttributeSpec("stop-color")!,
+      base["stop-color"] ?? `rgba(${stop.color.red * 255} ${stop.color.green * 255} ${stop.color.blue * 255} / 1)`,
+      valueContext(node),
+    );
+    const parsedOpacity = parseAnimationValue(
+      animationAttributeSpec("stop-opacity")!,
+      base["stop-opacity"] ?? String(stop.color.alpha),
+      valueContext(node),
+    );
+    if (!parsedOffset || !parsedColor || !parsedOpacity) return undefined;
+    const offsetAnimations = animations("offset");
+    const colorAnimations = animations("stop-color");
+    const opacityAnimations = animations("stop-opacity");
+    return {
+      animated: offsetAnimations.length + colorAnimations.length + opacityAnimations.length > 0,
+      offset:
+        animatedValueExpressionFromAnimations(offsetAnimations, parsedOffset) ??
+        swiftAnimationValueLiteral(parsedOffset, context.precision, `${context.rootName}.`),
+      color:
+        animatedValueExpressionFromAnimations(colorAnimations, parsedColor) ??
+        swiftAnimationValueLiteral(parsedColor, context.precision, `${context.rootName}.`),
+      opacity:
+        animatedValueExpressionFromAnimations(opacityAnimations, parsedOpacity) ??
+        swiftAnimationValueLiteral(parsedOpacity, context.precision, `${context.rootName}.`),
+    };
+  };
+
+  const animatedGradientStopsExpression = (stops: readonly GradientStop[], node: RenderNode, opacity: number) => {
+    const values = stops.map((stop) => animatedGradientStopValues(stop, node));
+    if (!values.some((value) => value?.animated)) return undefined;
+    return `${context.rootName}.svgNormalizedGradientStops([${values
+      .map((value, index) =>
+        value
+          ? `${context.rootName}.svgAnimatedGradientStop(offset: ${value.offset}, color: ${value.color}, opacity: ${value.opacity}, paintOpacity: ${formatNumber(opacity)})`
+          : gradientStopLiteral(stops[index]!, opacity),
+      )
+      .join(", ")}])`;
+  };
+
+  const presentationCondition = (node: RenderNode): string | undefined => {
+    const display = animatedDiscrete(node, "display", node.style.display);
+    const visibility = animatedDiscrete(node, "visibility", node.style.visibility);
+    const conditions = [
+      ...(display ? [`${display} != "none"`] : []),
+      ...(visibility ? [`${visibility} != "hidden" && ${visibility} != "collapse"`] : []),
+    ];
+    return conditions.length > 0 ? conditions.join(" && ") : undefined;
+  };
+
+  const opacityExpression = (node: RenderNode): number | string =>
+    animatedNumber(node, "opacity", node.style.opacity) ?? node.style.opacity;
+
+  const animationOffset = (
+    node: RenderNode,
+    attributeNames: readonly string[],
+    sources: readonly (string | number | undefined)[],
+  ): string | undefined => {
+    const offsets = attributeNames.flatMap((attributeName, index) => {
+      const source = sources[index];
+      if (source === undefined) return [];
+      const expression = animatedNumber(node, attributeName, source);
+      const base = numericBase(node, attributeName, source);
+      return expression && base && "value" in base && typeof base.value === "number"
+        ? [`(${expression} - ${formatNumber(base.value)})`]
+        : [];
+    });
+    return offsets.length === 0 ? undefined : offsets.join(" + ");
+  };
+
+  const normalizedX = (expression: string) =>
+    `(((${expression}) - ${formatNumber(context.options.viewBox.x)}) / ${formatNumber(context.options.viewBox.width)} * width)`;
+  const normalizedY = (expression: string) =>
+    `(((${expression}) - ${formatNumber(context.options.viewBox.y)}) / ${formatNumber(context.options.viewBox.height)} * height)`;
+  const normalizedWidth = (expression: string) =>
+    `((${expression}) / ${formatNumber(context.options.viewBox.width)} * width)`;
+  const normalizedHeight = (expression: string) =>
+    `((${expression}) / ${formatNumber(context.options.viewBox.height)} * height)`;
+
+  const pathValueCandidates = (node: RenderNode, attributeName: string, base: TypedAnimationValue) => {
+    const candidates: TypedAnimationValue[] = [base];
+    for (const animation of animationsFor(node, attributeName)) {
+      if (animation.value.family === "unsupported") continue;
+      for (const value of [
+        animation.value.base,
+        animation.value.from,
+        animation.value.to,
+        animation.value.by,
+        ...(animation.value.values ?? []),
+      ])
+        if (value) candidates.push(value);
+    }
+    return candidates.filter(
+      (value, index) =>
+        candidates.findIndex(
+          (candidate) =>
+            candidate.family === value.family &&
+            swiftAnimationValueLiteral(candidate) === swiftAnimationValueLiteral(value),
+        ) === index,
+    );
+  };
+
+  const dynamicGeometryLines = (node: RenderShape): string[] | undefined => {
+    const declarations: string[] = [];
+    const scalars = new Map<string, string>();
+    const scalar = (name: string, base: number) => {
+      const cached = scalars.get(name);
+      if (cached) return cached;
+      const animatedValue = animatedNumber(node, name, base);
+      if (!animatedValue) return formatNumber(base);
+      const variable = `svg${name.replace(/(^|-)([a-z])/g, (_match, _prefix, letter: string) => letter.toUpperCase())}`;
+      declarations.push(`let ${variable} = ${animatedValue}`);
+      scalars.set(name, variable);
+      return variable;
+    };
+    const animated = (names: readonly string[]) => names.some((name) => animationsFor(node, name).length > 0);
+    switch (node.geometry.type) {
+      case "circle": {
+        if (!animated(["cx", "cy", "r"])) return undefined;
+        const cx = scalar("cx", node.geometry.cx);
+        const cy = scalar("cy", node.geometry.cy);
+        const radius = scalar("r", node.geometry.r);
+        return [
+          ...declarations,
+          `path.addEllipse(in: CGRect(x: ${normalizedX(`(${cx}) - (${radius})`)}, y: ${normalizedY(`(${cy}) - (${radius})`)}, width: ${normalizedWidth(`2 * (${radius})`)}, height: ${normalizedHeight(`2 * (${radius})`)}))`,
+        ];
+      }
+      case "ellipse": {
+        if (!animated(["cx", "cy", "rx", "ry"])) return undefined;
+        const cx = scalar("cx", node.geometry.cx);
+        const cy = scalar("cy", node.geometry.cy);
+        const authoredRx = node.geometryAuthored?.rx;
+        const authoredRy = node.geometryAuthored?.ry;
+        let rx = scalar("rx", node.geometry.rx);
+        let ry = scalar("ry", node.geometry.ry);
+        if (
+          (authoredRy === undefined || String(authoredRy).toLowerCase() === "auto") &&
+          animationsFor(node, "rx").length
+        )
+          ry = rx;
+        if (
+          (authoredRx === undefined || String(authoredRx).toLowerCase() === "auto") &&
+          animationsFor(node, "ry").length
+        )
+          rx = ry;
+        return [
+          ...declarations,
+          `path.addEllipse(in: CGRect(x: ${normalizedX(`(${cx}) - (${rx})`)}, y: ${normalizedY(`(${cy}) - (${ry})`)}, width: ${normalizedWidth(`2 * (${rx})`)}, height: ${normalizedHeight(`2 * (${ry})`)}))`,
+        ];
+      }
+      case "rect": {
+        if (!animated(["x", "y", "width", "height", "rx", "ry"])) return undefined;
+        const x = scalar("x", node.geometry.x);
+        const y = scalar("y", node.geometry.y);
+        const widthValue = scalar("width", node.geometry.width);
+        const heightValue = scalar("height", node.geometry.height);
+        const rxBase = node.geometry.rx ?? node.geometry.ry ?? 0;
+        const ryBase = node.geometry.ry ?? node.geometry.rx ?? 0;
+        const authoredRx = node.geometryAuthored?.rx;
+        const authoredRy = node.geometryAuthored?.ry;
+        let rx = scalar("rx", rxBase);
+        let ry = scalar("ry", ryBase);
+        if (
+          (authoredRy === undefined || String(authoredRy).toLowerCase() === "auto") &&
+          animationsFor(node, "rx").length
+        )
+          ry = rx;
+        if (
+          (authoredRx === undefined || String(authoredRx).toLowerCase() === "auto") &&
+          animationsFor(node, "ry").length
+        )
+          rx = ry;
+        const rect = `CGRect(x: ${normalizedX(x)}, y: ${normalizedY(y)}, width: ${normalizedWidth(widthValue)}, height: ${normalizedHeight(heightValue)})`;
+        return node.geometry.rx !== undefined || node.geometry.ry !== undefined || animated(["rx", "ry"])
+          ? [
+              ...declarations,
+              `path.addRoundedRect(in: ${rect}, cornerSize: CGSize(width: ${normalizedWidth(`min(abs(${rx}), (${widthValue}) / 2)`)}, height: ${normalizedHeight(`min(abs(${ry}), (${heightValue}) / 2)`)}))`,
+            ]
+          : [...declarations, `path.addRect(${rect})`];
+      }
+      case "line": {
+        if (!animated(["x1", "y1", "x2", "y2"])) return undefined;
+        const x1 = scalar("x1", node.geometry.x1);
+        const y1 = scalar("y1", node.geometry.y1);
+        const x2 = scalar("x2", node.geometry.x2);
+        const y2 = scalar("y2", node.geometry.y2);
+        return [
+          ...declarations,
+          `path.move(to: CGPoint(x: ${normalizedX(x1)}, y: ${normalizedY(y1)}))`,
+          `path.addLine(to: CGPoint(x: ${normalizedX(x2)}, y: ${normalizedY(y2)}))`,
+        ];
+      }
+      case "polyline":
+      case "polygon": {
+        if (!animated(["points"])) return undefined;
+        const spec = animationAttributeSpec("points")!;
+        const base = parseAnimationValue(spec, node.geometry.points, valueContext(node));
+        if (!base || base.family !== "points") return undefined;
+        const expression = animatedValueExpression(node, "points", base);
+        if (!expression) return undefined;
+        const candidates = pathValueCandidates(node, "points", base).filter(
+          (candidate): candidate is Extract<TypedAnimationValue, { family: "points" }> => candidate.family === "points",
+        );
+        const counts = [...new Set(candidates.map((candidate) => candidate.points.length))];
+        const lines = [
+          `let svgGeometry = ${expression}`,
+          "var animatedPath = Path()",
+          "switch svgGeometry.components.count / 2 {",
+        ];
+        for (const count of counts) {
+          lines.push(`case ${count}:`);
+          for (let index = 0; index < count; index++) {
+            const command = index === 0 ? "move" : "addLine";
+            lines.push(
+              `animatedPath.${command}(to: CGPoint(x: ${normalizedX(`svgGeometry.components[${index * 2}]`)}, y: ${normalizedY(`svgGeometry.components[${index * 2 + 1}]`)}))`,
+            );
+          }
+          if (node.geometry.type === "polygon") lines.push("animatedPath.closeSubpath()");
+        }
+        lines.push("default: break", "}", "path.addPath(animatedPath)");
+        return lines;
+      }
+      case "path": {
+        if (!animated(["d"])) return undefined;
+        const spec = animationAttributeSpec("d")!;
+        const base = parseAnimationValue(spec, node.geometry.d, valueContext(node));
+        if (!base || base.family !== "path") return undefined;
+        const expression = animatedValueExpression(node, "d", base);
+        if (!expression) return undefined;
+        const candidates = pathValueCandidates(node, "d", base).filter(
+          (candidate): candidate is Extract<TypedAnimationValue, { family: "path" }> => candidate.family === "path",
+        );
+        const signatures = new Map<string, Extract<TypedAnimationValue, { family: "path" }>>();
+        for (const candidate of candidates) {
+          const signature = candidate.commands.map((command) => `${command.kind}${command.values.length}`).join(";");
+          signatures.set(signature, candidate);
+        }
+        const lines = [
+          `let svgGeometry = ${expression}`,
+          "var animatedPath = Path()",
+          "switch svgGeometry.signature {",
+        ];
+        for (const [signature, candidate] of signatures) {
+          lines.push(`case ${swiftString(signature)}:`);
+          let component = 0;
+          for (const command of candidate.commands) {
+            const value = (offset: number) => `svgGeometry.components[${component + offset}]`;
+            if (command.kind === "M")
+              lines.push(`animatedPath.move(to: CGPoint(x: ${normalizedX(value(0))}, y: ${normalizedY(value(1))}))`);
+            else if (command.kind === "L")
+              lines.push(`animatedPath.addLine(to: CGPoint(x: ${normalizedX(value(0))}, y: ${normalizedY(value(1))}))`);
+            else if (command.kind === "Q")
+              lines.push(
+                `animatedPath.addQuadCurve(to: CGPoint(x: ${normalizedX(value(2))}, y: ${normalizedY(value(3))}), control: CGPoint(x: ${normalizedX(value(0))}, y: ${normalizedY(value(1))}))`,
+              );
+            else if (command.kind === "C")
+              lines.push(
+                `animatedPath.addCurve(to: CGPoint(x: ${normalizedX(value(4))}, y: ${normalizedY(value(5))}), control1: CGPoint(x: ${normalizedX(value(0))}, y: ${normalizedY(value(1))}), control2: CGPoint(x: ${normalizedX(value(2))}, y: ${normalizedY(value(3))}))`,
+              );
+            else lines.push("animatedPath.closeSubpath()");
+            component += command.values.length;
+          }
+        }
+        lines.push("default: break", "}", "path.addPath(animatedPath)");
+        return lines;
+      }
+    }
+  };
+
+  const dynamicStrokeLines = (node: RenderShape, centerline: string[]): string[] => {
+    const style = node.style.strokeStyle;
+    const number = (name: string, base: number) => animatedNumber(node, name, base) ?? formatNumber(base);
+    const discrete = (name: string, base: string) => animatedDiscrete(node, name, base);
+    const width = normalizedWidth(number("stroke-width", style.width));
+    const lineCap = discrete("stroke-linecap", style.lineCap);
+    const lineJoin = discrete("stroke-linejoin", style.lineJoin);
+    const dashSpec = animationAttributeSpec("stroke-dasharray")!;
+    const dashBase = style.dashArray
+      ? parseAnimationValue(dashSpec, style.dashArray.join(" "), valueContext(node))
+      : undefined;
+    const dashValue = dashBase ? animatedValueExpression(node, "stroke-dasharray", dashBase) : undefined;
+    const dash = dashValue
+      ? `${context.rootName}.svgAnimationLengths(${dashValue}, scale: width / ${formatNumber(context.options.viewBox.width)})`
+      : style.dashArray
+        ? `[${style.dashArray.map((value) => normalizedWidth(formatNumber(value))).join(", ")}]`
+        : "[]";
+    const phase = normalizedWidth(number("stroke-dashoffset", style.dashOffset));
+    const cap = lineCap ? `${context.rootName}.svgStrokeLineCap(${lineCap})` : `.${style.lineCap}`;
+    const join = lineJoin ? `${context.rootName}.svgStrokeLineJoin(${lineJoin})` : `.${style.lineJoin}`;
+    return [
+      "var animatedStroke = Path()",
+      ...centerline.map((line) => line.replace(/^path\./, "animatedStroke.")),
+      `path.addPath(animatedStroke.strokedPath(StrokeStyle(lineWidth: ${width}, lineCap: ${cap}, lineJoin: ${join}, miterLimit: ${number("stroke-miterlimit", style.miterLimit)}, dash: ${dash}, dashPhase: ${phase})))`,
+    ];
+  };
+
+  const dynamicShapeLines = (
+    node: RenderShape,
+    kind: "fill" | "stroke",
+    ancestorTransforms: RenderNode["transform"][],
+  ): string[] | undefined => {
+    const geometry = dynamicGeometryLines(node);
+    const strokeAnimated =
+      kind === "stroke" &&
+      [
+        "stroke-width",
+        "stroke-linecap",
+        "stroke-linejoin",
+        "stroke-miterlimit",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+      ].some((name) => animationsFor(node, name).length > 0);
+    if (!geometry && !strokeAnimated) return undefined;
+    let lines =
+      geometry ??
+      renderShape({ ...node, transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, context.options, {
+        fill: "black",
+        stroke: "none",
+      });
+    const nonScaling = kind === "stroke" && node.style.strokeStyle.vectorEffect === "non-scaling-stroke";
+    if (kind === "stroke" && nonScaling) {
+      lines = wrapWithTransform(
+        lines,
+        [...ancestorTransforms, node.transform].reduce(multiplyTransforms),
+        context.options,
+      );
+      return dynamicStrokeLines(node, lines);
+    }
+    if (kind === "stroke") lines = dynamicStrokeLines(node, lines);
+    lines = wrapWithTransform(lines, node.transform, context.options);
+    for (let index = ancestorTransforms.length - 1; index >= 0; index--)
+      lines = wrapWithTransform(lines, ancestorTransforms[index]!, context.options);
+    return lines;
   };
 
   const buildFilter = (
@@ -720,8 +1186,29 @@ function buildViewNodes(
   };
 
   for (const node of nodes) {
-    if (node.style.display === "none") continue;
+    if (node.style.display === "none" && animationsFor(node, "display").length === 0) continue;
     if (node.type === "group") {
+      const isRootViewport = ancestorTransforms.length === 0 && node.source.element === "svg";
+      const viewportViewBox =
+        node.viewport?.viewBox ?? (isRootViewport ? context.document.viewport.viewBox : undefined);
+      const viewportRect = node.viewport?.rect ?? (isRootViewport ? context.document.viewport.viewBox : undefined);
+      const viewportPreserve = node.viewport?.preserveAspectRatio ?? context.document.viewport.preserveAspectRatio;
+      const viewBoxBase = viewportViewBox
+        ? parseAnimationValue(
+            animationAttributeSpec("viewBox")!,
+            `${viewportViewBox.x} ${viewportViewBox.y} ${viewportViewBox.width} ${viewportViewBox.height}`,
+            valueContext(node),
+          )
+        : undefined;
+      const animatedViewBox = viewBoxBase ? animatedValueExpression(node, "viewBox", viewBoxBase) : undefined;
+      const preserveSource = `${viewportPreserve.align} ${viewportPreserve.meetOrSlice}`;
+      const animatedPreserve = viewportViewBox
+        ? animatedDiscrete(node, "preserveAspectRatio", preserveSource)
+        : undefined;
+      const animationTransform =
+        viewBoxBase && viewportRect && (animatedViewBox || animatedPreserve)
+          ? `${context.rootName}.svgAnimatedViewBoxTransform(value: ${animatedViewBox ?? swiftAnimationValueLiteral(viewBoxBase, context.precision, `${context.rootName}.`)}, base: ${swiftAnimationValueLiteral(viewBoxBase, context.precision, `${context.rootName}.`)}, rect: CGRect(x: ${formatNumber(viewportRect.x)}, y: ${formatNumber(viewportRect.y)}, width: ${formatNumber(viewportRect.width)}, height: ${formatNumber(viewportRect.height)}), outer: ${swiftTransform(node.viewport?.clipTransform ?? { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })}, staticTransform: ${swiftTransform(node.transform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}), preserveAspectRatio: ${animatedPreserve ?? swiftString(preserveSource)})`
+          : undefined;
       let viewportClip: string | undefined;
       if (node.viewport?.clip) {
         const { rect, clipTransform } = node.viewport;
@@ -748,7 +1235,12 @@ function buildViewNodes(
         viewportClip = addHelper(context, `Clip${context.nextClip++}`, clipLines);
       }
       const targetTransforms = [...ancestorTransforms, node.transform];
-      const children = buildViewNodes(node.children, context, targetTransforms);
+      const childAnimationOwners: Record<string, RenderNode> = { ...inheritedAnimationOwners };
+      for (const attributeName of inheritedAnimationAttributes) {
+        if (ownedAnimationsFor(node, attributeName).length > 0) childAnimationOwners[attributeName] = node;
+        else if (!node.style.inheritedProperties[attributeName]) delete childAnimationOwners[attributeName];
+      }
+      const children = buildViewNodes(node.children, context, targetTransforms, childAnimationOwners);
       if (children.length > 0) {
         const clipPath = buildClipPath(node.clipPath, targetTransforms);
         const mask = buildMask(node.mask, targetTransforms);
@@ -756,9 +1248,9 @@ function buildViewNodes(
         generated.push({
           type: "group",
           children,
-          opacity: node.style.opacity,
+          opacity: opacityExpression(node),
           isolated:
-            node.style.opacity !== 1 ||
+            opacityExpression(node) !== 1 ||
             node.style.isolation === "isolate" ||
             node.style.blendMode !== "normal" ||
             !!clipPath ||
@@ -770,25 +1262,79 @@ function buildViewNodes(
           ...(mask ? { mask } : {}),
           ...(filter ? { filter } : {}),
           ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+          ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
+          ...(animationTransform ? { animationTransform } : {}),
         });
       }
       continue;
     }
     if (node.type === "text") {
-      if (node.style.visibility === "hidden" || node.style.visibility === "collapse" || node.text === "") continue;
+      if (
+        ((node.style.visibility === "hidden" || node.style.visibility === "collapse") &&
+          animationsFor(node, "visibility").length === 0) ||
+        node.text === ""
+      )
+        continue;
       const completeTransform = [...ancestorTransforms, node.transform].reduce(multiplyTransforms);
       const name = `TextLayer${context.textHelpers.length}`;
-      context.textHelpers.push({ name, node, transform: completeTransform });
+      const fillAnimation = animatedPaint(node, "fill", node.style.fill);
+      const fillOpacity = animatedNumber(node, "fill-opacity", node.style.fillOpacity);
+      const strokeAnimation = animatedPaint(node, "stroke", node.style.stroke);
+      const strokeOpacity = animatedNumber(node, "stroke-opacity", node.style.strokeOpacity);
+      const staticPaintValue = (name: "fill" | "stroke", paint: Paint) => {
+        const value = parseAnimationValue(animationAttributeSpec(name)!, paintValue(paint), valueContext(node));
+        return value ? swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`) : undefined;
+      };
+      const effectiveFillAnimation =
+        fillAnimation ?? (fillOpacity ? staticPaintValue("fill", node.style.fill) : undefined);
+      const effectiveStrokeAnimation =
+        strokeAnimation ?? (strokeOpacity ? staticPaintValue("stroke", node.style.stroke) : undefined);
+      const strokeWidth = animatedNumber(node, "stroke-width", node.style.strokeStyle.width);
+      const fontSize = animatedNumber(
+        node,
+        "font-size",
+        Number(node.style.presentation["font-size"] ?? node.paintContext.fontMetrics.fontSize),
+      );
+      const letterSpacing = animatedNumber(
+        node,
+        "letter-spacing",
+        Number(node.style.presentation["letter-spacing"] ?? 0),
+      );
+      const wordSpacing = animatedNumber(node, "word-spacing", Number(node.style.presentation["word-spacing"] ?? 0));
+      const textAnimated = !!(
+        effectiveFillAnimation ||
+        fillOpacity ||
+        effectiveStrokeAnimation ||
+        strokeOpacity ||
+        strokeWidth ||
+        fontSize ||
+        letterSpacing ||
+        wordSpacing
+      );
+      context.textHelpers.push({
+        name,
+        node,
+        transform: completeTransform,
+        ...(effectiveFillAnimation ? { fillAnimation: effectiveFillAnimation } : {}),
+        ...(fillOpacity ? { fillOpacity } : {}),
+        ...(effectiveStrokeAnimation ? { strokeAnimation: effectiveStrokeAnimation } : {}),
+        ...(strokeOpacity ? { strokeOpacity } : {}),
+        ...(strokeWidth ? { strokeWidth } : {}),
+        ...(fontSize ? { fontSize } : {}),
+        ...(letterSpacing ? { letterSpacing } : {}),
+        ...(wordSpacing ? { wordSpacing } : {}),
+        animated: textAnimated,
+      });
       const targetTransforms = [...ancestorTransforms, node.transform];
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
       const mask = buildMask(node.mask, targetTransforms);
       const filter = buildFilter(node.filter, targetTransforms);
       generated.push({
         type: "group",
-        children: [{ type: "text", helper: name }],
-        opacity: node.style.opacity,
+        children: [{ type: "text", helper: textAnimated ? `${name}(documentTime: documentTime)` : name }],
+        opacity: opacityExpression(node),
         isolated:
-          node.style.opacity !== 1 ||
+          opacityExpression(node) !== 1 ||
           node.style.isolation === "isolate" ||
           node.style.blendMode !== "normal" ||
           !!clipPath ||
@@ -799,14 +1345,20 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
-        ...(animationOffsetX(node) ? { animationOffsetX: animationOffsetX(node) } : {}),
+        ...(animationOffset(node, ["x", "dx"], [node.attributes.x ?? 0, node.attributes.dx ?? 0])
+          ? { animationOffsetX: animationOffset(node, ["x", "dx"], [node.attributes.x ?? 0, node.attributes.dx ?? 0]) }
+          : {}),
+        ...(animationOffset(node, ["y", "dy"], [node.attributes.y ?? 0, node.attributes.dy ?? 0])
+          ? { animationOffsetY: animationOffset(node, ["y", "dy"], [node.attributes.y ?? 0, node.attributes.dy ?? 0]) }
+          : {}),
+        ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
       });
       continue;
     }
     if (node.type === "image" || node.type === "foreignObject") {
       if (
-        node.style.visibility === "hidden" ||
-        node.style.visibility === "collapse" ||
+        ((node.style.visibility === "hidden" || node.style.visibility === "collapse") &&
+          animationsFor(node, "visibility").length === 0) ||
         node.viewport.width <= 0 ||
         node.viewport.height <= 0 ||
         !node.resource
@@ -848,9 +1400,9 @@ function buildViewNodes(
       generated.push({
         type: "group",
         children: [{ type: "image", helper: name }],
-        opacity: node.style.opacity,
+        opacity: opacityExpression(node),
         isolated:
-          node.style.opacity !== 1 ||
+          opacityExpression(node) !== 1 ||
           node.style.isolation === "isolate" ||
           node.style.blendMode !== "normal" ||
           !!clipPath ||
@@ -861,10 +1413,16 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+        ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
       });
       continue;
     }
-    if (node.type !== "shape" || node.style.visibility === "hidden" || node.style.visibility === "collapse") continue;
+    if (
+      node.type !== "shape" ||
+      ((node.style.visibility === "hidden" || node.style.visibility === "collapse") &&
+        animationsFor(node, "visibility").length === 0)
+    )
+      continue;
 
     const paints: GeneratedViewNode[] = [];
 
@@ -873,24 +1431,58 @@ function buildViewNodes(
       const completeTransform = nonScalingStroke
         ? [...ancestorTransforms, node.transform].reduce(multiplyTransforms)
         : undefined;
-      let lines = renderShape(
-        node,
-        context.options,
-        kind === "fill" ? { fill: "black", stroke: "none" } : { fill: "none", stroke: "black" },
-        completeTransform,
-      );
-      if (!nonScalingStroke) {
+      const dynamicLines = dynamicShapeLines(node, kind, ancestorTransforms);
+      let lines =
+        dynamicLines ??
+        renderShape(
+          node,
+          context.options,
+          kind === "fill" ? { fill: "black", stroke: "none" } : { fill: "none", stroke: "black" },
+          completeTransform,
+        );
+      if (!dynamicLines && !nonScalingStroke) {
         for (let index = ancestorTransforms.length - 1; index >= 0; index--) {
           lines = wrapWithTransform(lines, ancestorTransforms[index]!, context.options);
         }
       }
       if (lines.length === 0) return;
-      const helper = addHelper(context, `Layer${context.nextLayer++}`, lines);
+      const helperName = `Layer${context.nextLayer++}`;
+      const helper = dynamicLines
+        ? addAnimatedHelper(context, helperName, lines)
+        : addHelper(context, helperName, lines);
+      const animatedColor = animatedPaint(node, kind, paint);
+      const animatedPaintOpacity = animatedNumber(node, `${kind}-opacity`, paintOpacity);
+      if (animatedColor || animatedPaintOpacity) {
+        const baseColor = colorForPaint(paint, 1) ?? "Color.clear";
+        const baseRGBA = rgbaForPaint(paint, 1) ?? { red: 0, green: 0, blue: 0, alpha: 0 };
+        const color = animatedColor ? `${context.rootName}.svgAnimationColor(${animatedColor})` : baseColor;
+        const opacity = animatedPaintOpacity ?? formatNumber(paintOpacity);
+        paints.push({
+          type: "paint",
+          helper,
+          swiftColor: `${color}.opacity(${opacity})`,
+          cgColor: { ...baseRGBA, alpha: baseRGBA.alpha * paintOpacity },
+          cgColorExpression: `${context.rootName}.svgAnimationCGColor(${animatedColor ?? `${context.rootName}.SVGAnimationRuntimeValue(kind: .color, components: [${formatNumber(baseRGBA.red)}, ${formatNumber(baseRGBA.green)}, ${formatNumber(baseRGBA.blue)}, ${formatNumber(baseRGBA.alpha)}], signature: "sRGB", source: "")`}, opacity: ${opacity})`,
+        });
+        return;
+      }
       if (paint.type === "reference") {
         const server = context.document.resources.paints.get(paint.id);
         if (server?.type === "linearGradient" || server?.type === "radialGradient") {
           if (server.stops.length === 0) return;
           if (server.stops.length === 1) {
+            const animatedStop = animatedGradientStopValues(server.stops[0]!, node);
+            if (animatedStop?.animated) {
+              const opacity = `${context.rootName}.svgAnimationNumber(${animatedStop.opacity}) * ${formatNumber(paintOpacity)}`;
+              paints.push({
+                type: "paint",
+                helper,
+                swiftColor: `${context.rootName}.svgAnimationColor(${animatedStop.color}).opacity(${opacity})`,
+                cgColor: rgbaForStop(server.stops[0]!, paintOpacity),
+                cgColorExpression: `${context.rootName}.svgAnimationCGColor(${animatedStop.color}, opacity: ${opacity})`,
+              });
+              return;
+            }
             paints.push({
               type: "paint",
               helper,
@@ -901,6 +1493,18 @@ function buildViewNodes(
           }
           const gradient = resolveGradientForShape(server, node, ancestorTransforms);
           if (gradient.type === "solid") {
+            const animatedStop = animatedGradientStopValues(gradient.stop, node);
+            if (animatedStop?.animated) {
+              const opacity = `${context.rootName}.svgAnimationNumber(${animatedStop.opacity}) * ${formatNumber(paintOpacity)}`;
+              paints.push({
+                type: "paint",
+                helper,
+                swiftColor: `${context.rootName}.svgAnimationColor(${animatedStop.color}).opacity(${opacity})`,
+                cgColor: rgbaForStop(gradient.stop, paintOpacity),
+                cgColorExpression: `${context.rootName}.svgAnimationCGColor(${animatedStop.color}, opacity: ${opacity})`,
+              });
+              return;
+            }
             paints.push({
               type: "paint",
               helper,
@@ -916,6 +1520,9 @@ function buildViewNodes(
             gradient,
             paintOpacity,
             coordinateSpace: context.coordinateSpace,
+            ...(animatedGradientStopsExpression(gradient.stops, node, paintOpacity)
+              ? { stopsExpression: animatedGradientStopsExpression(gradient.stops, node, paintOpacity) }
+              : {}),
           });
           return;
         }
@@ -978,10 +1585,10 @@ function buildViewNodes(
     };
 
     for (const kind of node.style.paintOrder) {
-      if (kind === "fill" && node.style.fill.type !== "none") {
+      if (kind === "fill" && (node.style.fill.type !== "none" || animationsFor(node, "fill").length > 0)) {
         addLayer("fill", node.style.fill, node.style.fillOpacity);
       }
-      if (kind === "stroke" && node.style.stroke.type !== "none") {
+      if (kind === "stroke" && (node.style.stroke.type !== "none" || animationsFor(node, "stroke").length > 0)) {
         addLayer("stroke", node.style.stroke, node.style.strokeOpacity);
       }
       if (kind === "markers" && node.markers && node.markers.length > 0) {
@@ -996,9 +1603,9 @@ function buildViewNodes(
       generated.push({
         type: "group",
         children: paints,
-        opacity: node.style.opacity,
+        opacity: opacityExpression(node),
         isolated:
-          node.style.opacity !== 1 ||
+          opacityExpression(node) !== 1 ||
           node.style.isolation === "isolate" ||
           node.style.blendMode !== "normal" ||
           !!clipPath ||
@@ -1009,7 +1616,7 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
-        ...(animationOffsetX(node) ? { animationOffsetX: animationOffsetX(node) } : {}),
+        ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
       });
     }
   }
@@ -1152,7 +1759,9 @@ function textPaintLiteral(
   node: RenderText,
   document: RenderDocument,
   transform: RenderNode["transform"],
+  animation?: { value: string; opacity: string },
 ): string {
+  if (animation) return `SVGTextSource.color(svgTextColor(${animation.value}, opacity: ${animation.opacity}))`;
   const value = paint.type === "solid" ? paint.value : paint.type === "reference" ? paint.fallback : undefined;
   if (value) {
     const color = parseRGBAColor(value);
@@ -1182,9 +1791,10 @@ function textPaintLiteral(
 }
 
 function createTextHelper(
-  helper: { name: string; node: RenderText; transform: RenderNode["transform"] },
+  helper: ViewBuildContext["textHelpers"][number],
   coordinateSpace: ViewBoxData,
   document: RenderDocument,
+  ownerName: string,
   indentationSize: number,
 ): string[] {
   const indentation = " ".repeat(indentationSize);
@@ -1213,7 +1823,7 @@ function createTextHelper(
             )
             .join(", ");
           const bidi = run.unicodeBidi.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
-          return `SVGTextRun(text: ${swiftString(run.text)}, characters: [${characters}], dx: ${formatNumber(run.dx)}, dy: ${formatNumber(run.dy)}, family: ${swiftString(run.font.family)}, size: ${formatNumber(run.font.size)}, weight: ${formatNumber(run.font.weight)}, width: ${formatNumber(run.font.width)}, italic: ${run.font.italic}, smallCaps: ${run.font.smallCaps}, sizeAdjust: ${run.font.sizeAdjust === undefined ? "nil" : formatNumber(run.font.sizeAdjust)}, letterSpacing: ${formatNumber(run.letterSpacing)}, wordSpacing: ${formatNumber(run.wordSpacing)}, kerning: ${run.kerning}, baseline: .${baseline}, baselineShift: ${formatNumber(run.baselineShift)}, decorations: [${decorations}], direction: .${run.direction}, unicodeBidi: .${bidi}, textOrientation: .${run.textOrientation}, fill: ${textPaintLiteral(run.style.fill, run.style.fillOpacity * localOpacity, helper.node, document, transform)}, stroke: ${textPaintLiteral(run.style.stroke, run.style.strokeOpacity * localOpacity, helper.node, document, transform)}, strokeWidth: ${formatNumber(run.style.strokeStyle.width)}, lineCap: .${run.style.strokeStyle.lineCap}, lineJoin: .${run.style.strokeStyle.lineJoin}, miterLimit: ${formatNumber(run.style.strokeStyle.miterLimit)}, paintOrder: [${order}], transform: ${swiftTransform(transform)})`;
+          return `SVGTextRun(text: ${swiftString(run.text)}, characters: [${characters}], dx: ${formatNumber(run.dx)}, dy: ${formatNumber(run.dy)}, family: ${swiftString(run.font.family)}, size: ${helper.fontSize ?? formatNumber(run.font.size)}, weight: ${formatNumber(run.font.weight)}, width: ${formatNumber(run.font.width)}, italic: ${run.font.italic}, smallCaps: ${run.font.smallCaps}, sizeAdjust: ${run.font.sizeAdjust === undefined ? "nil" : formatNumber(run.font.sizeAdjust)}, letterSpacing: ${helper.letterSpacing ?? formatNumber(run.letterSpacing)}, wordSpacing: ${helper.wordSpacing ?? formatNumber(run.wordSpacing)}, kerning: ${run.kerning}, baseline: .${baseline}, baselineShift: ${formatNumber(run.baselineShift)}, decorations: [${decorations}], direction: .${run.direction}, unicodeBidi: .${bidi}, textOrientation: .${run.textOrientation}, fill: ${textPaintLiteral(run.style.fill, run.style.fillOpacity * localOpacity, helper.node, document, transform, helper.fillAnimation ? { value: helper.fillAnimation, opacity: helper.fillOpacity ?? formatNumber(run.style.fillOpacity * localOpacity) } : undefined)}, stroke: ${textPaintLiteral(run.style.stroke, run.style.strokeOpacity * localOpacity, helper.node, document, transform, helper.strokeAnimation ? { value: helper.strokeAnimation, opacity: helper.strokeOpacity ?? formatNumber(run.style.strokeOpacity * localOpacity) } : undefined)}, strokeWidth: ${helper.strokeWidth ?? formatNumber(run.style.strokeStyle.width)}, lineCap: .${run.style.strokeStyle.lineCap}, lineJoin: .${run.style.strokeStyle.lineJoin}, miterLimit: ${formatNumber(run.style.strokeStyle.miterLimit)}, paintOrder: [${order}], transform: ${swiftTransform(transform)})`;
         })
         .join(", ");
       const adjustments = chunk.lengthAdjustments
@@ -1233,6 +1843,7 @@ function createTextHelper(
   return [
     "// CoreText glyph paths preserve SVG metrics; accessibility text is retained, but selection is unavailable.",
     `private struct ${helper.name}: View {`,
+    ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
     `${indentation}var body: some View {`,
     `${i2}Canvas { context, size in`,
     `${i3}context.withCGContext { graphics in`,
@@ -1284,6 +1895,17 @@ function createTextHelper(
     `${indentation}private struct PreparedChunk { let fonts: [CTFont]; let line: CTLine; let characterRanges: [NSRange]; let runRanges: [NSRange] }`,
     `${indentation}private struct PositionedGlyph { var path: CGPath; let font: CTFont; let glyph: CGGlyph; let runIndex: Int; let characterIndex: Int; var inline: CGFloat; var cross: CGFloat; var advance: CGFloat; var inlineScale: CGFloat }`,
     "",
+    ...(helper.animated
+      ? [
+          `${indentation}private func svgTextColor(_ value: ${ownerName}.SVGAnimationRuntimeValue, opacity: Double) -> SVGTextColor {`,
+          `${i2}func encoded(_ component: Double) -> Double { component <= 0.0031308 ? component * 12.92 : 1.055 * pow(component, 1 / 2.4) - 0.055 }`,
+          `${i2}let components = value.components + [0, 0, 0, 0]`,
+          `${i2}let linear = value.signature == "linearRGB"`,
+          `${i2}return SVGTextColor(red: CGFloat(min(1, max(0, linear ? encoded(components[0]) : components[0]))), green: CGFloat(min(1, max(0, linear ? encoded(components[1]) : components[1]))), blue: CGFloat(min(1, max(0, linear ? encoded(components[2]) : components[2]))), alpha: CGFloat(min(1, max(0, components[3] * opacity))))`,
+          `${indentation}}`,
+          "",
+        ]
+      : []),
     `${indentation}private func font(for run: SVGTextRun) -> CTFont {`,
     `${i2}var symbolic: CTFontSymbolicTraits = []`,
     `${i2}if run.italic { symbolic.insert(.traitItalic) }`,
@@ -1586,12 +2208,14 @@ function renderGradientNode(
   const deep = indentation.repeat(level + 3);
   const gradient = node.gradient;
   const matrix = gradient.matrix;
-  const stops = gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ");
+  const stops =
+    node.stopsExpression ??
+    `[${gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ")}]`;
   const transform = runtimeTransform(matrix, node.coordinateSpace);
   const lines = [
     `${prefix}Canvas { context, size in`,
-    `${inner}let clipPath = ${node.helper}().path(in: CGRect(origin: .zero, size: size))`,
-    `${inner}let stops = [${stops}]`,
+    `${inner}let clipPath = ${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size))`,
+    `${inner}let stops = ${stops}`,
     `${inner}if let gradient = svgGradient(stops: stops, spread: .${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${gradient.colorInterpolation === "linearRGB"}) {`,
     `${nested}context.withCGContext { graphics in`,
     `${deep}graphics.saveGState()`,
@@ -1649,11 +2273,13 @@ function renderGradientCommands(
   const nested = indentation.repeat(level + 2);
   const gradient = node.gradient;
   const transform = runtimeTransform(gradient.matrix, node.coordinateSpace);
-  const stops = gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ");
+  const stops =
+    node.stopsExpression ??
+    `[${gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ")}]`;
   const lines = [
     `${prefix}do {`,
-    `${inner}let clipPath = ${node.helper}().path(in: CGRect(origin: .zero, size: size))`,
-    `${inner}let stops = [${stops}]`,
+    `${inner}let clipPath = ${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size))`,
+    `${inner}let stops = ${stops}`,
     `${inner}if let gradient = svgGradient(stops: stops, spread: .${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${gradient.colorInterpolation === "linearRGB"}) {`,
     `${nested}${graphicsName}.saveGState()`,
     `${nested}${graphicsName}.addPath(clipPath.cgPath)`,
@@ -1694,7 +2320,7 @@ function renderGeneratedCommands(
       lines.push(
         `${prefix}do {`,
         `${inner}${graphicsName}.saveGState()`,
-        `${inner}${graphicsName}.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        `${inner}${graphicsName}.addPath(${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
         `${inner}${graphicsName}.setFillColor(CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [${formatNumber(color.red)}, ${formatNumber(color.green)}, ${formatNumber(color.blue)}, ${formatNumber(color.alpha)}])!)`,
         `${inner}${graphicsName}.fillPath()`,
         `${inner}${graphicsName}.restoreGState()`,
@@ -1720,13 +2346,15 @@ function renderGeneratedCommands(
     lines.push(`${prefix}do {`, `${inner}${graphicsName}.saveGState()`);
     if (node.viewportClip)
       lines.push(
-        `${inner}${graphicsName}.addPath(${node.viewportClip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        `${inner}${graphicsName}.addPath(${shapeHelperCall(node.viewportClip)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
         `${inner}${graphicsName}.clip()`,
       );
     if (commandClipHelpers && commandClipHelpers.length > 0) {
       lines.push(`${inner}let clipUnion = CGMutablePath()`);
       for (const helper of commandClipHelpers)
-        lines.push(`${inner}clipUnion.addPath(${helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`);
+        lines.push(
+          `${inner}clipUnion.addPath(${shapeHelperCall(helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        );
       lines.push(`${inner}${graphicsName}.addPath(clipUnion)`, `${inner}${graphicsName}.clip()`);
     } else if (node.clipPath) {
       // Complex clip subtrees are rendered correctly by the SwiftUI view path.
@@ -1738,7 +2366,10 @@ function renderGeneratedCommands(
     if (node.blendMode !== "normal")
       lines.push(`${inner}${graphicsName}.setBlendMode(.${swiftBlendMode(node.blendMode)})`);
     if (node.isolated) {
-      if (node.opacity !== 1) lines.push(`${inner}${graphicsName}.setAlpha(${formatNumber(node.opacity)})`);
+      if (node.opacity !== 1)
+        lines.push(
+          `${inner}${graphicsName}.setAlpha(${typeof node.opacity === "number" ? formatNumber(node.opacity) : node.opacity})`,
+        );
       lines.push(`${inner}${graphicsName}.beginTransparencyLayer(auxiliaryInfo: nil)`);
     }
     lines.push(...renderGeneratedCommands(node.children, graphicsName, level + 1, indentation));
@@ -1828,7 +2459,7 @@ function renderBatchedPatternNode(
     `${nested}for column in (${runtime.minColumn})...(${runtime.maxColumn}) {`,
     `${deep}let offsetX${runtime.suffix} = (${runtime.originX} + CGFloat(column) * ${runtime.columnX} + CGFloat(row) * ${runtime.rowX}) * ${runtime.scaleX}`,
     `${deep}let offsetY${runtime.suffix} = (${runtime.originY} + CGFloat(column) * ${runtime.columnY} + CGFloat(row) * ${runtime.rowY}) * ${runtime.scaleY}`,
-    `${deep}repeatedPath.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath, transform: CGAffineTransform(translationX: offsetX${runtime.suffix}, y: offsetY${runtime.suffix}))`,
+    `${deep}repeatedPath.addPath(${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath, transform: CGAffineTransform(translationX: offsetX${runtime.suffix}, y: offsetY${runtime.suffix}))`,
     `${nested}}`,
     `${inner}}`,
     `${inner}${graphicsName}.addPath(repeatedPath)`,
@@ -1859,7 +2490,7 @@ function renderUnbatchedPatternNode(
   ];
   if (runtime.tileClip)
     lines.push(
-      `${nested}${graphicsName}.addPath(${runtime.tileClip}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+      `${nested}${graphicsName}.addPath(${shapeHelperCall(runtime.tileClip)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
       `${nested}${graphicsName}.clip()`,
     );
   lines.push(
@@ -1900,7 +2531,7 @@ function renderPatternCommands(
   const lines = [
     `${prefix}do {`,
     `${inner}${graphicsName}.saveGState()`,
-    `${inner}${graphicsName}.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+    `${inner}${graphicsName}.addPath(${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
     `${inner}${graphicsName}.clip()`,
   ];
   if (node.paintOpacity !== 1) {
@@ -1954,9 +2585,26 @@ function appendAccessibilityModifiers(
 
 function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
   const prefix = indentation.repeat(level);
-  if (node.type === "text" || node.type === "image") return [`${prefix}${node.helper}()`];
+  if (node.type === "group" && node.presentationCondition) {
+    const { presentationCondition, ...visibleNode } = node;
+    return [
+      `${prefix}if ${presentationCondition} {`,
+      ...renderViewNode(visibleNode, level + 1, indentation),
+      `${prefix}}`,
+    ];
+  }
+  if (node.type === "group" && node.animationTransform) {
+    const { animationTransform, ...staticNode } = node;
+    return [
+      `${prefix}GeometryReader { proxy in`,
+      ...renderViewNode(staticNode, level + 1, indentation),
+      `${prefix}${indentation}.transformEffect(${animationTransform})`,
+      `${prefix}}`,
+    ];
+  }
+  if (node.type === "text" || node.type === "image") return [`${prefix}${shapeHelperCall(node.helper)}`];
   if (node.type === "paint") {
-    if (!node.clipUnions) return [`${prefix}${node.helper}().fill(${node.swiftColor})`];
+    if (!node.clipUnions) return [`${prefix}${shapeHelperCall(node.helper)}.fill(${node.swiftColor})`];
     const inner = `${prefix}${indentation}`;
     const deep = `${inner}${indentation}`;
     const lines = [
@@ -1967,12 +2615,14 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
     for (const [index, helpers] of node.clipUnions.entries()) {
       lines.push(`${deep}let clipUnion${index} = CGMutablePath()`);
       for (const helper of helpers)
-        lines.push(`${deep}clipUnion${index}.addPath(${helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`);
+        lines.push(
+          `${deep}clipUnion${index}.addPath(${shapeHelperCall(helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+        );
       lines.push(`${deep}graphics.addPath(clipUnion${index})`, `${deep}graphics.clip()`);
     }
     lines.push(
-      `${deep}graphics.addPath(${node.helper}().path(in: CGRect(origin: .zero, size: size)).cgPath)`,
-      `${deep}graphics.setFillColor(CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [${formatNumber(node.cgColor.red)}, ${formatNumber(node.cgColor.green)}, ${formatNumber(node.cgColor.blue)}, ${formatNumber(node.cgColor.alpha)}])!)`,
+      `${deep}graphics.addPath(${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
+      `${deep}graphics.setFillColor(${node.cgColorExpression ?? `CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: [${formatNumber(node.cgColor.red)}, ${formatNumber(node.cgColor.green)}, ${formatNumber(node.cgColor.blue)}, ${formatNumber(node.cgColor.alpha)}])!`})`,
       `${deep}graphics.fillPath()`,
       `${deep}graphics.restoreGState()`,
       `${inner}}`,
@@ -2005,11 +2655,11 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   // distributes masks and opacity across ZStack children, which changes
   // overlap colors and prevents nested clip-path intersections from composing.
   if (node.isolated) lines.push(`${prefix}.compositingGroup()`);
-  if (node.viewportClip) lines.push(`${prefix}.clipShape(${node.viewportClip}())`);
+  if (node.viewportClip) lines.push(`${prefix}.clipShape(${shapeHelperCall(node.viewportClip)})`);
   if (node.clipPath) {
     const simpleHelpers = simpleClipPathHelpers(node.clipPath);
     if (simpleHelpers?.length === 1) {
-      lines.push(`${prefix}.clipShape(${simpleHelpers[0]}())`);
+      lines.push(`${prefix}.clipShape(${shapeHelperCall(simpleHelpers[0]!)})`);
     } else {
       lines.push(
         `${prefix}.mask {`,
@@ -2053,7 +2703,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 4, indentation));
       lines.push(
         `${prefix}${indentation}${indentation}${indentation}}`,
-        `${prefix}${indentation}${indentation}${indentation}.clipShape(${node.mask.clip}())`,
+        `${prefix}${indentation}${indentation}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
         `${prefix}${indentation}${indentation}${indentation}.frame(width: proxy.size.width, height: proxy.size.height)`,
         `${prefix}${indentation}${indentation}${indentation}.tag(0)`,
         `${prefix}${indentation}${indentation}}`,
@@ -2065,7 +2715,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 4, indentation));
       lines.push(
         `${prefix}${indentation}${indentation}${indentation}}`,
-        `${prefix}${indentation}${indentation}${indentation}.clipShape(${node.mask.clip}())`,
+        `${prefix}${indentation}${indentation}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
         `${prefix}${indentation}${indentation}}`,
         `${prefix}${indentation}}`,
         `${prefix}}`,
@@ -2074,12 +2724,19 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       lines.push(`${prefix}.mask {`, `${prefix}${indentation}ZStack {`);
       if (node.mask.children.length === 0) lines.push(`${prefix}${indentation}${indentation}Color.clear`);
       else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 2, indentation));
-      lines.push(`${prefix}${indentation}}`, `${prefix}${indentation}.clipShape(${node.mask.clip}())`, `${prefix}}`);
+      lines.push(
+        `${prefix}${indentation}}`,
+        `${prefix}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
+        `${prefix}}`,
+      );
     }
   }
-  if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
+  if (node.opacity !== 1)
+    lines.push(`${prefix}.opacity(${typeof node.opacity === "number" ? swiftNumber(node.opacity) : node.opacity})`);
   if (node.blendMode !== "normal") lines.push(`${prefix}.blendMode(.${swiftBlendMode(node.blendMode)})`);
   if (node.animationOffsetX) lines.push(`${prefix}.offset(x: ${node.animationOffsetX})`);
+  if (node.animationOffsetY) lines.push(`${prefix}.offset(y: ${node.animationOffsetY})`);
+  if (node.animationTransform) lines.push(`${prefix}.transformEffect(${node.animationTransform})`);
   appendAccessibilityModifiers(lines, node.accessibility, prefix);
   return lines;
 }
@@ -3475,7 +4132,7 @@ function createFilterImageHelper(helper: FilterImageHelper, indentationSize: num
   return body;
 }
 
-function gradientSupport(indentationSize: number): string[] {
+function gradientSupport(indentationSize: number, animated: boolean): string[] {
   const indentation = " ".repeat(indentationSize);
   return [
     "private struct SVGGradientStop {",
@@ -3485,6 +4142,27 @@ function gradientSupport(indentationSize: number): string[] {
     `${indentation}let blue: CGFloat`,
     `${indentation}let alpha: CGFloat`,
     "}",
+    ...(animated
+      ? [
+          "",
+          "private static func svgAnimatedGradientStop(offset: SVGAnimationRuntimeValue, color: SVGAnimationRuntimeValue, opacity: SVGAnimationRuntimeValue, paintOpacity: Double) -> SVGGradientStop {",
+          `${indentation}func encoded(_ component: Double) -> Double { component <= 0.0031308 ? component * 12.92 : 1.055 * pow(component, 1 / 2.4) - 0.055 }`,
+          `${indentation}let values = color.components + [0, 0, 0, 1]`,
+          `${indentation}let linear = color.signature == "linearRGB"`,
+          `${indentation}let alpha = values[3] * svgAnimationNumber(opacity) * paintOpacity`,
+          `${indentation}return SVGGradientStop(offset: CGFloat(min(1, max(0, svgAnimationNumber(offset)))), red: CGFloat(min(1, max(0, linear ? encoded(values[0]) : values[0]))), green: CGFloat(min(1, max(0, linear ? encoded(values[1]) : values[1]))), blue: CGFloat(min(1, max(0, linear ? encoded(values[2]) : values[2]))), alpha: CGFloat(min(1, max(0, alpha))))`,
+          "}",
+          "",
+          "private static func svgNormalizedGradientStops(_ stops: [SVGGradientStop]) -> [SVGGradientStop] {",
+          `${indentation}var previous: CGFloat = 0`,
+          `${indentation}return stops.map { stop in`,
+          `${indentation}${indentation}let offset = max(previous, min(1, max(0, stop.offset)))`,
+          `${indentation}${indentation}previous = offset`,
+          `${indentation}${indentation}return SVGGradientStop(offset: offset, red: stop.red, green: stop.green, blue: stop.blue, alpha: stop.alpha)`,
+          `${indentation}}`,
+          "}",
+        ]
+      : []),
     "",
     "private enum SVGGradientSpread {",
     `${indentation}case pad, reflect, repeating`,
@@ -3763,6 +4441,169 @@ function createView(
         `${indentation}return result`,
         "}",
         "",
+        "private static func svgAnimationNumber(_ value: SVGAnimationRuntimeValue) -> Double {",
+        `${indentation}value.components.first ?? 0`,
+        "}",
+        "",
+        "private static func svgAnimationSource(_ value: SVGAnimationRuntimeValue) -> String { value.source }",
+        "",
+        "private static func svgAnimationLengths(_ value: SVGAnimationRuntimeValue, scale: CGFloat) -> [CGFloat] {",
+        `${indentation}value.components.map { CGFloat($0) * scale }`,
+        "}",
+        "",
+        "private static func svgStrokeLineCap(_ value: String) -> CGLineCap {",
+        `${indentation}value == "round" ? .round : value == "square" ? .square : .butt`,
+        "}",
+        "",
+        "private static func svgStrokeLineJoin(_ value: String) -> CGLineJoin {",
+        `${indentation}value == "round" ? .round : value == "bevel" ? .bevel : .miter`,
+        "}",
+        "",
+        "private static func svgMultiplyTransform(_ left: CGAffineTransform, _ right: CGAffineTransform) -> CGAffineTransform {",
+        `${indentation}CGAffineTransform(a: left.a * right.a + left.c * right.b, b: left.b * right.a + left.d * right.b, c: left.a * right.c + left.c * right.d, d: left.b * right.c + left.d * right.d, tx: left.a * right.tx + left.c * right.ty + left.tx, ty: left.b * right.tx + left.d * right.ty + left.ty)`,
+        "}",
+        "",
+        "private static func svgViewBoxMatrix(_ value: SVGAnimationRuntimeValue, rect: CGRect, preserveAspectRatio: String) -> CGAffineTransform {",
+        `${indentation}let box = value.components + [0, 0, 1, 1]`,
+        `${indentation}let boxWidth = max(0.000000000001, box[2])`,
+        `${indentation}let boxHeight = max(0.000000000001, box[3])`,
+        `${indentation}var scaleX = Double(rect.width) / boxWidth`,
+        `${indentation}var scaleY = Double(rect.height) / boxHeight`,
+        `${indentation}let tokens = preserveAspectRatio.split(separator: " ").map(String.init)`,
+        `${indentation}let align = tokens.first(where: { $0 == "none" || $0.hasPrefix("x") }) ?? "xMidYMid"`,
+        `${indentation}if align != "none" {`,
+        `${indentation}${indentation}let scale = tokens.contains("slice") ? max(scaleX, scaleY) : min(scaleX, scaleY)`,
+        `${indentation}${indentation}scaleX = scale; scaleY = scale`,
+        `${indentation}}`,
+        `${indentation}let remainingX = Double(rect.width) - boxWidth * scaleX`,
+        `${indentation}let remainingY = Double(rect.height) - boxHeight * scaleY`,
+        `${indentation}let alignX = align.contains("xMid") ? remainingX / 2 : align.contains("xMax") ? remainingX : 0`,
+        `${indentation}let alignY = align.contains("YMid") ? remainingY / 2 : align.contains("YMax") ? remainingY : 0`,
+        `${indentation}return CGAffineTransform(a: scaleX, b: 0, c: 0, d: scaleY, tx: Double(rect.minX) + alignX - box[0] * scaleX, ty: Double(rect.minY) + alignY - box[1] * scaleY)`,
+        "}",
+        "",
+        "private static func svgOutputTransform(_ value: CGAffineTransform, size: CGSize, coordinateSpace: CGRect) -> CGAffineTransform {",
+        `${indentation}let width = max(0.000000000001, coordinateSpace.width)`,
+        `${indentation}let height = max(0.000000000001, coordinateSpace.height)`,
+        `${indentation}let outputWidth = max(0.000000000001, size.width)`,
+        `${indentation}let outputHeight = max(0.000000000001, size.height)`,
+        `${indentation}let tx = (value.a * coordinateSpace.minX + value.c * coordinateSpace.minY + value.tx - coordinateSpace.minX) / width * outputWidth`,
+        `${indentation}let ty = (value.b * coordinateSpace.minX + value.d * coordinateSpace.minY + value.ty - coordinateSpace.minY) / height * outputHeight`,
+        `${indentation}return CGAffineTransform(a: value.a, b: value.b * width / height * outputHeight / outputWidth, c: value.c * height / width * outputWidth / outputHeight, d: value.d, tx: tx, ty: ty)`,
+        "}",
+        "",
+        "private static func svgAnimatedViewBoxTransform(value: SVGAnimationRuntimeValue, base: SVGAnimationRuntimeValue, rect: CGRect, outer: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect, preserveAspectRatio: String) -> CGAffineTransform {",
+        `${indentation}let animatedUser = svgMultiplyTransform(outer, svgViewBoxMatrix(value, rect: rect, preserveAspectRatio: preserveAspectRatio))`,
+        `${indentation}let animatedOutput = svgOutputTransform(animatedUser, size: outputSize, coordinateSpace: coordinateSpace)`,
+        `${indentation}let staticOutput = svgOutputTransform(staticTransform, size: outputSize, coordinateSpace: coordinateSpace)`,
+        `${indentation}return svgMultiplyTransform(animatedOutput, staticOutput.inverted())`,
+        "}",
+        "",
+        "private static func svgAnimationColor(_ value: SVGAnimationRuntimeValue) -> Color {",
+        `${indentation}func encoded(_ component: Double) -> Double {`,
+        `${indentation}${indentation}component <= 0.0031308 ? component * 12.92 : 1.055 * pow(component, 1 / 2.4) - 0.055`,
+        `${indentation}}`,
+        `${indentation}let components = value.components + [0, 0, 0, 1]`,
+        `${indentation}let linear = value.signature == "linearRGB"`,
+        `${indentation}return Color(red: min(1, max(0, linear ? encoded(components[0]) : components[0])), green: min(1, max(0, linear ? encoded(components[1]) : components[1])), blue: min(1, max(0, linear ? encoded(components[2]) : components[2])), opacity: min(1, max(0, components[3])))`,
+        "}",
+        "",
+        "private static func svgAnimationCGColor(_ value: SVGAnimationRuntimeValue, opacity: Double) -> CGColor {",
+        `${indentation}func encoded(_ component: Double) -> Double { component <= 0.0031308 ? component * 12.92 : 1.055 * pow(component, 1 / 2.4) - 0.055 }`,
+        `${indentation}let values = value.components + [0, 0, 0, 0]`,
+        `${indentation}let linear = value.signature == "linearRGB"`,
+        `${indentation}let components: [CGFloat] = [CGFloat(min(1, max(0, linear ? encoded(values[0]) : values[0]))), CGFloat(min(1, max(0, linear ? encoded(values[1]) : values[1]))), CGFloat(min(1, max(0, linear ? encoded(values[2]) : values[2]))), CGFloat(min(1, max(0, values[3] * opacity)))]`,
+        `${indentation}return CGColor(colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, components: components)!`,
+        "}",
+        "",
+        "private static func svgZeroValue(like value: SVGAnimationRuntimeValue) -> SVGAnimationRuntimeValue {",
+        `${indentation}SVGAnimationRuntimeValue(kind: value.kind, components: value.components.map { _ in 0 }, signature: value.signature, source: value.source)`,
+        "}",
+        "",
+        "private static func svgValuesCompatible(_ left: SVGAnimationRuntimeValue, _ right: SVGAnimationRuntimeValue) -> Bool {",
+        `${indentation}left.kind == right.kind && left.signature == right.signature && left.components.count == right.components.count && left.kind != .discrete`,
+        "}",
+        "",
+        "private static func svgInterpolateValue(_ left: SVGAnimationRuntimeValue, _ right: SVGAnimationRuntimeValue, _ progress: Double) -> SVGAnimationRuntimeValue {",
+        `${indentation}guard svgValuesCompatible(left, right) else { return progress >= 1 ? right : left }`,
+        `${indentation}let components = zip(left.components, right.components).map { $0 + ($1 - $0) * progress }`,
+        `${indentation}return SVGAnimationRuntimeValue(kind: left.kind, components: components, signature: left.signature, source: progress >= 1 ? right.source : left.source)`,
+        "}",
+        "",
+        "private static func svgValueDistance(_ left: SVGAnimationRuntimeValue, _ right: SVGAnimationRuntimeValue) -> Double? {",
+        `${indentation}guard svgValuesCompatible(left, right) else { return nil }`,
+        `${indentation}return sqrt(zip(left.components, right.components).reduce(0) { sum, pair in sum + (pair.1 - pair.0) * (pair.1 - pair.0) })`,
+        "}",
+        "",
+        "private static func svgAddValue(_ left: SVGAnimationRuntimeValue, _ right: SVGAnimationRuntimeValue) -> SVGAnimationRuntimeValue? {",
+        `${indentation}guard svgValuesCompatible(left, right) else { return nil }`,
+        `${indentation}return SVGAnimationRuntimeValue(kind: left.kind, components: zip(left.components, right.components).map { $0 + $1 }, signature: left.signature, source: right.source)`,
+        "}",
+        "",
+        "private static func svgClampValue(_ value: SVGAnimationRuntimeValue, _ clamp: SVGAnimationClamp) -> SVGAnimationRuntimeValue {",
+        `${indentation}var components = value.components`,
+        `${indentation}switch clamp {`,
+        `${indentation}case .none: break`,
+        `${indentation}case .unit: components = components.map { min(1, max(0, $0)) }`,
+        `${indentation}case .nonnegative: components = components.map { max(0, $0) }`,
+        `${indentation}case .integer: components = components.map { floor($0 + 0.5) }`,
+        `${indentation}}`,
+        `${indentation}return SVGAnimationRuntimeValue(kind: value.kind, components: components, signature: value.signature, source: value.source)`,
+        "}",
+        "",
+        "private static func svgAnimationTypedValueSample(progress: Double, values authoredValues: [SVGAnimationRuntimeValue], form: SVGAnimationForm, calcMode: SVGAnimationCalcMode, keyTimes: [Double], keySplines: [(x1: Double, y1: Double, x2: Double, y2: Double)], additive: Bool, accumulate: Bool, repeatIteration: Int, clamp: SVGAnimationClamp, underlying: SVGAnimationRuntimeValue) -> SVGAnimationRuntimeValue {",
+        `${indentation}var values = authoredValues`,
+        `${indentation}if form == .to {`,
+        `${indentation}${indentation}guard let target = authoredValues.first else { return underlying }`,
+        `${indentation}${indentation}values = [underlying, target]`,
+        `${indentation}} else if form == .by {`,
+        `${indentation}${indentation}guard let target = authoredValues.first else { return underlying }`,
+        `${indentation}${indentation}values = [svgZeroValue(like: target), target]`,
+        `${indentation}}`,
+        `${indentation}guard !values.isEmpty else { return underlying }`,
+        `${indentation}if values.count == 1 { return svgClampValue(values[0], clamp) }`,
+        `${indentation}var mode = calcMode`,
+        `${indentation}var times: [Double]`,
+        `${indentation}if mode == .paced {`,
+        `${indentation}${indentation}let measured = zip(values, values.dropFirst()).map { svgValueDistance($0, $1) }`,
+        `${indentation}${indentation}if measured.contains(where: { $0 == nil }) {`,
+        `${indentation}${indentation}${indentation}mode = values[0].kind == .discrete ? .discrete : .linear`,
+        `${indentation}${indentation}${indentation}times = values.indices.map { Double($0) / Double(values.count - 1) }`,
+        `${indentation}${indentation}} else {`,
+        `${indentation}${indentation}${indentation}let distances = measured.map { $0! }`,
+        `${indentation}${indentation}${indentation}let total = distances.reduce(0, +)`,
+        `${indentation}${indentation}${indentation}if total <= 0 { mode = .linear; times = values.indices.map { Double($0) / Double(values.count - 1) } }`,
+        `${indentation}${indentation}${indentation}else { var elapsed = 0.0; times = [0] + distances.map { distance in elapsed += distance; return elapsed / total } }`,
+        `${indentation}${indentation}}`,
+        `${indentation}} else { times = keyTimes.count == values.count ? keyTimes : values.indices.map { Double($0) / Double(values.count - 1) } }`,
+        `${indentation}let effect: SVGAnimationRuntimeValue`,
+        `${indentation}if mode == .discrete || values[0].kind == .discrete {`,
+        `${indentation}${indentation}let index = keyTimes.count == values.count ? (keyTimes.indices.last { progress + 0.000000000001 >= keyTimes[$0] } ?? 0) : min(values.count - 1, Int(floor(progress * Double(values.count) + 0.000000000001)))`,
+        `${indentation}${indentation}effect = values[index]`,
+        `${indentation}} else {`,
+        `${indentation}${indentation}var segment = progress >= 1 ? values.count - 2 : 0`,
+        `${indentation}${indentation}while segment + 1 < times.count - 1 && progress >= times[segment + 1] - 0.000000000001 { segment += 1 }`,
+        `${indentation}${indentation}let start = times[segment]`,
+        `${indentation}${indentation}let end = times[segment + 1]`,
+        `${indentation}${indentation}var local = progress >= 1 ? 1 : (end <= start ? 1 : min(1, max(0, (progress - start) / (end - start))))`,
+        `${indentation}${indentation}if mode == .spline && segment < keySplines.count { local = svgSplineProgress(local, keySplines[segment]) }`,
+        `${indentation}${indentation}effect = svgInterpolateValue(values[segment], values[segment + 1], local)`,
+        `${indentation}}`,
+        `${indentation}var accumulated = effect`,
+        `${indentation}if accumulate && repeatIteration > 0, let endpoint = values.last {`,
+        `${indentation}${indentation}for _ in 0..<repeatIteration { accumulated = svgAddValue(accumulated, endpoint) ?? accumulated }`,
+        `${indentation}}`,
+        `${indentation}let result = additive && form != .to ? (svgAddValue(underlying, accumulated) ?? accumulated) : accumulated`,
+        `${indentation}return svgClampValue(result, clamp)`,
+        "}",
+        "",
+        "private static func svgAnimatedValue(documentTime: Double, intervals: [(begin: Double, end: Double)], duration: Double, repeatingDuration: Double, values authoredValues: [SVGAnimationRuntimeValue], form: SVGAnimationForm, calcMode: SVGAnimationCalcMode, keyTimes: [Double], keySplines: [(x1: Double, y1: Double, x2: Double, y2: Double)], additive: Bool, accumulate: Bool, clamp: SVGAnimationClamp, underlying: SVGAnimationRuntimeValue, freeze: Bool) -> SVGAnimationRuntimeValue {",
+        `${indentation}let sample = svgTimingSample(documentTime: documentTime, intervals: intervals, duration: duration, repeatingDuration: repeatingDuration, freeze: freeze)`,
+        `${indentation}if sample.state == .inactive || sample.state == .completed { return underlying }`,
+        `${indentation}guard let progress = sample.simpleProgress else { return underlying }`,
+        `${indentation}return svgAnimationTypedValueSample(progress: progress, values: authoredValues, form: form, calcMode: calcMode, keyTimes: keyTimes, keySplines: keySplines, additive: additive, accumulate: accumulate, repeatIteration: sample.repeatIteration, clamp: clamp, underlying: underlying)`,
+        "}",
+        "",
         "private static func svgAnimatedNumber(documentTime: Double, intervals: [(begin: Double, end: Double)], duration: Double, repeatingDuration: Double, values authoredValues: [Double], form: SVGAnimationForm, calcMode: SVGAnimationCalcMode, keyTimes: [Double], keySplines: [(x1: Double, y1: Double, x2: Double, y2: Double)], additive: Bool, accumulate: Bool, clamp: SVGAnimationClamp, underlying: Double, freeze: Bool) -> Double {",
         `${indentation}let sample = svgTimingSample(documentTime: documentTime, intervals: intervals, duration: duration, repeatingDuration: repeatingDuration, freeze: freeze)`,
         `${indentation}if sample.state == .inactive || sample.state == .completed { return underlying }`,
@@ -3807,16 +4648,16 @@ function createView(
       name: helper.name,
       indent: indentationSize,
       returnType: "Shape",
-      body: pathFunction,
+      body: helper.animated ? ["let documentTime: Double", "", ...pathFunction] : pathFunction,
     });
     layerStruct[0] = `private ${layerStruct[0]}`;
     body.push("", ...layerStruct);
   }
   for (const helper of textHelpers)
-    body.push("", ...createTextHelper(helper, coordinateSpace, document, indentationSize));
+    body.push("", ...createTextHelper(helper, coordinateSpace, document, name, indentationSize));
   for (const helper of imageHelpers) body.push("", ...createImageHelper(helper, coordinateSpace, indentationSize));
   for (const helper of filterImageHelpers) body.push("", ...createFilterImageHelper(helper, indentationSize));
-  if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize));
+  if (containsGradientNode(nodes)) body.push("", ...gradientSupport(indentationSize, animated));
   if (containsFilterNode(nodes)) body.push("", ...filterSupport(indentationSize));
   return createStructTemplate({
     name,

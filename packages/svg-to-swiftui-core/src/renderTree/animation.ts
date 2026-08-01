@@ -9,10 +9,11 @@ import {
   parseAnimationValueSet,
   parseKeySplines,
   parseKeyTimes,
+  resolveAnimationAttribute,
   sampleAnimationValue,
   validateAnimationCalculation,
 } from "./animationValues";
-import { sampleSMILTiming } from "./smilTiming";
+import { type DeterministicTimingEvent, sampleSMILProgram, sampleSMILTiming } from "./smilTiming";
 import type { RenderDiagnostic, SourceLocation } from "./types";
 
 export type AnimationKind = "animate" | "set" | "animateTransform" | "animateMotion" | "discard";
@@ -61,6 +62,18 @@ export interface AnimationTarget {
   source: SourceLocation;
   reference: { type: "parent" } | { type: "local"; id: string };
   renderable: boolean;
+  tagName: string;
+  referenceChain: readonly SourceLocation[];
+  binding: "render-node" | "resource";
+}
+
+export interface AnimationTargetSnapshot {
+  key: string;
+  tagName: string;
+  binding?: "render-node" | "resource";
+  context: AnimationValueContext;
+  /** Computed static presentation/geometry values, after cascade and inheritance. */
+  baseValues: Readonly<Record<string, string>>;
 }
 
 export interface AnimationDefinition {
@@ -69,13 +82,15 @@ export interface AnimationDefinition {
   source: SourceLocation;
   target?: AnimationTarget;
   kind: AnimationKind;
+  authoredAttributeName?: string;
   attributeName?: string;
+  attributeType: "auto" | "XML" | "CSS";
   timing: AnimationTiming;
   value: AnimationValue;
   composition: AnimationCalculation;
   documentOrder: number;
   dependencies: readonly string[];
-  runtimeSupport: "scalar" | "pending" | "invalid";
+  runtimeSupport: "typed" | "pending" | "invalid";
 }
 
 export interface AnimationProgram {
@@ -91,28 +106,6 @@ const ANIMATION_TAGS = new Map<string, AnimationKind>([
   ["animatetransform", "animateTransform"],
   ["animatemotion", "animateMotion"],
   ["discard", "discard"],
-]);
-
-const NON_RENDERABLE_TARGETS = new Set([
-  "animate",
-  "animatemotion",
-  "animatetransform",
-  "discard",
-  "set",
-  "defs",
-  "style",
-  "script",
-  "metadata",
-  "title",
-  "desc",
-  "lineargradient",
-  "radialgradient",
-  "stop",
-  "pattern",
-  "clippath",
-  "mask",
-  "marker",
-  "filter",
 ]);
 
 function children(element: ElementNode): ElementNode[] {
@@ -248,11 +241,41 @@ function numeric(raw: string | undefined): number | undefined {
   return Number.isFinite(value) ? value : undefined;
 }
 
+const GEOMETRY_TARGETS: Readonly<Record<string, readonly string[]>> = {
+  cx: ["circle", "ellipse", "radialGradient"],
+  cy: ["circle", "ellipse", "radialGradient"],
+  d: ["path"],
+  height: ["rect", "svg", "image", "foreignObject", "pattern", "mask", "filter"],
+  points: ["polygon", "polyline"],
+  r: ["circle", "radialGradient"],
+  rx: ["rect", "ellipse"],
+  ry: ["rect", "ellipse"],
+  width: ["rect", "svg", "image", "foreignObject", "pattern", "mask", "filter"],
+  x: ["rect", "svg", "image", "foreignObject", "text", "tspan", "use", "pattern", "mask", "filter"],
+  x1: ["line", "linearGradient"],
+  x2: ["line", "linearGradient"],
+  y1: ["line", "linearGradient"],
+  y2: ["line", "linearGradient"],
+  y: ["rect", "svg", "image", "foreignObject", "text", "tspan", "use", "pattern", "mask", "filter"],
+};
+
+function propertyAppliesToTarget(attributeName: string | undefined, tagName: string | undefined): boolean {
+  if (!attributeName || !tagName) return false;
+  const allowed = GEOMETRY_TARGETS[attributeName];
+  if (allowed) return allowed.includes(tagName);
+  if (attributeName === "viewBox" || attributeName === "preserveAspectRatio")
+    return ["svg", "symbol", "view", "marker", "pattern"].includes(tagName);
+  if (["dx", "dy", "rotate", "textLength", "startOffset"].includes(attributeName))
+    return ["text", "tspan", "textPath"].includes(tagName);
+  if (attributeName === "offset") return tagName === "stop";
+  return true;
+}
+
 function parseValue(
   animation: ElementNode,
-  target: ElementNode | undefined,
   attributeName: string | undefined,
   context: AnimationValueContext,
+  baseRaw?: string,
 ): AnimationValue {
   const fromRaw = property(animation, "from");
   const toRaw = property(animation, "to");
@@ -260,7 +283,6 @@ function parseValue(
   const valuesRaw = property(animation, "values")
     ?.split(";")
     .map((value) => value.trim());
-  const baseRaw = attributeName && target ? property(target, attributeName) : undefined;
   if (attributeName) {
     const parsed = parseAnimationValueSet(
       attributeName,
@@ -286,9 +308,22 @@ function parseValue(
 }
 
 function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSupport">): boolean {
-  if (definition.kind !== "animate" || !definition.target?.renderable || !definition.attributeName) return false;
-  if (!definition.target.key.startsWith("id:") || !["cx", "x"].includes(definition.attributeName)) return false;
-  if (!["number", "integer", "opacity", "length", "angle"].includes(definition.value.family)) return false;
+  if (!(["animate", "set"] as AnimationKind[]).includes(definition.kind)) return false;
+  const attribute = definition.attributeName ? resolveAnimationAttribute(definition.attributeName) : undefined;
+  const resourceSupported =
+    definition.target?.binding === "resource" &&
+    definition.target.tagName.toLowerCase() === "stop" &&
+    attribute?.runtimeBinding === "gradient-stop";
+  const renderNodeSupported =
+    definition.target?.binding === "render-node" && attribute?.runtimeBinding === "render-node";
+  if (
+    !definition.target?.renderable ||
+    (!renderNodeSupported && !resourceSupported) ||
+    !definition.attributeName ||
+    definition.attributeName === "transform" ||
+    !propertyAppliesToTarget(definition.attributeName, definition.target.tagName)
+  )
+    return false;
   if (
     definition.timing.duration.type === "invalid" ||
     definition.timing.duration.type === "media" ||
@@ -305,16 +340,7 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
   )
     return false;
   if (definition.value.family === "unsupported" || definition.value.form === "invalid") return false;
-  const scalar = (value: AnimationValueSet["base"] | undefined) =>
-    value === undefined || ["number", "integer", "opacity", "length", "angle"].includes(value.family);
-  if (
-    !scalar(definition.value.base) ||
-    !scalar(definition.value.from) ||
-    !scalar(definition.value.to) ||
-    !scalar(definition.value.by) ||
-    definition.value.values?.some((value) => !scalar(value))
-  )
-    return false;
+  if (definition.kind === "set" && !definition.value.to && !definition.value.values?.length) return false;
   const count = definition.value.values?.length ?? 2;
   return validateAnimationCalculation(count, definition.composition).length === 0;
 }
@@ -323,7 +349,7 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
 export function buildAnimationProgram(
   root: ElementNode,
   diagnostics: RenderDiagnostic[],
-  targetContexts: ReadonlyMap<string, AnimationValueContext> = new Map(),
+  targetSnapshots: ReadonlyMap<string, AnimationTargetSnapshot> = new Map(),
 ): AnimationProgram {
   let parsedRootViewBox: ReturnType<typeof parseViewBox>;
   try {
@@ -422,7 +448,39 @@ export function buildAnimationProgram(
           "An animation without href must be a child of its target element.",
         );
     }
-    const renderable = !!targetElement && !NON_RENDERABLE_TARGETS.has((targetElement.tagName ?? "").toLowerCase());
+    const targetKey = targetElement
+      ? property(targetElement, "id")
+        ? `id:${property(targetElement, "id")}`
+        : `source:${order.get(targetElement)}`
+      : undefined;
+    const targetSnapshot = targetKey ? targetSnapshots.get(targetKey) : undefined;
+    const targetTag = (targetElement?.tagName ?? "").toLowerCase();
+    const resourceTarget = new Set([
+      "stop",
+      "lineargradient",
+      "radialgradient",
+      "fegaussianblur",
+      "fecolormatrix",
+      "fecomponenttransfer",
+      "fefunca",
+      "fefuncb",
+      "fefuncg",
+      "fefuncr",
+      "fecomposite",
+      "feconvolvematrix",
+      "fediffuselighting",
+      "fedisplacementmap",
+      "fedistantlight",
+      "fedropshadow",
+      "feflood",
+      "femorphology",
+      "feoffset",
+      "fepointlight",
+      "fespecularlighting",
+      "fespotlight",
+      "feturbulence",
+    ]).has(targetTag);
+    const renderable = !!targetElement && (!!targetSnapshot || resourceTarget);
     if (targetElement && !renderable)
       diagnostic(
         diagnostics,
@@ -431,24 +489,56 @@ export function buildAnimationProgram(
         `Animation target <${targetElement.tagName}> is not a rendered graphics element.`,
         href === undefined ? undefined : "href",
       );
-    const target = targetElement
+    const target: AnimationTarget | undefined = targetElement
       ? {
-          key: property(targetElement, "id")
-            ? `id:${property(targetElement, "id")}`
-            : `source:${order.get(targetElement)}`,
+          key: targetKey!,
           source: source(targetElement),
           reference,
           renderable,
+          tagName: targetElement.tagName ?? "unknown",
+          binding: targetSnapshot?.binding ?? (targetSnapshot ? "render-node" : "resource"),
+          referenceChain: (() => {
+            const chain: SourceLocation[] = [];
+            let current: ElementNode | undefined = targetElement;
+            while (current) {
+              chain.push(source(current));
+              current = parents.get(current);
+            }
+            return chain;
+          })(),
         }
       : undefined;
-    const attributeName = property(element, "attributeName");
-    if (kind === "animate" && !attributeName)
+    const authoredAttributeName = property(element, "attributeName");
+    const attributeTypeSource = property(element, "attributeType");
+    const attributeType: AnimationDefinition["attributeType"] =
+      attributeTypeSource === "XML" || attributeTypeSource === "CSS" ? attributeTypeSource : "auto";
+    const attributeSpec = authoredAttributeName
+      ? resolveAnimationAttribute(authoredAttributeName, attributeType)
+      : undefined;
+    const attributeName = attributeSpec?.canonicalName;
+    if ((kind === "animate" || kind === "set") && !authoredAttributeName)
       diagnostic(
         diagnostics,
         element,
         "missing-animation-attribute",
-        "<animate> requires attributeName.",
+        `<${element.tagName}> requires attributeName.`,
         "attributeName",
+      );
+    if (attributeTypeSource !== undefined && !["auto", "XML", "CSS"].includes(attributeTypeSource))
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-attribute-type",
+        `attributeType must be auto, XML, or CSS; received '${attributeTypeSource}'.`,
+        "attributeType",
+      );
+    if (authoredAttributeName && animationAttributeSpec(authoredAttributeName) && !attributeSpec)
+      diagnostic(
+        diagnostics,
+        element,
+        "incompatible-animation-attribute-type",
+        `${authoredAttributeName} is not available in the requested ${attributeType} namespace.`,
+        "attributeType",
       );
     const restartValue = property(element, "restart");
     const fillValue = property(element, "fill");
@@ -476,9 +566,12 @@ export function buildAnimationProgram(
     };
     const value = parseValue(
       element,
-      targetElement,
       attributeName,
-      (target?.source.id ? targetContexts.get(target.source.id) : undefined) ?? animationValueContext,
+      targetSnapshot?.context ?? animationValueContext,
+      attributeName
+        ? (targetSnapshot?.baseValues[attributeName] ??
+            (targetElement ? property(targetElement, attributeName) : undefined))
+        : undefined,
     );
     const calcModeSource = property(element, "calcMode");
     const defaultCalcMode = kind === "set" ? "discrete" : kind === "animateMotion" ? "paced" : "linear";
@@ -508,7 +601,9 @@ export function buildAnimationProgram(
       source: source(element),
       ...(target ? { target } : {}),
       kind,
+      ...(authoredAttributeName ? { authoredAttributeName } : {}),
       ...(attributeName ? { attributeName } : {}),
+      attributeType,
       timing,
       value,
       composition,
@@ -516,7 +611,7 @@ export function buildAnimationProgram(
       dependencies,
     };
     let runtimeSupport: AnimationDefinition["runtimeSupport"] = target ? "pending" : "invalid";
-    if (isRuntimeSupported(baseDefinition)) runtimeSupport = "scalar";
+    if (isRuntimeSupported(baseDefinition)) runtimeSupport = "typed";
     const definition: AnimationDefinition = { ...baseDefinition, runtimeSupport };
     animations.push(definition);
 
@@ -639,14 +734,50 @@ export function buildAnimationProgram(
         "keyPoints must be a semicolon-separated list of values from 0 through 1.",
         "keyPoints",
       );
+    if (attributeName && target && !propertyAppliesToTarget(attributeName, target.tagName))
+      diagnostic(
+        diagnostics,
+        element,
+        "non-animatable-target-property",
+        `${attributeName} does not apply to animation target <${target.tagName}> (${target.referenceChain
+          .map((item) => (item.id ? `<${item.element}#${item.id}>` : `<${item.element}>`))
+          .join(" <- ")}).`,
+        "attributeName",
+      );
+    for (const raw of [
+      property(element, "from"),
+      property(element, "to"),
+      property(element, "by"),
+      ...(property(element, "values")?.split(";") ?? []),
+    ]) {
+      if (!raw || !/url\(/i.test(raw)) continue;
+      const local = /^\s*url\(\s*["']?#([^\s)"']+)["']?\s*\)(?:\s+.+)?\s*$/i.exec(raw);
+      if (!local) {
+        diagnostic(
+          diagnostics,
+          element,
+          "unsupported-animation-resource-reference",
+          `Animated resource value '${raw}' must use one local url(#id) reference.`,
+          "values",
+        );
+      } else if (!definitions.has(local[1]!)) {
+        diagnostic(
+          diagnostics,
+          element,
+          "unresolved-animation-resource-reference",
+          `Animated resource value references missing definition #${local[1]}.`,
+          "values",
+        );
+      }
+    }
     if (value.family === "unsupported")
       diagnostic(
         diagnostics,
         element,
-        animationAttributeSpec(attributeName ?? "") ? "invalid-animation-value" : "unknown-animation-attribute",
-        animationAttributeSpec(attributeName ?? "")
+        animationAttributeSpec(authoredAttributeName ?? "") ? "invalid-animation-value" : "unknown-animation-attribute",
+        animationAttributeSpec(authoredAttributeName ?? "")
           ? "The authored animation values are invalid for the target attribute's value family."
-          : `The animation value family for '${attributeName ?? ""}' is unknown; the compiler will not guess.`,
+          : `The animation value family for '${authoredAttributeName ?? ""}' is unknown; the compiler will not guess.`,
         "attributeName",
       );
     if (value.family !== "unsupported") {
@@ -763,7 +894,7 @@ export function declarativeAnimationTag(tagName: string | undefined): boolean {
 /** Reference sampler for the first compiler slice and exact clock-boundary tests. */
 export function sampleNumericAnimation(animation: AnimationDefinition, documentTime: number): number | undefined {
   if (
-    animation.runtimeSupport !== "scalar" ||
+    animation.runtimeSupport !== "typed" ||
     animation.value.family === "unsupported" ||
     animation.timing.duration.type !== "seconds" ||
     animation.timing.begin[0]?.type !== "offset"
@@ -792,4 +923,52 @@ export function sampleNumericAnimation(animation: AnimationDefinition, documentT
     animation.value.base,
   );
   return result ? scalar(result.value) : undefined;
+}
+
+/** Pure presentation-value sampling for tests, reports, and non-Swift frontends. */
+export function sampleAnimatedPresentationValue(
+  program: AnimationProgram,
+  targetKey: string,
+  attributeName: string,
+  base: AnimationValueSet["base"],
+  documentTime: number,
+  events: readonly DeterministicTimingEvent[] = [],
+): AnimationValueSet["base"] {
+  const timing = sampleSMILProgram(program, documentTime, events);
+  let underlying = base;
+  for (const animation of program.animations
+    .filter(
+      (candidate) =>
+        candidate.runtimeSupport === "typed" &&
+        candidate.target?.key === targetKey &&
+        candidate.attributeName === attributeName &&
+        candidate.value.family !== "unsupported",
+    )
+    .sort((left, right) => left.documentOrder - right.documentOrder)) {
+    if (animation.value.family === "unsupported") continue;
+    const clock = timing.samples.get(animation.stableId);
+    if (!clock || clock.state === "inactive" || clock.state === "completed" || clock.simpleProgress === undefined)
+      continue;
+    const values: AnimationValueSet =
+      animation.kind === "set"
+        ? {
+            ...animation.value,
+            form: "values",
+            values: animation.value.to
+              ? [animation.value.to]
+              : animation.value.values
+                ? [animation.value.values[animation.value.values.length - 1]!]
+                : [],
+          }
+        : animation.value;
+    const sampled = sampleAnimationValue(
+      values,
+      animation.kind === "set" ? { ...animation.composition, calcMode: "discrete" } : animation.composition,
+      clock.simpleProgress,
+      clock.repeatIteration,
+      underlying,
+    );
+    if (sampled) underlying = sampled.value;
+  }
+  return underlying;
 }

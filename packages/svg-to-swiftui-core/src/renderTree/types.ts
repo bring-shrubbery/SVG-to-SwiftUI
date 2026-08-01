@@ -71,6 +71,8 @@ export interface GradientStop {
   offset: number;
   color: RGBAColor;
   source: SourceLocation;
+  animationTargetKey?: string;
+  animationBaseValues?: Readonly<Record<string, string>>;
 }
 
 interface GradientPaintBase {
@@ -659,6 +661,10 @@ export interface ComputedStyle {
   presentation: Readonly<Record<string, string | number>>;
   /** Winning CSS declaration context for inspectable cascade results. */
   provenance: Readonly<Record<string, CSSDiagnosticContext>>;
+  /** Properties whose computed presentation value is inherited from the parent. */
+  inheritedProperties: Readonly<Record<string, true>>;
+  /** Paint properties whose winning authored value uses currentColor. */
+  currentColorProperties: Readonly<Record<string, true>>;
 }
 
 export type Geometry =
@@ -672,7 +678,11 @@ export type Geometry =
 
 export interface RenderShape {
   type: "shape";
+  /** Stable source identity used to bind SMIL/CSS presentation values, including anonymous parent targets. */
+  animationTargetKey?: string;
   geometry: Geometry;
+  /** Authored geometry presence retained for SVG auto/default dependencies during animation. */
+  geometryAuthored?: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
   source: SourceLocation;
@@ -699,6 +709,7 @@ export interface MarkerPlacement {
 
 export interface RenderGroup {
   type: "group";
+  animationTargetKey?: string;
   children: RenderNode[];
   style: ComputedStyle;
   transform: AffineTransform;
@@ -727,6 +738,7 @@ export interface RenderGroup {
 
 export interface RenderText {
   type: "text";
+  animationTargetKey?: string;
   text: string;
   chunks: RenderTextChunk[];
   attributes: Readonly<Record<string, string | number>>;
@@ -818,6 +830,7 @@ export interface RenderTextRun {
 
 export interface RenderImage {
   type: "image";
+  animationTargetKey?: string;
   href: string;
   viewport: ViewBoxData;
   preserveAspectRatio: PreserveAspectRatio;
@@ -836,6 +849,7 @@ export interface RenderImage {
 
 export interface RenderForeignObject {
   type: "foreignObject";
+  animationTargetKey?: string;
   /** Stable structural identity used to join the preflight snapshot to the final render tree. */
   key: string;
   viewport: ViewBoxData;
