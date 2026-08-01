@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 80">
+  <rect width="128" height="80" fill="#0f172a"/>
+  <polygon points="8,8 34,8 21,28" fill="#a78bfa">
+    <animate attributeName="points" values="8,8 34,8 21,28;8,28 34,28 21,8" dur="1s" fill="freeze"/>
+  </polygon>
+  <path d="M46 8 L72 8 L72 28 L46 28 Z" fill="#fb7185">
+    <animate attributeName="d" values="M46 8 L72 8 L72 28 L46 28 Z;M46 18 L59 4 L72 18 L59 32 Z" dur="1s" fill="freeze"/>
+  </path>
+  <line x1="8" y1="54" x2="120" y2="54" stroke="#38bdf8" stroke-width="5" stroke-dasharray="4 4">
+    <animate attributeName="stroke-dasharray" values="4 4;18 2" dur="1s" fill="freeze"/>
+  </line>
+  <rect x="48" y="62" width="32" height="10" fill="#facc15">
+    <animate attributeName="visibility" values="visible;hidden;visible" calcMode="discrete" dur="1s"/>
+  </rect>
+</svg>

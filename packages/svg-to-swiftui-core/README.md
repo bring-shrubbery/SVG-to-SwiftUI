@@ -250,6 +250,8 @@ Generated animated views expose deterministic and production clock paths. See th
 
 SMIL scheduling is compiled separately from drawing. See the [SMIL timing contract](docs/smil-timing.md) for supported syntax, state samples, deterministic events, dependency ordering, and strict/permissive fallbacks.
 
+Typed interpolation, paced/spline sampling, additive composition, and repeat accumulation are documented in the [SVG animation value contract](docs/animation-values.md).
+
 Optional MP4 files are review artifacts only. They are encoded after the lossless comparisons and never decide whether a test passes. Animation compiler support is being implemented in dependency order under the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94).
 
 ## Migration from 0.4

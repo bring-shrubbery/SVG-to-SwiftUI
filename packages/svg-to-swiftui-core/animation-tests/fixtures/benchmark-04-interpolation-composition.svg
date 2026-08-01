@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 64">
+  <rect width="96" height="64" fill="#0f172a"/>
+  <circle id="spline-dot" cx="12" cy="18" r="6" fill="#38bdf8">
+    <animate id="spline-base" attributeName="cx" values="12;52;84" keyTimes="0;.35;1" calcMode="spline"
+      keySplines=".42 0 .58 1;0 0 1 1" dur="2s" fill="freeze"/>
+    <animate id="additive-repeat" attributeName="cx" by="6" begin=".5s" dur=".5s" repeatCount="2"
+      additive="sum" accumulate="sum" fill="remove"/>
+  </circle>
+  <circle id="paced-dot" cx="12" cy="46" r="6" fill="#f472b6">
+    <animate attributeName="cx" values="12;24;84" calcMode="paced" dur="2s" fill="freeze"/>
+  </circle>
+</svg>

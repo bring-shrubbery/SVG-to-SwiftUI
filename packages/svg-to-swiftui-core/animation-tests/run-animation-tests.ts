@@ -7,6 +7,11 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PNG } from "pngjs";
 import { convertAsync } from "../src/index";
+import {
+  animationAttributeSpec,
+  parseAnimationValue,
+  swiftAnimationValueLiteral,
+} from "../src/renderTree/animationValues";
 import type { ResolvedResource } from "../src/types";
 import { outputMode, withPixelViewport } from "../visual-tests/manifest";
 import { type AnimationBatchItem, type AnimationFrameResult, runAnimationBatch } from "./batch-render";
@@ -27,6 +32,7 @@ const REFERENCE_RENDERER_BINARY = resolve(CACHE_DIR, "webkit-animation-reference
 const REFERENCE_RENDERER_VERSION = "webkit-explicit-smil-wa-time-v1";
 const VIDEO_ENCODER_SOURCE = resolve(__dirname, "video-encoder.swift");
 const VIDEO_ENCODER_BINARY = resolve(CACHE_DIR, "animation-video-encoder");
+const VALUE_GOLDENS_PATH = resolve(__dirname, "animation-value-goldens.json");
 
 interface ReferenceCacheEntry {
   hash: string;
@@ -204,6 +210,148 @@ function ensureVideoEncoder(): void {
     { stdio: "pipe" },
   );
   writeFileSync(stampPath, expectedHash);
+}
+
+async function verifySwiftAnimationValueGoldens(): Promise<void> {
+  const goldenSource = JSON.parse(readFileSync(VALUE_GOLDENS_PATH, "utf8")) as {
+    literalCases: Array<{ attributeName: string; source: string }>;
+  };
+  const literalContext = {
+    length: {
+      viewport: { width: 200, height: 100 },
+      rootViewport: { width: 400, height: 300 },
+      objectBoundingBox: { x: 0, y: 0, width: 80, height: 40 },
+      fontMetrics: { fontSize: 20, rootFontSize: 16, xHeight: 10, zeroAdvance: 8 },
+      percentageBasis: "viewport-diagonal" as const,
+      axis: "other" as const,
+    },
+    colorSpace: "sRGB" as const,
+  };
+  const literals = goldenSource.literalCases.map((item) => {
+    const spec = animationAttributeSpec(item.attributeName);
+    const value = spec ? parseAnimationValue(spec, item.source, literalContext) : undefined;
+    if (!value) throw new Error(`Invalid animation value literal golden: ${item.attributeName}=${item.source}`);
+    return swiftAnimationValueLiteral(value, 10, "SVGAnimationGoldenRuntime.");
+  });
+  const generated = await convertAsync(
+    `<svg viewBox="0 0 10 10"><circle id="probe" cx="0" cy="5" r="1"><animate attributeName="cx" from="0" to="1" dur="1s"/></circle></svg>`,
+    { structName: "SVGAnimationGoldenRuntime", precision: 10, preserveColors: true },
+  );
+  const verifier = `${generated}
+
+struct GoldenSpline: Decodable { let x1: Double; let y1: Double; let x2: Double; let y2: Double }
+struct GoldenCase: Decodable {
+    let name: String
+    let base: Double
+    let from: Double?
+    let to: Double?
+    let by: Double?
+    let values: [Double]?
+    let form: String
+    let calcMode: String
+    let keyTimes: [Double]?
+    let keySplines: [GoldenSpline]?
+    let progress: Double
+    let repeatIteration: Int
+    let underlying: Double?
+    let additive: Bool
+    let accumulate: Bool
+    let clamp: String
+    let expected: Double
+}
+struct GoldenLiteralCase: Decodable { let name: String; let expected: String }
+struct GoldenFile: Decodable {
+    let version: Int
+    let tolerance: Double
+    let literalCases: [GoldenLiteralCase]
+    let cases: [GoldenCase]
+}
+
+func form(_ value: String) -> SVGAnimationGoldenRuntime.SVGAnimationForm {
+    switch value {
+    case "values": return .values
+    case "from-to": return .fromto
+    case "from-by": return .fromby
+    case "by": return .by
+    case "to": return .to
+    default: fatalError("Unknown form: \\(value)")
+    }
+}
+func calcMode(_ value: String) -> SVGAnimationGoldenRuntime.SVGAnimationCalcMode {
+    switch value {
+    case "discrete": return .discrete
+    case "linear": return .linear
+    case "paced": return .paced
+    case "spline": return .spline
+    default: fatalError("Unknown calcMode: \\(value)")
+    }
+}
+func clampMode(_ value: String) -> SVGAnimationGoldenRuntime.SVGAnimationClamp {
+    switch value {
+    case "none": return .none
+    case "unit": return .unit
+    case "nonnegative": return .nonnegative
+    case "integer": return .integer
+    default: fatalError("Unknown clamp: \\(value)")
+    }
+}
+func authoredValues(_ item: GoldenCase) -> [Double] {
+    switch item.form {
+    case "values": return item.values ?? []
+    case "from-to": return [item.from!, item.to!]
+    case "from-by": return [item.from!, item.from! + item.by!]
+    case "by": return [0, item.by!]
+    case "to": return [item.to!]
+    default: return []
+    }
+}
+
+let goldenData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
+let golden = try JSONDecoder().decode(GoldenFile.self, from: goldenData)
+guard golden.version == 1 else { fatalError("Unsupported animation value golden version") }
+let runtimeLiterals: [SVGAnimationGoldenRuntime.SVGAnimationRuntimeValue] = [
+${literals.map((literal) => `    ${literal}`).join(",\n")}
+]
+guard runtimeLiterals.count == golden.literalCases.count else { fatalError("Animation value literal count mismatch") }
+for index in runtimeLiterals.indices {
+    if runtimeLiterals[index].source != golden.literalCases[index].expected {
+        fputs("Animation value literal mismatch \\(golden.literalCases[index].name): \\(runtimeLiterals[index].source) != \\(golden.literalCases[index].expected)\\n", stderr)
+        exit(1)
+    }
+}
+for item in golden.cases {
+    let actual = SVGAnimationGoldenRuntime.svgAnimationValueSample(
+        progress: item.progress,
+        values: authoredValues(item),
+        form: form(item.form),
+        calcMode: calcMode(item.calcMode),
+        keyTimes: item.keyTimes ?? [],
+        keySplines: (item.keySplines ?? []).map { (x1: $0.x1, y1: $0.y1, x2: $0.x2, y2: $0.y2) },
+        additive: item.additive,
+        accumulate: item.accumulate,
+        repeatIteration: item.repeatIteration,
+        clamp: clampMode(item.clamp),
+        underlying: item.underlying ?? item.base
+    )
+    if abs(actual - item.expected) > golden.tolerance {
+        fputs("Animation value golden mismatch \\(item.name): \\(actual) != \\(item.expected)\\n", stderr)
+        exit(1)
+    }
+}
+print("Swift animation value goldens: \\(golden.cases.count) passed")
+`;
+  const sourceHash = hash("animation-value-goldens-v1", verifier).slice(0, 20);
+  const sourcePath = resolve(CACHE_DIR, `animation-value-goldens-${sourceHash}.swift`);
+  const binaryPath = resolve(CACHE_DIR, `animation-value-goldens-${sourceHash}`);
+  if (!existsSync(binaryPath)) {
+    writeFileSync(sourcePath, verifier);
+    execFileSync(
+      "xcrun",
+      ["swiftc", "-module-cache-path", resolve(CACHE_DIR, "module-cache"), sourcePath, "-o", binaryPath],
+      { stdio: "pipe", timeout: 900_000 },
+    );
+  }
+  execFileSync(binaryPath, [VALUE_GOLDENS_PATH], { stdio: "pipe", timeout: 30_000 });
 }
 
 function referencePath(fixture: LoadedAnimationFixture, stem: string): string {
@@ -407,6 +555,8 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(RENDERS_DIR, { recursive: true });
+  await verifySwiftAnimationValueGoldens();
+  console.log("Swift animation value goldens passed");
   let referenceCache: Record<string, ReferenceCacheEntry> = {};
   try {
     referenceCache = JSON.parse(readFileSync(REFERENCE_CACHE_PATH, "utf8"));

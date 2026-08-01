@@ -26,6 +26,7 @@ import { getSVGElement, resolveSVGProperties } from "../utils";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { SVGAccessibilityResolver } from "./accessibility";
 import { buildAnimationProgram, declarativeAnimationTag } from "./animation";
+import type { AnimationValueContext } from "./animationValues";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { SVGConditionalProcessor } from "./conditionalProcessing";
 import { resolveFilterInstance, resolveFilterResources } from "./filters";
@@ -2142,7 +2143,6 @@ export function buildRenderDocument(
   const styleResolver = new SVGStyleResolver(svg, diagnostics);
   const conditional = new SVGConditionalProcessor(config.staticEnvironment, diagnostics);
   const accessibility = new SVGAccessibilityResolver(resources, conditional.environment, diagnostics);
-  const animationProgram = buildAnimationProgram(svg, diagnostics);
   const context: BuildContext = {
     resources,
     diagnostics,
@@ -3138,6 +3138,26 @@ export function buildRenderDocument(
     }
   }
   diagnosePaintReferences(children);
+
+  const animationTargetContexts = new Map<string, AnimationValueContext>();
+  const collectAnimationTargetContexts = (nodes: RenderNode[]): void => {
+    for (const node of nodes) {
+      if (node.source.id)
+        animationTargetContexts.set(node.source.id, {
+          length: {
+            viewport: node.paintContext.viewport,
+            rootViewport: node.paintContext.rootViewport,
+            fontMetrics: node.paintContext.fontMetrics,
+            percentageBasis: "viewport-diagonal",
+            axis: "other",
+          },
+          colorSpace: "sRGB",
+        });
+      if (node.type === "group") collectAnimationTargetContexts(node.children);
+    }
+  };
+  collectAnimationTargetContexts(children);
+  const animationProgram = buildAnimationProgram(svg, diagnostics, animationTargetContexts);
 
   return {
     viewport: {
