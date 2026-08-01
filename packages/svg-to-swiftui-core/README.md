@@ -229,6 +229,9 @@ bun run visual-test -- --tag opacity            # one feature family
 bun run visual-test -- --changed                # changed fixture SVGs
 bun run visual-test -- --fresh                  # ignore render caches
 bun run visual-test:verify                       # manifest + codegen integrity (all platforms)
+bun run animation-test                          # exact-time SVG/SwiftUI RGBA frame comparisons
+bun run animation-test -- --videos              # also encode review-only MP4 artifacts
+bun run animation-test:verify                   # temporal manifest integrity (all platforms)
 bun run conformance:verify                       # complete SVG2 classification + evidence
 bun run conformance:benchmark                    # compact Shape fast-path budget
 bun run conformance:report                       # regenerate conformance/REPORT.md
@@ -239,13 +242,19 @@ Reference caches are content-addressed from SVG bytes and render options. Swift 
 
 The default antialiasing allowance is 24/255 per channel, at most 3% pixels outside that allowance, and mean premultiplied RGB/alpha error no greater than 3/255. These limits accommodate resvg/CoreGraphics edge rasterization differences while still rejecting solid-color, layer-order, and opacity errors. Fixture-specific overrides must keep every channel enabled and include a reason in the manifest.
 
+### Temporal animation tests
+
+The animation harness extends the same compiler pipeline across an exact microsecond schedule. WebKit is paused and explicitly seeks both the SVG/SMIL document timeline and CSS Web Animations timeline. Generated Swift is compiled once, then SwiftUI renders every matching timestamp through an injected deterministic time value. Each lossless frame is compared with the same premultiplied-RGBA metrics, and summaries identify the worst frame and timestamp.
+
+Optional MP4 files are review artifacts only. They are encoded after the lossless comparisons and never decide whether a test passes. Animation compiler support is being implemented in dependency order under the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94).
+
 ## Migration from 0.4
 
 Existing `convert()`, `convertAsync()`, and diagnostics APIs remain source-compatible. Their generated Swift is unchanged for already-supported SVGs. New code can adopt `convertDetailed()`/`convertDetailedAsync()` for explicit output mode, artifacts, conformance data, and richer diagnostics. If a 0.4 integration relied on ignored animation, event, or navigation markup, permissive conversion now reports it and strict conversion rejects it. No core conversion path performs ambient network or filesystem I/O; keep using an explicit resource resolver.
 
 ## Roadmap
 
-The static roadmap is complete and tracked in the [generated conformance report](conformance/REPORT.md). Dynamic animation and interaction remain explicitly out of scope.
+The static roadmap is complete and tracked in the [generated conformance report](conformance/REPORT.md). Declarative animation is the next compiler phase; its implementation is tracked in the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94). Browser scripting and unrestricted DOM mutation remain explicitly outside the native SwiftUI profile.
 
 - [x] SVG `<path>` element
   - [x] Line commands

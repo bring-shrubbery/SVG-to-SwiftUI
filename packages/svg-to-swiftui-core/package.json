@@ -39,6 +39,8 @@
     "test": "jest",
     "visual-test": "bun run visual-tests/run-visual-tests.ts",
     "visual-test:verify": "bun visual-tests/verify-manifest.ts",
+    "animation-test": "bun run animation-tests/run-animation-tests.ts",
+    "animation-test:verify": "bun animation-tests/verify-manifest.ts",
     "visual-test:update-manifest": "bun visual-tests/update-manifest.ts",
     "conformance:verify": "bun conformance/verify.ts",
     "conformance:report": "bun conformance/generate-report.ts",

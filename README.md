@@ -19,7 +19,7 @@ The compiler targets the complete **static appearance of SVG 2 and Filter Effect
 - **1,909 deterministic visual tests** that compile and render the generated SwiftUI
 - Strict and permissive conversion modes with structured, source-located diagnostics
 
-Animations, scripts, navigation, media playback, and other dynamic browser behavior are intentionally outside the static rendering profile. See the [full, machine-verified coverage matrix](packages/svg-to-swiftui-core/conformance/REPORT.md) for exact support and limitations.
+Animations, scripts, navigation, media playback, and other dynamic browser behavior are intentionally outside the static rendering profile. Declarative animation support is now being built through the ordered [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94). See the [full, machine-verified static coverage matrix](packages/svg-to-swiftui-core/conformance/REPORT.md) for exact current support and limitations.
 
 ## SVG in. Native SwiftUI out.
 
@@ -93,6 +93,7 @@ bun run test
 bun run typecheck
 bun run conformance:verify
 bun run visual-test       # macOS: compiles and compares all SwiftUI renders
+bun run animation-test    # macOS: compares exact SVG and SwiftUI frame times
 ```
 
 ## Project structure

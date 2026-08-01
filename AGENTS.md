@@ -20,6 +20,7 @@ bun run lint         # Lint all packages
 bun run format       # Check formatting
 bun run typecheck    # Type-check all packages
 bun run visual-test  # Visual regression tests (macOS only, compares SVG vs Swift rendering)
+bun run animation-test # Temporal regression tests (macOS only, compares exact RGBA frames)
 ```
 
 ## Requirements

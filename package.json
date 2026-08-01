@@ -25,6 +25,8 @@
     "typecheck": "turbo typecheck",
     "visual-test": "bun run --filter svg-to-swiftui-core visual-test",
     "visual-test:verify": "bun run --filter svg-to-swiftui-core visual-test:verify",
+    "animation-test": "bun run --filter svg-to-swiftui-core animation-test",
+    "animation-test:verify": "bun run --filter svg-to-swiftui-core animation-test:verify",
     "conformance:verify": "bun run --filter svg-to-swiftui-core conformance:verify",
     "conformance:report": "bun run --filter svg-to-swiftui-core conformance:report",
     "conformance:benchmark": "bun run --filter svg-to-swiftui-core conformance:benchmark"
