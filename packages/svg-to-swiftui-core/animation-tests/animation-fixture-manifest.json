@@ -39,6 +39,72 @@
       },
       "expectDistinctReferenceFrames": true
     },
+    "reference-smil-clock-controls": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "tags": [
+        "clock-values",
+        "fill",
+        "fractional-repeat",
+        "full-partial-clock",
+        "instance-time-list",
+        "min-max",
+        "negative-begin",
+        "repeat",
+        "repeat-count",
+        "repeat-duration",
+        "restart",
+        "restart-always",
+        "restart-when-not-active",
+        "smil-timing"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2100000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 199999, 200000, 499999, 500000, 699999, 700000, 1199999, 1200000, 1499999, 1500000, 2099999, 2100000
+        ]
+      }
+    },
+    "reference-smil-dependencies": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "tags": ["repeat-reference", "smil-timing", "syncbase"],
+      "timeline": {
+        "durationMicroseconds": 1600000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 499999, 500000, 999999, 1000000, 1099999, 1100000, 1599999, 1600000]
+      }
+    },
+    "reference-smil-eventbase": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "tags": ["deterministic-events", "eventbase", "smil-timing"],
+      "events": [{ "timeMicroseconds": 300000, "targetId": "trigger", "name": "click" }],
+      "timeline": {
+        "durationMicroseconds": 800000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 299999, 300000, 399999, 400000, 799999, 800000]
+      }
+    },
+    "reference-smil-edge-cases": {
+      "mode": "reference-probe",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "tags": ["end-list", "indefinite", "instance-time-list", "restart-never", "smil-timing", "zero-duration"],
+      "timeline": {
+        "durationMicroseconds": 500000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 99999, 100000, 199999, 200000, 399999, 400000, 499999, 500000]
+      }
+    },
     "benchmark-01-numeric-cx": {
       "mode": "comparison",
       "referenceBackend": "webkit",
@@ -52,6 +118,49 @@
         "sampleTimesMicroseconds": [0, 500000, 1000000]
       },
       "expectDistinctReferenceFrames": true
+    },
+    "benchmark-02-smil-timing": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "expectedMode": "view",
+      "tags": ["animate", "benchmark-02", "boundaries", "discrete", "repeat", "smil-timing"],
+      "timeline": {
+        "durationMicroseconds": 1400000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 199999, 200000, 399999, 400000, 599999, 600000, 799999, 800000, 999999, 1000000, 1199999, 1200000, 1399999,
+          1400000
+        ]
+      }
+    },
+    "benchmark-03-advanced-timing": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "expectedMode": "view",
+      "tags": [
+        "benchmark-03",
+        "discrete",
+        "fractional-repeat",
+        "min-max",
+        "multiple-intervals",
+        "repeat-duration",
+        "smil-timing",
+        "syncbase"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2700000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 133333, 133334, 266666, 266667, 399999, 400000, 533333, 533334, 666666, 666667, 799999, 800000, 899999,
+          900000, 999999, 1000000, 1199999, 1200000, 1249999, 1250000, 1333333, 1333334, 1466666, 1466667, 1499999,
+          1500000, 1599999, 1600000, 1733333, 1733334, 1866666, 1866667, 1999999, 2000000, 2099999, 2100000, 2199999,
+          2200000, 2449999, 2450000, 2699999, 2700000
+        ]
+      }
     }
   }
 }

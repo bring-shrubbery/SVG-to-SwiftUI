@@ -1,4 +1,5 @@
 import type { ElementNode } from "svg-parser";
+import { sampleSMILTiming } from "./smilTiming";
 import type { RenderDiagnostic, SourceLocation } from "./types";
 
 export type AnimationKind = "animate" | "set" | "animateTransform" | "animateMotion" | "discard";
@@ -6,7 +7,10 @@ export type AnimationKind = "animate" | "set" | "animateTransform" | "animateMot
 export type AnimationTime =
   | { type: "offset"; seconds: number }
   | { type: "syncbase"; animationId: string; phase: "begin" | "end"; offsetSeconds: number }
+  | { type: "repeat"; animationId: string; iteration: number; offsetSeconds: number }
   | { type: "event"; targetId?: string; event: string; offsetSeconds: number }
+  | { type: "accessKey"; key: string; offsetSeconds: number }
+  | { type: "wallclock"; value: string }
   | { type: "indefinite" }
   | { type: "invalid"; syntax: string };
 
@@ -69,13 +73,14 @@ export interface AnimationDefinition {
   };
   documentOrder: number;
   dependencies: readonly string[];
-  runtimeSupport: "numeric-linear" | "pending" | "invalid";
+  runtimeSupport: "numeric-linear" | "numeric-discrete" | "pending" | "invalid";
 }
 
 export interface AnimationProgram {
   animations: readonly AnimationDefinition[];
   /** Stable dependency order. Presentation sampling must never mutate the static render tree. */
   evaluationOrder: readonly string[];
+  dependencyCycles: readonly (readonly string[])[];
 }
 
 const ANIMATION_TAGS = new Map<string, AnimationKind>([
@@ -143,7 +148,12 @@ function diagnostic(
 function parseClock(raw: string): number | undefined {
   const value = raw.trim().toLowerCase();
   const clock = /^(?:(\d+):)?(\d{1,2}):(\d{1,2}(?:\.\d+)?)$/.exec(value);
-  if (clock) return Number(clock[1] ?? 0) * 3600 + Number(clock[2]) * 60 + Number(clock[3]);
+  if (clock) {
+    const minutes = Number(clock[2]);
+    const seconds = Number(clock[3]);
+    if (minutes >= 60 || seconds >= 60) return undefined;
+    return Number(clock[1] ?? 0) * 3600 + minutes * 60 + seconds;
+  }
   const unit = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(ms|s|min|h)?$/.exec(value);
   if (!unit) return undefined;
   const number = Number(unit[1]);
@@ -153,9 +163,31 @@ function parseClock(raw: string): number | undefined {
 
 function parseTime(raw: string): AnimationTime {
   const value = raw.trim();
+  if (value === "") return { type: "invalid", syntax: value };
   if (value === "indefinite") return { type: "indefinite" };
+  const wallclock = /^wallclock\((.+)\)$/i.exec(value);
+  if (wallclock) return { type: "wallclock", value: wallclock[1]!.trim() };
+  const accessKey = /^accesskey\((.)\)([+-].+)?$/i.exec(value);
+  if (accessKey) {
+    const parsedOffset = accessKey[2] ? parseClock(accessKey[2]) : 0;
+    return parsedOffset === undefined
+      ? { type: "invalid", syntax: value }
+      : { type: "accessKey", key: accessKey[1]!, offsetSeconds: parsedOffset };
+  }
   const offset = parseClock(value);
   if (offset !== undefined) return { type: "offset", seconds: offset };
+  const repeat = /^([\w:.-]+)\.repeat\((\d+)\)([+-].+)?$/i.exec(value);
+  if (repeat) {
+    const parsedOffset = repeat[3] ? parseClock(repeat[3]) : 0;
+    return parsedOffset === undefined || Number(repeat[2]) <= 0
+      ? { type: "invalid", syntax: value }
+      : {
+          type: "repeat",
+          animationId: repeat[1]!,
+          iteration: Number(repeat[2]),
+          offsetSeconds: parsedOffset,
+        };
+  }
   const reference = /^([\w:.-]+)\.(begin|end)([+-].+)?$/i.exec(value);
   if (reference) {
     const parsedOffset = reference[3] ? parseClock(reference[3]) : 0;
@@ -184,15 +216,13 @@ function parseTime(raw: string): AnimationTime {
 }
 
 function parseTimes(raw: string | undefined, fallback: readonly AnimationTime[]): readonly AnimationTime[] {
-  if (!raw) return fallback;
-  return raw
-    .split(";")
-    .map(parseTime)
-    .filter((value, index, values) => value.type !== "invalid" || values.length === 1 || index < values.length);
+  if (raw === undefined) return fallback;
+  return raw.split(";").map(parseTime);
 }
 
 function parseDuration(raw: string | undefined): AnimationDuration {
-  if (!raw) return { type: "invalid", syntax: "" };
+  if (raw === undefined) return { type: "indefinite" };
+  if (raw === "") return { type: "invalid", syntax: raw };
   if (raw === "indefinite") return { type: "indefinite" };
   if (raw === "media") return { type: "media" };
   const seconds = parseClock(raw);
@@ -262,12 +292,26 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
   if (definition.kind !== "animate" || !definition.target?.renderable || !definition.attributeName) return false;
   if (!definition.target.key.startsWith("id:") || !["cx", "x"].includes(definition.attributeName)) return false;
   if (definition.value.type !== "number") return false;
+  if (
+    definition.timing.duration.type === "invalid" ||
+    definition.timing.duration.type === "media" ||
+    (definition.timing.duration.type === "seconds" &&
+      (!Number.isFinite(definition.timing.duration.seconds) || definition.timing.duration.seconds < 0))
+  )
+    return false;
+  const deterministicTime = (time: AnimationTime) => ["offset", "syncbase", "repeat", "indefinite"].includes(time.type);
+  if (!definition.timing.begin.every(deterministicTime) || !definition.timing.end.every(deterministicTime))
+    return false;
+  if (
+    definition.timing.repeatCount.type === "count" &&
+    (!Number.isFinite(definition.timing.repeatCount.value) || definition.timing.repeatCount.value <= 0)
+  )
+    return false;
+  if (definition.composition.additive !== "replace" || definition.composition.accumulate !== "none") return false;
+  if (definition.composition.calcMode === "discrete") return (definition.value.values?.length ?? 0) >= 2;
+  if (definition.composition.calcMode !== "linear") return false;
   if (definition.value.from === undefined || definition.value.to === undefined) return false;
-  if (definition.timing.duration.type !== "seconds" || definition.timing.duration.seconds <= 0) return false;
-  if (definition.timing.begin.length !== 1 || definition.timing.begin[0]?.type !== "offset") return false;
-  if (definition.timing.end.length > 0) return false;
-  if (definition.timing.repeatCount.type !== "unspecified" || definition.timing.repeatDuration) return false;
-  return definition.composition.additive === "replace" && definition.composition.accumulate === "none";
+  return true;
 }
 
 /** Parse declarative SVG animation into immutable, typed compiler input. */
@@ -377,6 +421,13 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
         "<animate> requires attributeName.",
         "attributeName",
       );
+    const restartValue = property(element, "restart");
+    const fillValue = property(element, "fill");
+    const parsedMax = parseOptionalDuration(property(element, "max"));
+    const max =
+      parsedMax?.type === "seconds" && parsedMax.seconds <= 0
+        ? ({ type: "invalid", syntax: property(element, "max") ?? "" } as const)
+        : parsedMax;
     const timing: AnimationTiming = {
       begin: parseTimes(property(element, "begin"), [{ type: "offset", seconds: 0 }]),
       duration: parseDuration(property(element, "dur")),
@@ -384,19 +435,22 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
       ...(parseOptionalDuration(property(element, "min"))
         ? { min: parseOptionalDuration(property(element, "min")) }
         : {}),
-      ...(parseOptionalDuration(property(element, "max"))
-        ? { max: parseOptionalDuration(property(element, "max")) }
-        : {}),
+      ...(max ? { max } : {}),
       repeatCount: parseRepeatCount(property(element, "repeatCount")),
       ...(parseOptionalDuration(property(element, "repeatDur"))
         ? { repeatDuration: parseOptionalDuration(property(element, "repeatDur")) }
         : {}),
-      restart: (property(element, "restart") as AnimationTiming["restart"]) ?? "always",
-      fill: property(element, "fill") === "freeze" ? "freeze" : "remove",
+      restart: ["always", "whenNotActive", "never"].includes(restartValue ?? "")
+        ? (restartValue as AnimationTiming["restart"])
+        : "always",
+      fill: fillValue === "freeze" ? "freeze" : "remove",
     };
     const value = parseValue(element, targetElement, attributeName);
-    const dependencies = timing.begin
-      .filter((time): time is Extract<AnimationTime, { type: "syncbase" }> => time.type === "syncbase")
+    const dependencies = [...timing.begin, ...timing.end]
+      .filter(
+        (time): time is Extract<AnimationTime, { type: "syncbase" | "repeat" }> =>
+          time.type === "syncbase" || time.type === "repeat",
+      )
       .map((time) => time.animationId);
     const baseDefinition = {
       stableId,
@@ -416,7 +470,8 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
       dependencies,
     };
     let runtimeSupport: AnimationDefinition["runtimeSupport"] = target ? "pending" : "invalid";
-    if (isRuntimeSupported(baseDefinition)) runtimeSupport = "numeric-linear";
+    if (isRuntimeSupported(baseDefinition))
+      runtimeSupport = baseDefinition.composition.calcMode === "discrete" ? "numeric-discrete" : "numeric-linear";
     const definition: AnimationDefinition = { ...baseDefinition, runtimeSupport };
     animations.push(definition);
 
@@ -436,6 +491,63 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
         "Animation begin contains invalid timing syntax.",
         "begin",
       );
+    if (timing.end.some((time) => time.type === "invalid"))
+      diagnostic(diagnostics, element, "invalid-animation-end", "Animation end contains invalid timing syntax.", "end");
+    for (const [attribute, duration] of [
+      ["min", timing.min],
+      ["max", timing.max],
+      ["repeatDur", timing.repeatDuration],
+    ] as const) {
+      if (duration?.type === "invalid")
+        diagnostic(
+          diagnostics,
+          element,
+          `invalid-animation-${attribute.toLowerCase()}`,
+          `${attribute} contains an invalid duration and is ignored by the timing model.`,
+          attribute,
+        );
+    }
+    for (const [attribute, duration] of [
+      ["dur", timing.duration],
+      ["min", timing.min],
+      ["max", timing.max],
+      ["repeatDur", timing.repeatDuration],
+    ] as const) {
+      if (duration?.type === "media")
+        diagnostic(
+          diagnostics,
+          element,
+          "unsupported-animation-media-duration",
+          `${attribute}="media" has no intrinsic media duration on an SVG animation element and is ignored.`,
+          attribute,
+        );
+    }
+    if (timing.min?.type === "seconds" && timing.max?.type === "seconds" && timing.max.seconds < timing.min.seconds)
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-min-max",
+        "max is less than min; SVG timing ignores both constraints.",
+        "max",
+      );
+    for (const time of [...timing.begin, ...timing.end]) {
+      if (time.type === "wallclock")
+        diagnostic(
+          diagnostics,
+          element,
+          "unsupported-animation-wallclock",
+          "wallclock timing is nondeterministic in generated SwiftUI; the instance remains unresolved.",
+          timing.begin.includes(time) ? "begin" : "end",
+        );
+      if (time.type === "accessKey")
+        diagnostic(
+          diagnostics,
+          element,
+          "unsupported-animation-accesskey",
+          "accessKey timing has no deterministic native input mapping; the instance remains unresolved.",
+          timing.begin.includes(time) ? "begin" : "end",
+        );
+    }
     if (timing.repeatCount.type === "count" && !Number.isFinite(timing.repeatCount.value))
       diagnostic(
         diagnostics,
@@ -491,14 +603,19 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const evaluationOrder: string[] = [];
+  const dependencyCycles: string[][] = [];
   const visitDependency = (animation: AnimationDefinition, path: string[]): void => {
     if (visited.has(animation.stableId)) return;
     if (visiting.has(animation.stableId)) {
+      const start = path.indexOf(animation.stableId);
+      const cycle = [...path.slice(Math.max(0, start)), animation.stableId];
+      if (!dependencyCycles.some((candidate) => candidate.join("\0") === cycle.join("\0")))
+        dependencyCycles.push(cycle);
       diagnostic(
         diagnostics,
         animationElements.find(({ element }) => property(element, "id") === animation.authoredId)?.element ?? root,
         "cyclic-animation-dependency",
-        `Animation dependency cycle detected: ${[...path, animation.stableId].join(" -> ")}.`,
+        `Animation dependency cycle detected: ${cycle.join(" -> ")}.`,
       );
       return;
     }
@@ -526,7 +643,7 @@ export function buildAnimationProgram(root: ElementNode, diagnostics: RenderDiag
     evaluationOrder.push(animation.stableId);
   };
   for (const animation of animations) visitDependency(animation, []);
-  return { animations, evaluationOrder };
+  return { animations, evaluationOrder, dependencyCycles };
 }
 
 export function declarativeAnimationTag(tagName: string | undefined): boolean {
@@ -536,20 +653,20 @@ export function declarativeAnimationTag(tagName: string | undefined): boolean {
 /** Reference sampler for the first compiler slice and exact clock-boundary tests. */
 export function sampleNumericAnimation(animation: AnimationDefinition, documentTime: number): number | undefined {
   if (
-    animation.runtimeSupport !== "numeric-linear" ||
+    !["numeric-linear", "numeric-discrete"].includes(animation.runtimeSupport) ||
     animation.value.type !== "number" ||
-    animation.value.from === undefined ||
-    animation.value.to === undefined ||
     animation.timing.duration.type !== "seconds" ||
     animation.timing.begin[0]?.type !== "offset"
   )
     return undefined;
-  const time = Number.isFinite(documentTime) ? documentTime : 0;
-  const begin = animation.timing.begin[0].seconds;
-  const duration = animation.timing.duration.seconds;
-  if (time < begin) return animation.value.base;
-  if (duration <= 0 || time >= begin + duration)
-    return animation.timing.fill === "freeze" ? animation.value.to : animation.value.base;
-  const progress = (time - begin) / duration;
+  const sample = sampleSMILTiming(animation.timing, documentTime, [animation.timing.begin[0].seconds]);
+  if (sample.state === "inactive" || sample.state === "completed") return animation.value.base;
+  if (sample.simpleProgress === undefined) return animation.value.base;
+  const progress = sample.simpleProgress;
+  if (animation.runtimeSupport === "numeric-discrete") {
+    const values = animation.value.values!;
+    return values[Math.min(values.length - 1, Math.floor(progress * values.length + 1e-12))];
+  }
+  if (animation.value.from === undefined || animation.value.to === undefined) return undefined;
   return animation.value.from + (animation.value.to - animation.value.from) * progress;
 }

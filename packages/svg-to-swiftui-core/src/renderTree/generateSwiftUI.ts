@@ -9,6 +9,7 @@ import { viewBoxTransform } from "../viewports";
 import { renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
+import { computeSMILRepeatingDuration, type SMILTimingInterval, sampleSMILProgram } from "./smilTiming";
 import type {
   AccessibilityMetadata,
   ClipPathInstance,
@@ -133,6 +134,7 @@ interface ViewBuildContext {
   subdocuments: string[][];
   rootName: string;
   config: SwiftUIGeneratorConfig;
+  animationIntervals: ReadonlyMap<string, readonly SMILTimingInterval[]>;
 }
 
 function createOptions(
@@ -277,6 +279,10 @@ function formatNumber(value: number, precision = 10): string {
   return String(Object.is(rounded, -0) ? 0 : rounded);
 }
 
+function swiftDuration(value: number): string {
+  return Number.isFinite(value) ? formatNumber(value) : "Double.infinity";
+}
+
 function colorForStop(stop: GradientStop, opacity: number, precision: number): string {
   const { red, green, blue, alpha } = stop.color;
   const channels = `red: ${formatNumber(red, precision)}, green: ${formatNumber(green, precision)}, blue: ${formatNumber(blue, precision)}`;
@@ -332,16 +338,26 @@ function buildViewNodes(
     if (!node.source.id) return undefined;
     const animation = context.document.animationProgram.animations.find(
       (candidate) =>
-        candidate.runtimeSupport === "numeric-linear" &&
+        ["numeric-linear", "numeric-discrete"].includes(candidate.runtimeSupport) &&
         candidate.target?.source.id === node.source.id &&
         (candidate.attributeName === "cx" || candidate.attributeName === "x"),
     );
-    if (!animation || animation.value.type !== "number" || animation.timing.duration.type !== "seconds")
-      return undefined;
-    const begin = animation.timing.begin[0];
-    if (begin?.type !== "offset" || animation.value.from === undefined || animation.value.to === undefined)
-      return undefined;
-    return `Self.svgAnimatedNumber(documentTime: documentTime, begin: ${formatNumber(begin.seconds)}, duration: ${formatNumber(animation.timing.duration.seconds)}, from: ${formatNumber(animation.value.from)}, to: ${formatNumber(animation.value.to)}, base: ${formatNumber(animation.value.base)}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"}) - ${formatNumber(animation.value.base)}`;
+    if (!animation || animation.value.type !== "number") return undefined;
+    const values =
+      animation.runtimeSupport === "numeric-discrete"
+        ? animation.value.values
+        : animation.value.from === undefined || animation.value.to === undefined
+          ? undefined
+          : [animation.value.from, animation.value.to];
+    if (!values || values.length < 2) return undefined;
+    const intervals = context.animationIntervals.get(animation.stableId) ?? [];
+    const intervalLiteral = intervals
+      .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
+      .join(", ");
+    const duration =
+      animation.timing.duration.type === "seconds" ? animation.timing.duration.seconds : Number.POSITIVE_INFINITY;
+    const repeatingDuration = computeSMILRepeatingDuration(animation.timing);
+    return `Self.svgAnimatedNumber(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, values: [${values.map((value) => formatNumber(value)).join(", ")}], discrete: ${animation.runtimeSupport === "numeric-discrete" ? "true" : "false"}, base: ${formatNumber(animation.value.base)}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"}) - ${formatNumber(animation.value.base)}`;
   };
 
   const buildFilter = (
@@ -3545,12 +3561,74 @@ function createView(
         `${indentation}value.isFinite ? value : 0`,
         "}",
         "",
-        "private static func svgAnimatedNumber(documentTime: Double, begin: Double, duration: Double, from: Double, to: Double, base: Double, freeze: Bool) -> Double {",
+        "private enum SVGTimingState: Equatable { case inactive, active, frozen, completed }",
+        "",
+        "private struct SVGTimingSample {",
+        `${indentation}let state: SVGTimingState`,
+        `${indentation}let simpleTime: Double?`,
+        `${indentation}let simpleProgress: Double?`,
+        `${indentation}let activeDuration: Double`,
+        `${indentation}let simpleDuration: Double`,
+        `${indentation}let repeatIteration: Int`,
+        `${indentation}let isBeginBoundary: Bool`,
+        `${indentation}let isEndBoundary: Bool`,
+        `${indentation}let isRepeatBoundary: Bool`,
+        `${indentation}let selectedBegin: Double?`,
+        `${indentation}let intervalBegin: Double?`,
+        `${indentation}let intervalEnd: Double?`,
+        "}",
+        "",
+        "private static func svgTimingSample(documentTime: Double, intervals: [(begin: Double, end: Double)], duration: Double, repeatingDuration: Double, freeze: Bool) -> SVGTimingSample {",
         `${indentation}let time = sanitizedDocumentTime(documentTime)`,
-        `${indentation}if time < begin { return base }`,
-        `${indentation}if duration <= 0 || time >= begin + duration { return freeze ? to : base }`,
-        `${indentation}let progress = (time - begin) / duration`,
-        `${indentation}return from + (to - from) * progress`,
+        `${indentation}let active = intervals.first { time >= $0.begin && time < $0.end }`,
+        `${indentation}let completed = intervals.last { time >= $0.end }`,
+        `${indentation}guard let interval = active ?? completed else {`,
+        `${indentation}${indentation}return SVGTimingSample(state: .inactive, simpleTime: nil, simpleProgress: nil, activeDuration: 0, simpleDuration: duration, repeatIteration: 0, isBeginBoundary: false, isEndBoundary: false, isRepeatBoundary: false, selectedBegin: nil, intervalBegin: nil, intervalEnd: nil)`,
+        `${indentation}}`,
+        `${indentation}let atEnd = active == nil`,
+        `${indentation}let hasFutureInterval = intervals.contains { time < $0.begin }`,
+        `${indentation}let activeDuration = max(0, interval.end - interval.begin)`,
+        `${indentation}let elapsed = max(0, (atEnd ? interval.end : time) - interval.begin)`,
+        `${indentation}if !atEnd && elapsed > repeatingDuration && !freeze {`,
+        `${indentation}${indentation}return SVGTimingSample(state: .active, simpleTime: nil, simpleProgress: nil, activeDuration: activeDuration, simpleDuration: duration, repeatIteration: max(0, Int(ceil(repeatingDuration / max(duration, 1))) - 1), isBeginBoundary: false, isEndBoundary: false, isRepeatBoundary: false, selectedBegin: interval.begin, intervalBegin: interval.begin, intervalEnd: interval.end)`,
+        `${indentation}}`,
+        `${indentation}let presentationElapsed = freeze ? min(elapsed, repeatingDuration) : elapsed`,
+        `${indentation}let quotient = duration > 0 && duration.isFinite ? presentationElapsed / duration : 0`,
+        `${indentation}let rounded = quotient.rounded()`,
+        `${indentation}let exactRepeat = presentationElapsed > 0 && abs(quotient - rounded) <= 0.000000000001`,
+        `${indentation}let iteration: Int`,
+        `${indentation}let simpleTime: Double`,
+        `${indentation}let progress: Double`,
+        `${indentation}if duration <= 0 {`,
+        `${indentation}${indentation}iteration = 0`,
+        `${indentation}${indentation}simpleTime = 0`,
+        `${indentation}${indentation}progress = 1`,
+        `${indentation}} else if !duration.isFinite {`,
+        `${indentation}${indentation}iteration = 0`,
+        `${indentation}${indentation}simpleTime = presentationElapsed`,
+        `${indentation}${indentation}progress = 0`,
+        `${indentation}} else if atEnd && exactRepeat {`,
+        `${indentation}${indentation}iteration = max(0, Int(rounded) - 1)`,
+        `${indentation}${indentation}simpleTime = duration`,
+        `${indentation}${indentation}progress = 1`,
+        `${indentation}} else {`,
+        `${indentation}${indentation}iteration = max(0, Int(floor(quotient + 0.000000000001)))`,
+        `${indentation}${indentation}simpleTime = max(0, presentationElapsed - Double(iteration) * duration)`,
+        `${indentation}${indentation}progress = min(1, max(0, simpleTime / duration))`,
+        `${indentation}}`,
+        `${indentation}return SVGTimingSample(state: atEnd ? (freeze && !hasFutureInterval ? .frozen : .completed) : .active, simpleTime: simpleTime, simpleProgress: progress, activeDuration: activeDuration, simpleDuration: duration, repeatIteration: iteration, isBeginBoundary: intervals.contains { abs(time - $0.begin) <= 0.000000000001 }, isEndBoundary: intervals.contains { abs(time - $0.end) <= 0.000000000001 }, isRepeatBoundary: !atEnd && exactRepeat, selectedBegin: interval.begin, intervalBegin: interval.begin, intervalEnd: interval.end)`,
+        "}",
+        "",
+        "private static func svgAnimatedNumber(documentTime: Double, intervals: [(begin: Double, end: Double)], duration: Double, repeatingDuration: Double, values: [Double], discrete: Bool, base: Double, freeze: Bool) -> Double {",
+        `${indentation}guard let first = values.first, let last = values.last else { return base }`,
+        `${indentation}let sample = svgTimingSample(documentTime: documentTime, intervals: intervals, duration: duration, repeatingDuration: repeatingDuration, freeze: freeze)`,
+        `${indentation}if sample.state == .inactive || sample.state == .completed { return base }`,
+        `${indentation}guard let progress = sample.simpleProgress else { return base }`,
+        `${indentation}if discrete {`,
+        `${indentation}${indentation}let index = min(values.count - 1, Int(floor(progress * Double(values.count) + 0.000000000001)))`,
+        `${indentation}${indentation}return values[index]`,
+        `${indentation}}`,
+        `${indentation}return first + (last - first) * progress`,
         "}",
         "",
         "private final class AnimationClockState: ObservableObject {",
@@ -3657,6 +3735,7 @@ export function generateView(
     subdocuments: [],
     rootName: config.structName ?? "SVGView",
     config,
+    animationIntervals: sampleSMILProgram(document.animationProgram, 0).intervals,
   };
   const nodes = buildViewNodes(document.children, context);
   const imports = new Set<string>();

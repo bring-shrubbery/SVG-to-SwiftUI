@@ -27,6 +27,20 @@ export type {
 } from "./renderTree/animation";
 export { sampleNumericAnimation } from "./renderTree/animation";
 export type {
+  DeterministicTimingEvent,
+  SMILProgramSample,
+  SMILTimingInterval,
+  SMILTimingSample,
+  SMILTimingState,
+} from "./renderTree/smilTiming";
+export {
+  computeSMILActiveDuration,
+  computeSMILRepeatingDuration,
+  resolveSMILIntervals,
+  sampleSMILProgram,
+  sampleSMILTiming,
+} from "./renderTree/smilTiming";
+export type {
   DiagnosticSeverity,
   OutputMode,
   RenderDiagnostic,

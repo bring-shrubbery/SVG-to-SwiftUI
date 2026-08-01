@@ -5,10 +5,33 @@ import type { RgbaTolerance } from "../visual-tests/rgba-compare";
 const ANIMATION_TESTS_DIR = __dirname;
 export const ANIMATION_FIXTURES_DIR = resolve(ANIMATION_TESTS_DIR, "fixtures");
 export const ANIMATION_MANIFEST_PATH = resolve(ANIMATION_TESTS_DIR, "animation-fixture-manifest.json");
+export const SMIL_TIMING_EXPECTATIONS_PATH = resolve(ANIMATION_TESTS_DIR, "smil-timing-expectations.json");
 
 export type AnimationFixtureMode = "comparison" | "reference-probe";
 export type ExpectedOutputMode = "shape" | "view";
 export type AnimationReferenceBackend = "webkit";
+
+const REQUIRED_SMIL_TIMING_PROBE_TAGS = [
+  "clock-values",
+  "deterministic-events",
+  "end-list",
+  "eventbase",
+  "fill",
+  "fractional-repeat",
+  "full-partial-clock",
+  "indefinite",
+  "instance-time-list",
+  "min-max",
+  "negative-begin",
+  "repeat-count",
+  "repeat-duration",
+  "repeat-reference",
+  "restart-always",
+  "restart-never",
+  "restart-when-not-active",
+  "syncbase",
+  "zero-duration",
+] as const;
 
 function validateBackground(value: string | null): void {
   if (value !== null && !/^#([\da-f]{6}|[\da-f]{8})$/i.test(value))
@@ -20,6 +43,12 @@ export interface AnimationTimeline {
   framesPerSecond: number;
   sampleTimesMicroseconds?: number[];
   includeEndFrame?: boolean;
+}
+
+export interface AnimationTimelineEvent {
+  timeMicroseconds: number;
+  name: string;
+  targetId?: string;
 }
 
 interface RawAnimationFixture {
@@ -34,6 +63,7 @@ interface RawAnimationFixture {
   expectedMode?: ExpectedOutputMode;
   tags: string[];
   timeline: AnimationTimeline;
+  events?: AnimationTimelineEvent[];
   expectDistinctReferenceFrames?: boolean;
   tolerance?: Partial<RgbaTolerance>;
   toleranceReason?: string;
@@ -49,6 +79,23 @@ interface AnimationManifestFile {
     tolerance: RgbaTolerance;
   };
   fixtures: Record<string, RawAnimationFixture>;
+}
+
+export interface SMILTimingExpectationSet {
+  beginSeconds: number;
+  durationSeconds: number;
+  repeatCount: number;
+  fill: "remove" | "freeze";
+  values: number[];
+  samples: Array<{
+    timeMicroseconds: number;
+    state: "inactive" | "active" | "frozen" | "completed";
+    iteration: number;
+    value: number;
+    beginBoundary?: boolean;
+    endBoundary?: boolean;
+    repeatBoundary?: boolean;
+  }>;
 }
 
 export interface AnimationFrame {
@@ -72,6 +119,7 @@ export interface LoadedAnimationFixture {
   expectedMode?: ExpectedOutputMode;
   tags: string[];
   timeline: AnimationTimeline;
+  events: AnimationTimelineEvent[];
   frames: AnimationFrame[];
   expectDistinctReferenceFrames: boolean;
   tolerance: RgbaTolerance;
@@ -121,6 +169,10 @@ function readManifest(): AnimationManifestFile {
   return JSON.parse(readFileSync(ANIMATION_MANIFEST_PATH, "utf8")) as AnimationManifestFile;
 }
 
+export function loadSMILTimingExpectations(): Record<string, SMILTimingExpectationSet> {
+  return JSON.parse(readFileSync(SMIL_TIMING_EXPECTATIONS_PATH, "utf8")) as Record<string, SMILTimingExpectationSet>;
+}
+
 export function loadAnimationFixtures(): LoadedAnimationFixture[] {
   const manifest = readManifest();
   if (manifest.version !== 1) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
@@ -141,6 +193,7 @@ export function loadAnimationFixtures(): LoadedAnimationFixture[] {
       ...(entry.expectedMode ? { expectedMode: entry.expectedMode } : {}),
       tags: entry.tags,
       timeline: entry.timeline,
+      events: entry.events ?? [],
       frames: timelineFrames(entry.timeline),
       expectDistinctReferenceFrames: entry.expectDistinctReferenceFrames ?? false,
       tolerance: { ...manifest.defaults.tolerance, ...entry.tolerance },
@@ -156,9 +209,11 @@ export function validateAnimationManifest(): string[] {
   const errors: string[] = [];
   let manifest: AnimationManifestFile;
   let fixtures: LoadedAnimationFixture[];
+  let timingExpectations: Record<string, SMILTimingExpectationSet>;
   try {
     manifest = readManifest();
     fixtures = loadAnimationFixtures();
+    timingExpectations = loadSMILTimingExpectations();
   } catch (error) {
     return [error instanceof Error ? error.message : String(error)];
   }
@@ -168,6 +223,15 @@ export function validateAnimationManifest(): string[] {
   for (const name of actual)
     if (!declared.has(name)) errors.push(`Animation fixture missing from manifest: ${name}.svg`);
   for (const name of declared) if (!actual.has(name)) errors.push(`Animation manifest entry has no SVG: ${name}.svg`);
+  for (const name of Object.keys(timingExpectations))
+    if (!declared.has(name)) errors.push(`SMIL timing expectations have no manifest fixture: ${name}`);
+  const timingProbeTags = new Set(
+    fixtures
+      .filter((fixture) => fixture.mode === "reference-probe" && fixture.tags.includes("smil-timing"))
+      .flatMap((fixture) => fixture.tags),
+  );
+  for (const tag of REQUIRED_SMIL_TIMING_PROBE_TAGS)
+    if (!timingProbeTags.has(tag)) errors.push(`SMIL timing reference probes do not cover required tag: ${tag}`);
 
   for (const fixture of fixtures) {
     const prefix = `${fixture.name}:`;
@@ -180,9 +244,26 @@ export function validateAnimationManifest(): string[] {
     if (!validPositiveInteger(fixture.timeline.framesPerSecond))
       errors.push(`${prefix} framesPerSecond must be a positive safe integer`);
     if (fixture.timeline.framesPerSecond > 240) errors.push(`${prefix} framesPerSecond must not exceed 240`);
+    if (
+      fixture.events.some(
+        (event, index) =>
+          !Number.isSafeInteger(event.timeMicroseconds) ||
+          event.timeMicroseconds < 0 ||
+          event.timeMicroseconds > fixture.timeline.durationMicroseconds ||
+          event.name.trim() === "" ||
+          (index > 0 && event.timeMicroseconds < fixture.events[index - 1]!.timeMicroseconds),
+      )
+    )
+      errors.push(`${prefix} events must be named, ordered, safe microsecond times inside the timeline`);
     if (fixture.frames.length === 0) errors.push(`${prefix} timeline must produce at least one frame`);
     if (fixture.frames.length > 10_000) errors.push(`${prefix} timeline must not exceed 10,000 frames`);
     const times = fixture.frames.map((frame) => frame.timeMicroseconds);
+    const timingExpectation = timingExpectations[fixture.name];
+    if (
+      timingExpectation &&
+      JSON.stringify(times) !== JSON.stringify(timingExpectation.samples.map((sample) => sample.timeMicroseconds))
+    )
+      errors.push(`${prefix} frame schedule must exactly match its shared SMIL timing expectations`);
     if (times.some((time) => !Number.isSafeInteger(time) || time < 0))
       errors.push(`${prefix} sample times must be non-negative safe integer microseconds`);
     if (new Set(times).size !== times.length) errors.push(`${prefix} sample times must be unique`);

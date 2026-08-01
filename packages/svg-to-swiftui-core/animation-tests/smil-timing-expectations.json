@@ -1,0 +1,26 @@
+{
+  "benchmark-02-smil-timing": {
+    "beginSeconds": 0.2,
+    "durationSeconds": 0.6,
+    "repeatCount": 2,
+    "fill": "freeze",
+    "values": [16, 48, 80],
+    "samples": [
+      { "timeMicroseconds": 0, "state": "inactive", "iteration": 0, "value": 16 },
+      { "timeMicroseconds": 199999, "state": "inactive", "iteration": 0, "value": 16 },
+      { "timeMicroseconds": 200000, "state": "active", "iteration": 0, "value": 16, "beginBoundary": true },
+      { "timeMicroseconds": 399999, "state": "active", "iteration": 0, "value": 16 },
+      { "timeMicroseconds": 400000, "state": "active", "iteration": 0, "value": 48 },
+      { "timeMicroseconds": 599999, "state": "active", "iteration": 0, "value": 48 },
+      { "timeMicroseconds": 600000, "state": "active", "iteration": 0, "value": 80 },
+      { "timeMicroseconds": 799999, "state": "active", "iteration": 0, "value": 80 },
+      { "timeMicroseconds": 800000, "state": "active", "iteration": 1, "value": 16, "repeatBoundary": true },
+      { "timeMicroseconds": 999999, "state": "active", "iteration": 1, "value": 16 },
+      { "timeMicroseconds": 1000000, "state": "active", "iteration": 1, "value": 48 },
+      { "timeMicroseconds": 1199999, "state": "active", "iteration": 1, "value": 48 },
+      { "timeMicroseconds": 1200000, "state": "active", "iteration": 1, "value": 80 },
+      { "timeMicroseconds": 1399999, "state": "active", "iteration": 1, "value": 80 },
+      { "timeMicroseconds": 1400000, "state": "frozen", "iteration": 1, "value": 80, "endBoundary": true }
+    ]
+  }
+}
