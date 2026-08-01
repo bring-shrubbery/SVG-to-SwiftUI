@@ -122,6 +122,7 @@ function hasIntrinsicAlpha(paint: Paint): boolean {
 export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGeneratorConfig = {}): CapabilityDecision {
   const paints = collectVisiblePaints(document.children);
   const reasons: string[] = [];
+  const hasAnimation = document.animationProgram.animations.length > 0;
   const needsViewportClip = containsViewportClip(document.children);
   const hasGradientPaint = paints.some(({ paint }) => {
     if (paint.type !== "reference") return false;
@@ -143,6 +144,7 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
 
   if (
     config.preserveColors === false &&
+    !hasAnimation &&
     !needsViewportClip &&
     !hasPaintServer &&
     !needsIndependentCompositing &&
@@ -157,6 +159,8 @@ export function analyzeCapabilities(document: RenderDocument, config: SwiftUIGen
       paintCount: paints.length,
     };
   }
+
+  if (hasAnimation) reasons.push("document contains declarative SVG animation");
 
   if (containsGeneralViewContent(document.children)) reasons.push("document contains non-geometry view content");
   if (needsAccessibility) reasons.push("document contains static accessibility semantics");

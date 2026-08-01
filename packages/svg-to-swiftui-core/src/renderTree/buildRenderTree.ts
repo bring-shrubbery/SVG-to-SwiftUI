@@ -25,6 +25,7 @@ import type { SVGElementProperties, ViewBoxData } from "../types";
 import { getSVGElement, resolveSVGProperties } from "../utils";
 import { DEFAULT_PRESERVE_ASPECT_RATIO, parsePreserveAspectRatio, parseViewBox, viewBoxTransform } from "../viewports";
 import { SVGAccessibilityResolver } from "./accessibility";
+import { buildAnimationProgram, declarativeAnimationTag } from "./animation";
 import { resolveClipPathInstance, resolveClipPathResources } from "./clips";
 import { SVGConditionalProcessor } from "./conditionalProcessing";
 import { resolveFilterInstance, resolveFilterResources } from "./filters";
@@ -2082,7 +2083,7 @@ function buildNode(
   context: BuildContext,
 ): RenderNode[] {
   const tag = element.tagName ?? "unknown";
-  if (NON_RENDERING_ELEMENTS.has(tag)) return [];
+  if (NON_RENDERING_ELEMENTS.has(tag) || declarativeAnimationTag(tag)) return [];
   if (!context.conditional.matches(element)) return [];
   if (tag === "use") return buildUse(element, inherited, coordinate, context);
   if (tag === "svg") return [buildNestedSVG(element, inherited, coordinate, context)];
@@ -2141,6 +2142,7 @@ export function buildRenderDocument(
   const styleResolver = new SVGStyleResolver(svg, diagnostics);
   const conditional = new SVGConditionalProcessor(config.staticEnvironment, diagnostics);
   const accessibility = new SVGAccessibilityResolver(resources, conditional.environment, diagnostics);
+  const animationProgram = buildAnimationProgram(svg, diagnostics);
   const context: BuildContext = {
     resources,
     diagnostics,
@@ -2155,7 +2157,7 @@ export function buildRenderDocument(
     const tag = (element.tagName ?? "").toLowerCase();
     if (tag === "script") {
       addDiagnostic(context, element, "unsupported-script", "SVG scripts are not executed by the static renderer.");
-    } else if (DYNAMIC_ELEMENTS.has(tag)) {
+    } else if (DYNAMIC_ELEMENTS.has(tag) && !declarativeAnimationTag(tag)) {
       addDiagnostic(
         context,
         element,
@@ -2378,6 +2380,7 @@ export function buildRenderDocument(
           },
           resources,
           children: nodes,
+          animationProgram: { animations: [], evaluationOrder: [] },
           diagnostics: [],
         };
         localCandidates.push({
@@ -3148,6 +3151,7 @@ export function buildRenderDocument(
     },
     resources,
     children,
+    animationProgram,
     diagnostics,
   };
 }

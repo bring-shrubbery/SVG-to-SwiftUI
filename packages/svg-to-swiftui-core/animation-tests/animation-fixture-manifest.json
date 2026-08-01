@@ -39,12 +39,13 @@
       },
       "expectDistinctReferenceFrames": true
     },
-    "reference-smil-seek": {
-      "mode": "reference-probe",
+    "benchmark-01-numeric-cx": {
+      "mode": "comparison",
       "referenceBackend": "webkit",
       "width": 96,
       "height": 48,
-      "tags": ["animate", "reference-seek", "smil"],
+      "expectedMode": "view",
+      "tags": ["animate", "benchmark-01", "numeric", "smil"],
       "timeline": {
         "durationMicroseconds": 1000000,
         "framesPerSecond": 30,

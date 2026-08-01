@@ -29,7 +29,7 @@ describe("static SVG conformance contract", () => {
     );
   });
 
-  test("diagnoses every excluded dynamic element, event handler, and navigation", () => {
+  test("diagnoses excluded runtime content while declarative animation gets precise compiler diagnostics", () => {
     const tags = [
       "animate",
       "animateMotion",
@@ -53,7 +53,13 @@ describe("static SVG conformance contract", () => {
       expect.arrayContaining([
         "dynamic-event-handler",
         "dynamic-navigation",
-        ...tags.map((tag) => (tag === "script" ? "unsupported-script" : `dynamic-${tag.toLowerCase()}`)),
+        "missing-animation-attribute",
+        "unsupported-script",
+        "dynamic-audio",
+        "dynamic-canvas",
+        "dynamic-iframe",
+        "dynamic-mpath",
+        "dynamic-video",
       ]),
     );
     expect(result.diagnostics.every((item) => item.location && item.fallback)).toBe(true);
