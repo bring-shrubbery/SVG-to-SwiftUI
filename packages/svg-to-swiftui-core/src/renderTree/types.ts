@@ -4,6 +4,7 @@ import type { FontMetrics, ParsedSVGLength } from "../lengths";
 import type { AffineTransform } from "../transformUtils";
 import type { ViewBoxData } from "../types";
 import type { PreserveAspectRatio } from "../viewports";
+import type { AnimationProgram } from "./animation";
 
 /** Identifies the SVG source that produced a render-tree node or diagnostic. */
 export interface SourceLocation {
@@ -895,6 +896,8 @@ export interface RenderDocument {
   };
   resources: ResourceRegistry;
   children: RenderNode[];
+  /** Declarative animation stays immutable and separate from base presentation. */
+  animationProgram: AnimationProgram;
   diagnostics: RenderDiagnostic[];
 }
 

@@ -169,7 +169,7 @@ enum _VisualRenderError: Error, CustomStringConvertible {
 }
 
 @MainActor
-func _renderVisualTask(_ task: _VisualTask, factories: [() -> AnyView]) throws {
+func _renderVisualTask(_ task: _VisualTask, factories: [(Int64) -> AnyView]) throws {
     guard factories.indices.contains(task.index) else { throw _VisualRenderError.invalidIndex(task.index) }
 
     for font in task.fonts {
@@ -191,7 +191,7 @@ func _renderVisualTask(_ task: _VisualTask, factories: [() -> AnyView]) throws {
         blue: task.backgroundB,
         opacity: task.backgroundA
     )
-    let content = factories[task.index]()
+    let content = factories[task.index](task.timeMicroseconds ?? 0)
         .frame(width: task.width, height: task.height, alignment: .topLeading)
         .background(background)
         .environment(\.colorScheme, .light)

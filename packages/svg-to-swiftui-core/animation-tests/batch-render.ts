@@ -32,6 +32,7 @@ export interface AnimationBatchItem {
   background: string | null;
   fonts: string[];
   expectedMode: ExpectedOutputMode;
+  usesDocumentTime: boolean;
   tolerance: RgbaTolerance;
   frames: AnimationBatchFrame[];
 }
@@ -71,17 +72,18 @@ function generatedSource(support: string, items: AnimationBatchItem[]): string {
     )
     .join("\n\n");
   const factories = items
-    .map((item) =>
-      item.expectedMode === "shape"
-        ? `    { AnyView(${item.swiftTypeName}().fill(Color.black)) }`
-        : `    { AnyView(${item.swiftTypeName}()) }`,
-    )
+    .map((item) => {
+      if (item.expectedMode === "shape") return `    { _ in AnyView(${item.swiftTypeName}().fill(Color.black)) }`;
+      return item.usesDocumentTime
+        ? `    { time in AnyView(${item.swiftTypeName}(documentTime: Double(time) / 1_000_000)) }`
+        : `    { _ in AnyView(${item.swiftTypeName}()) }`;
+    })
     .join(",\n");
   return `${support}
 
 ${declarations}
 
-let _visualFactories: [() -> AnyView] = [
+let _visualFactories: [(Int64) -> AnyView] = [
 ${factories}
 ]
 let _visualTaskData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
@@ -178,6 +180,7 @@ export async function runAnimationBatch(
             background: item.background,
             fonts: item.fonts,
             expectedMode: item.expectedMode,
+            usesDocumentTime: item.usesDocumentTime,
             timeMicroseconds: frame.timeMicroseconds,
           }),
           ...item.fonts.map((font) => readFileSync(resolve(__dirname, font))),

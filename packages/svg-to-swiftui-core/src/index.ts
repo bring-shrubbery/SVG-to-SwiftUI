@@ -16,6 +16,17 @@ import { getSVGElement, resolveSVGProperties } from "./utils";
 export * from "./conformance";
 export * from "./lengths";
 export type {
+  AnimationDefinition,
+  AnimationDuration,
+  AnimationKind,
+  AnimationProgram,
+  AnimationTarget,
+  AnimationTime,
+  AnimationTiming,
+  AnimationValue,
+} from "./renderTree/animation";
+export { sampleNumericAnimation } from "./renderTree/animation";
+export type {
   DiagnosticSeverity,
   OutputMode,
   RenderDiagnostic,

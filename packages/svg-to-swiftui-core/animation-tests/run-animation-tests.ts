@@ -473,6 +473,7 @@ async function main(): Promise<void> {
           background: fixture.background,
           fonts: fixture.fonts,
           expectedMode,
+          usesDocumentTime: swiftCode.includes("init(documentTime: Double? = nil"),
           tolerance: fixture.tolerance,
           frames: fixture.frames.map((frame) => ({
             ...frame,

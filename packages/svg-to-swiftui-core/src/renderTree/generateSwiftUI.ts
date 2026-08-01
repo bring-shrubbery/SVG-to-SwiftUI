@@ -84,6 +84,7 @@ type GeneratedViewNode =
       filter?: GeneratedFilter;
       tileContained?: boolean;
       accessibility?: AccessibilityMetadata;
+      animationOffsetX?: string;
     };
 
 interface GeneratedMask {
@@ -326,6 +327,22 @@ function buildViewNodes(
   ancestorTransforms: RenderNode["transform"][] = [],
 ): GeneratedViewNode[] {
   const generated: GeneratedViewNode[] = [];
+
+  const animationOffsetX = (node: RenderNode): string | undefined => {
+    if (!node.source.id) return undefined;
+    const animation = context.document.animationProgram.animations.find(
+      (candidate) =>
+        candidate.runtimeSupport === "numeric-linear" &&
+        candidate.target?.source.id === node.source.id &&
+        (candidate.attributeName === "cx" || candidate.attributeName === "x"),
+    );
+    if (!animation || animation.value.type !== "number" || animation.timing.duration.type !== "seconds")
+      return undefined;
+    const begin = animation.timing.begin[0];
+    if (begin?.type !== "offset" || animation.value.from === undefined || animation.value.to === undefined)
+      return undefined;
+    return `Self.svgAnimatedNumber(documentTime: documentTime, begin: ${formatNumber(begin.seconds)}, duration: ${formatNumber(animation.timing.duration.seconds)}, from: ${formatNumber(animation.value.from)}, to: ${formatNumber(animation.value.to)}, base: ${formatNumber(animation.value.base)}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"}) - ${formatNumber(animation.value.base)}`;
+  };
 
   const buildFilter = (
     filter: FilterInstance | undefined,
@@ -720,6 +737,7 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+        ...(animationOffsetX(node) ? { animationOffsetX: animationOffsetX(node) } : {}),
       });
       continue;
     }
@@ -929,6 +947,7 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+        ...(animationOffsetX(node) ? { animationOffsetX: animationOffsetX(node) } : {}),
       });
     }
   }
@@ -1998,6 +2017,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   }
   if (node.opacity !== 1) lines.push(`${prefix}.opacity(${swiftNumber(node.opacity)})`);
   if (node.blendMode !== "normal") lines.push(`${prefix}.blendMode(.${swiftBlendMode(node.blendMode)})`);
+  if (node.animationOffsetX) lines.push(`${prefix}.offset(x: ${node.animationOffsetX})`);
   appendAccessibilityModifiers(lines, node.accessibility, prefix);
   return lines;
 }
@@ -3485,13 +3505,79 @@ function createView(
   indentationSize: number,
 ): string[] {
   const indentation = " ".repeat(indentationSize);
-  const body: string[] = [
-    "var body: some View {",
+  const animated = document.animationProgram.animations.length > 0;
+  const content = [
     `${indentation}ZStack {`,
     ...nodes.flatMap((node) => renderViewNode(node, 2, indentation)),
     `${indentation}}`,
-    "}",
   ];
+  const body: string[] = animated
+    ? [
+        "private let documentTime: Double?",
+        "private let respectsReducedMotion: Bool",
+        "@StateObject private var animationClock = AnimationClockState()",
+        "@Environment(\\.scenePhase) private var scenePhase",
+        "@Environment(\\.accessibilityReduceMotion) private var reduceMotion",
+        "",
+        "init(documentTime: Double? = nil, respectsReducedMotion: Bool = false) {",
+        `${indentation}self.documentTime = documentTime`,
+        `${indentation}self.respectsReducedMotion = respectsReducedMotion`,
+        "}",
+        "",
+        "@ViewBuilder",
+        "private func content(at documentTime: Double) -> some View {",
+        ...content,
+        "}",
+        "",
+        "var body: some View {",
+        `${indentation}if let documentTime {`,
+        `${indentation}${indentation}content(at: Self.sanitizedDocumentTime(documentTime))`,
+        `${indentation}} else if respectsReducedMotion && reduceMotion {`,
+        `${indentation}${indentation}content(at: 0)`,
+        `${indentation}} else {`,
+        `${indentation}${indentation}TimelineView(.animation(paused: scenePhase != .active)) { timeline in`,
+        `${indentation}${indentation}${indentation}content(at: animationClock.sample(date: timeline.date, isActive: scenePhase == .active))`,
+        `${indentation}${indentation}}`,
+        `${indentation}}`,
+        "}",
+        "",
+        "private static func sanitizedDocumentTime(_ value: Double) -> Double {",
+        `${indentation}value.isFinite ? value : 0`,
+        "}",
+        "",
+        "private static func svgAnimatedNumber(documentTime: Double, begin: Double, duration: Double, from: Double, to: Double, base: Double, freeze: Bool) -> Double {",
+        `${indentation}let time = sanitizedDocumentTime(documentTime)`,
+        `${indentation}if time < begin { return base }`,
+        `${indentation}if duration <= 0 || time >= begin + duration { return freeze ? to : base }`,
+        `${indentation}let progress = (time - begin) / duration`,
+        `${indentation}return from + (to - from) * progress`,
+        "}",
+        "",
+        "private final class AnimationClockState: ObservableObject {",
+        `${indentation}private var startDate: Date?`,
+        `${indentation}private var pausedAt: Date?`,
+        `${indentation}private var pausedDuration: TimeInterval = 0`,
+        "",
+        `${indentation}func sample(date: Date, isActive: Bool) -> Double {`,
+        `${indentation}${indentation}guard let startDate else {`,
+        `${indentation}${indentation}${indentation}self.startDate = date`,
+        `${indentation}${indentation}${indentation}if !isActive { pausedAt = date }`,
+        `${indentation}${indentation}${indentation}return 0`,
+        `${indentation}${indentation}}`,
+        `${indentation}${indentation}if !isActive {`,
+        `${indentation}${indentation}${indentation}if pausedAt == nil { pausedAt = date }`,
+        `${indentation}${indentation}${indentation}let stoppedAt = pausedAt ?? date`,
+        `${indentation}${indentation}${indentation}return max(0, stoppedAt.timeIntervalSince(startDate) - pausedDuration)`,
+        `${indentation}${indentation}}`,
+        `${indentation}${indentation}if let pausedAt {`,
+        `${indentation}${indentation}${indentation}pausedDuration += max(0, date.timeIntervalSince(pausedAt))`,
+        `${indentation}${indentation}${indentation}self.pausedAt = nil`,
+        `${indentation}${indentation}}`,
+        `${indentation}${indentation}return max(0, date.timeIntervalSince(startDate) - pausedDuration)`,
+        `${indentation}}`,
+        "}",
+      ]
+    : ["var body: some View {", ...content, "}"];
   for (const helper of helpers) {
     const pathFunction = createFunctionTemplate({
       name: "path",
@@ -3574,6 +3660,10 @@ export function generateView(
   };
   const nodes = buildViewNodes(document.children, context);
   const imports = new Set<string>();
+  if (document.animationProgram.animations.length > 0) {
+    imports.add("Foundation");
+    imports.add("SwiftUI");
+  }
   if (containsFilterNode(nodes)) {
     imports.add("Foundation");
     imports.add("SwiftUI");

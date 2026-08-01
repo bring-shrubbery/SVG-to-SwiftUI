@@ -246,6 +246,8 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 
 The animation harness extends the same compiler pipeline across an exact microsecond schedule. WebKit is paused and explicitly seeks both the SVG/SMIL document timeline and CSS Web Animations timeline. Generated Swift is compiled once, then SwiftUI renders every matching timestamp through an injected deterministic time value. Each lossless frame is compared with the same premultiplied-RGBA metrics, and summaries identify the worst frame and timestamp.
 
+Generated animated views expose deterministic and production clock paths. See the [animation clock contract](docs/animation-clock.md) for restart, pause/resume, Reduced Motion, and exact-time behavior.
+
 Optional MP4 files are review artifacts only. They are encoded after the lossless comparisons and never decide whether a test passes. Animation compiler support is being implemented in dependency order under the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94).
 
 ## Migration from 0.4

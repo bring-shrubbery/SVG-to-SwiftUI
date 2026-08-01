@@ -70,15 +70,15 @@ function generatedSource(support: string, items: BatchTestItem[]): string {
   const factories = items
     .map((item) =>
       item.expectedMode === "shape"
-        ? `    { AnyView(${item.swiftTypeName}().fill(Color.black)) }`
-        : `    { AnyView(${item.swiftTypeName}()) }`,
+        ? `    { _ in AnyView(${item.swiftTypeName}().fill(Color.black)) }`
+        : `    { _ in AnyView(${item.swiftTypeName}()) }`,
     )
     .join(",\n");
   return `${support}
 
 ${declarations}
 
-let _visualFactories: [() -> AnyView] = [
+let _visualFactories: [(Int64) -> AnyView] = [
 ${factories}
 ]
 let _visualTaskData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
