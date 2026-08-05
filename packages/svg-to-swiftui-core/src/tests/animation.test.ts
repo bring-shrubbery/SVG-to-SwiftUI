@@ -303,9 +303,10 @@ describe("generated animation clock", () => {
     expect(swift).toContain("svgAnimatedTransformCorrection(");
     expect(swift).toContain("svgComposeValue(");
     expect(swift).toContain(
-      "let animatedTransform: CGAffineTransform = AnimatedTransform.svgAnimatedTransformCorrection",
+      "private func animatedTransform0(documentTime: Double, proxy: GeometryProxy) -> CGAffineTransform {",
     );
-    expect(swift).toContain(".transformEffect(animatedTransform)");
+    expect(swift).toContain("AnimatedTransform.svgAnimatedTransformCorrection");
+    expect(swift).toContain(".transformEffect(animatedTransform0(documentTime: documentTime, proxy: proxy))");
     expect(swift).toContain("drawFilterSource0(graphics: graphics, size: size, documentTime: documentTime)");
     expect(swift).toContain("private func drawFilterSource0(graphics: CGContext, size: CGSize, documentTime: Double)");
     expect(swift.match(/svgAnimatedValue\(documentTime: documentTime/g)?.length).toBeGreaterThanOrEqual(2);
@@ -325,7 +326,10 @@ describe("generated animation clock", () => {
     expect(swift).toContain("SVGAnimationMotionPoint(");
     expect(swift).toContain("animatedMotion: AnimatedMotion.svgAnimatedMotion");
     expect(swift).toContain("svgMultiplyTransform(centeredBase, svgMultiplyTransform(animatedMotion, animatedSuffix))");
-    expect(swift).toContain("let animatedTransform: CGAffineTransform = AnimatedMotion.svgAnimatedTransformCorrection");
-    expect(swift).toContain(".transformEffect(animatedTransform)");
+    expect(swift).toContain(
+      "private func animatedTransform0(documentTime: Double, proxy: GeometryProxy) -> CGAffineTransform {",
+    );
+    expect(swift).toContain("AnimatedMotion.svgAnimatedTransformCorrection");
+    expect(swift).toContain(".transformEffect(animatedTransform0(documentTime: documentTime, proxy: proxy))");
   });
 });

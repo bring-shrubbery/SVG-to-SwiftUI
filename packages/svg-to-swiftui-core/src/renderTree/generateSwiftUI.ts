@@ -3409,6 +3409,8 @@ interface ViewRenderContext {
   nextFilterRenderer: number;
   patternRenderers: string[][];
   nextPatternRenderer: number;
+  transformRenderers: string[][];
+  nextTransformRenderer: number;
   viewRenderers: string[][];
   nextViewRenderer: number;
   animated: boolean;
@@ -3436,6 +3438,26 @@ function renderExtractedViewNode(
     "@ViewBuilder",
     `private func ${rendererName}(${rendererParameters}) -> some View {`,
     ...rendererBody,
+    "}",
+  ]);
+  return `${rendererName}(${rendererArguments})`;
+}
+
+function renderAnimatedTransform(expression: string, indentation: string, renderContext: ViewRenderContext): string {
+  const rendererName = `animatedTransform${renderContext.nextTransformRenderer++}`;
+  const rendererParameters = [
+    "documentTime: Double",
+    "proxy: GeometryProxy",
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const rendererArguments = [
+    "documentTime: documentTime",
+    "proxy: proxy",
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
+  renderContext.transformRenderers.push([
+    `private func ${rendererName}(${rendererParameters}) -> CGAffineTransform {`,
+    `${indentation}${expression}`,
     "}",
   ]);
   return `${rendererName}(${rendererArguments})`;
@@ -3878,12 +3900,11 @@ function renderViewNode(
   }
   if (node.type === "group" && node.animationTransform) {
     const { animationTransform, ...staticNode } = node;
-    const staticRenderer = renderExtractedViewNode(staticNode, indentation, renderContext);
+    const transform = renderAnimatedTransform(animationTransform, indentation, renderContext);
     return [
       `${prefix}GeometryReader { proxy in`,
-      `${prefix}${indentation}let animatedTransform: CGAffineTransform = ${animationTransform}`,
-      `${prefix}${indentation}${staticRenderer}`,
-      `${prefix}${indentation}.transformEffect(animatedTransform)`,
+      ...renderViewNode(staticNode, level + 1, indentation, renderContext),
+      `${prefix}${indentation}.transformEffect(${transform})`,
       `${prefix}}`,
     ];
   }
@@ -3964,11 +3985,7 @@ function renderViewNode(
         lines.push(`${prefix}${indentation}${indentation}${indentation}Color.clear`);
       else
         for (const child of node.clipPath.children)
-          if (renderContext.animated)
-            lines.push(
-              `${prefix}${indentation.repeat(3)}${renderExtractedViewNode(child, indentation, renderContext)}`,
-            );
-          else lines.push(...renderViewNode(child, level + 3, indentation, renderContext));
+          lines.push(...renderViewNode(child, level + 3, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}${indentation}}`,
         `${prefix}${indentation}${indentation}.frame(width: proxy.size.width, height: proxy.size.height)`,
@@ -4002,11 +4019,7 @@ function renderViewNode(
         lines.push(`${prefix}${indentation}${indentation}${indentation}${indentation}Color.clear`);
       else
         for (const child of node.mask.children)
-          if (renderContext.animated)
-            lines.push(
-              `${prefix}${indentation.repeat(4)}${renderExtractedViewNode(child, indentation, renderContext)}`,
-            );
-          else lines.push(...renderViewNode(child, level + 4, indentation, renderContext));
+          lines.push(...renderViewNode(child, level + 4, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}${indentation}${indentation}}`,
         `${prefix}${indentation}${indentation}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
@@ -4020,11 +4033,7 @@ function renderViewNode(
         lines.push(`${prefix}${indentation}${indentation}${indentation}${indentation}Color.clear`);
       else
         for (const child of node.mask.children)
-          if (renderContext.animated)
-            lines.push(
-              `${prefix}${indentation.repeat(4)}${renderExtractedViewNode(child, indentation, renderContext)}`,
-            );
-          else lines.push(...renderViewNode(child, level + 4, indentation, renderContext));
+          lines.push(...renderViewNode(child, level + 4, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}${indentation}${indentation}}`,
         `${prefix}${indentation}${indentation}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
@@ -4037,11 +4046,7 @@ function renderViewNode(
       if (node.mask.children.length === 0) lines.push(`${prefix}${indentation}${indentation}Color.clear`);
       else
         for (const child of node.mask.children)
-          if (renderContext.animated)
-            lines.push(
-              `${prefix}${indentation.repeat(2)}${renderExtractedViewNode(child, indentation, renderContext)}`,
-            );
-          else lines.push(...renderViewNode(child, level + 2, indentation, renderContext));
+          lines.push(...renderViewNode(child, level + 2, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}}`,
         `${prefix}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
@@ -5765,6 +5770,8 @@ function createView(
     nextFilterRenderer: 0,
     patternRenderers: [],
     nextPatternRenderer: 0,
+    transformRenderers: [],
+    nextTransformRenderer: 0,
     viewRenderers: [],
     nextViewRenderer: 0,
     animated,
@@ -6378,6 +6385,7 @@ function createView(
     : ["var body: some View {", ...content, "}"];
   for (const renderer of renderContext.patternRenderers) body.push("", ...renderer);
   for (const renderer of renderContext.filterRenderers) body.push("", ...renderer);
+  for (const renderer of renderContext.transformRenderers) body.push("", ...renderer);
   for (const renderer of renderContext.viewRenderers) body.push("", ...renderer);
   for (const helper of helpers) {
     const pathFunction = createFunctionTemplate({
