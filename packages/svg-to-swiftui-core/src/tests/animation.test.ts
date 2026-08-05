@@ -292,17 +292,22 @@ describe("generated animation clock", () => {
 
   test("generates pure-time animateTransform matrices around the complete effect subtree", () => {
     const swift = convert(
-      `<svg viewBox="0 0 80 40"><g transform="skewX(8)">
+      `<svg viewBox="0 0 80 40"><defs><filter id="blur"><feGaussianBlur stdDeviation="1"/></filter></defs><g transform="skewX(8)">
         <animateTransform attributeName="transform" type="translate" from="0 0" to="20 0" dur="1s"/>
         <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="180 20 20" additive="sum" dur="1s"/>
-        <rect x="5" y="5" width="20" height="15" fill="red" filter="url(#missing)"/>
+        <rect x="5" y="5" width="20" height="15" fill="red" filter="url(#blur)"/>
       </g></svg>`,
       { structName: "AnimatedTransform", strict: false },
     );
     expect(swift).toContain("svgAnimationTransform(");
     expect(swift).toContain("svgAnimatedTransformCorrection(");
     expect(swift).toContain("svgComposeValue(");
-    expect(swift).toContain(".transformEffect(AnimatedTransform.svgAnimatedTransformCorrection");
+    expect(swift).toContain(
+      "let animatedTransform: CGAffineTransform = AnimatedTransform.svgAnimatedTransformCorrection",
+    );
+    expect(swift).toContain(".transformEffect(animatedTransform)");
+    expect(swift).toContain("drawFilterSource0(graphics: graphics, size: size, documentTime: documentTime)");
+    expect(swift).toContain("private func drawFilterSource0(graphics: CGContext, size: CGSize, documentTime: Double)");
     expect(swift.match(/svgAnimatedValue\(documentTime: documentTime/g)?.length).toBeGreaterThanOrEqual(2);
     expect(swift).not.toContain("@State private var");
   });
@@ -320,6 +325,7 @@ describe("generated animation clock", () => {
     expect(swift).toContain("SVGAnimationMotionPoint(");
     expect(swift).toContain("animatedMotion: AnimatedMotion.svgAnimatedMotion");
     expect(swift).toContain("svgMultiplyTransform(centeredBase, svgMultiplyTransform(animatedMotion, animatedSuffix))");
-    expect(swift).toContain(".transformEffect(AnimatedMotion.svgAnimatedTransformCorrection");
+    expect(swift).toContain("let animatedTransform: CGAffineTransform = AnimatedMotion.svgAnimatedTransformCorrection");
+    expect(swift).toContain(".transformEffect(animatedTransform)");
   });
 });
