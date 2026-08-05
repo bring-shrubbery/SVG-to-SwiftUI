@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "defaults": {
     "scale": 2,
     "background": null,
@@ -31,6 +31,20 @@
     { "rank": 8, "fixture": "benchmark-compositing-text", "capability": "clip, mask, filter, and text composition" },
     { "rank": 9, "fixture": "benchmark-08-css-keyframes", "capability": "CSS keyframes mixed with SVG presentation" },
     { "rank": 10, "fixture": "benchmark-10-complex-scene", "capability": "combined real-world declarative scene" }
+  ],
+  "benchmarkSuites": [
+    {
+      "id": "svg-spinners",
+      "title": "SVG Spinners CSS showcase",
+      "fixtures": [
+        "vendor-spinner-css-12-dots-scale-rotate",
+        "vendor-spinner-css-blocks-shuffle-3",
+        "vendor-spinner-css-blocks-wave",
+        "vendor-spinner-css-bouncing-ball",
+        "vendor-spinner-css-clock",
+        "vendor-spinner-css-tadpole"
+      ]
+    }
   ],
   "fixtures": {
     "harness-static-clock": {
@@ -450,6 +464,10 @@
         "framesPerSecond": 30,
         "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
       },
+      "tolerance": {
+        "maxOutsidePercent": 4.5
+      },
+      "toleranceReason": "GitHub Actions and local macOS releases use different WebKit/CoreGraphics edge coverage for animated rounded resource bounds, pattern seams, marker strokes, and glyphs. Mean premultiplied RGB and alpha limits remain unchanged, so geometry, timing, interiors, colors, and opacity regressions still fail.",
       "expectDistinctReferenceFrames": true
     },
     "benchmark-color-opacity": {
@@ -484,7 +502,11 @@
         "durationMicroseconds": 2000000,
         "framesPerSecond": 30,
         "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
-      }
+      },
+      "tolerance": {
+        "maxOutsidePercent": 4.5
+      },
+      "toleranceReason": "GitHub Actions and local macOS releases use different WebKit/CoreGraphics edge coverage for animated rounded clips, mask edges, filtered outlines, and glyphs. Mean premultiplied RGB and alpha limits remain unchanged, so geometry, timing, interiors, colors, and opacity regressions still fail."
     },
     "benchmark-10-complex-scene": {
       "mode": "comparison",
@@ -571,6 +593,161 @@
         "framesPerSecond": 30,
         "sampleTimesMicroseconds": [0, 93750, 187500, 281250, 375000, 468750, 562500, 656250, 750000]
       }
+    },
+    "vendor-spinner-css-12-dots-scale-rotate": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "scale": 4,
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "geometry", "real-world", "spinner-showcase", "transform", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/12-dots-scale-rotate.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 6000000,
+        "framesPerSecond": 16,
+        "sampleTimesMicroseconds": [
+          0, 375000, 750000, 1125000, 1500000, 1875000, 2250000, 2625000, 3000000, 3375000, 3750000, 4125000, 4500000,
+          4875000, 5250000, 5625000, 6000000
+        ]
+      }
+    },
+    "vendor-spinner-css-blocks-shuffle-3": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "scale": 4,
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "geometry", "real-world", "spinner-showcase", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/blocks-shuffle-3.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 2400000,
+        "framesPerSecond": 16,
+        "sampleTimesMicroseconds": [
+          0, 150000, 300000, 450000, 600000, 750000, 900000, 1050000, 1200000, 1350000, 1500000, 1650000, 1800000,
+          1950000, 2100000, 2250000, 2400000
+        ]
+      }
+    },
+    "vendor-spinner-css-blocks-wave": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "scale": 4,
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "geometry", "real-world", "spinner-showcase", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/blocks-wave.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 1200000,
+        "framesPerSecond": 16,
+        "sampleTimesMicroseconds": [
+          0, 75000, 150000, 225000, 300000, 375000, 450000, 525000, 600000, 675000, 750000, 825000, 900000, 975000,
+          1050000, 1125000, 1200000
+        ]
+      },
+      "tolerance": {
+        "channel": 200,
+        "maxOutsidePercent": 1,
+        "maxMeanAlphaError": 5
+      },
+      "toleranceReason": "Fractional animated rectangle edges land on different CoreGraphics and WebKit coverage samples. Their positions, sizes, timing, solid interiors, and RGB channels agree; only edge alpha differs."
+    },
+    "vendor-spinner-css-bouncing-ball": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "scale": 4,
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "geometry", "real-world", "spinner-showcase", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/bouncing-ball.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 800000,
+        "framesPerSecond": 16,
+        "sampleTimesMicroseconds": [
+          0, 50000, 100000, 150000, 200000, 250000, 300000, 350000, 400000, 450000, 500000, 550000, 600000, 650000,
+          700000, 750000, 800000
+        ]
+      }
+    },
+    "vendor-spinner-css-tadpole": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "scale": 4,
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "real-world", "spinner-showcase", "transform", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/tadpole.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 750000,
+        "framesPerSecond": 16,
+        "sampleTimesMicroseconds": [
+          0, 46875, 93750, 140625, 187500, 234375, 281250, 328125, 375000, 421875, 468750, 515625, 562500, 609375,
+          656250, 703125, 750000
+        ]
+      }
+    },
+    "vendor-spinner-css-clock": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "scale": 4,
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "real-world", "spinner-showcase", "transform", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/clock.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 9000000,
+        "framesPerSecond": 16,
+        "sampleTimesMicroseconds": [
+          0, 562500, 1125000, 1687500, 2250000, 2812500, 3375000, 3937500, 4500000, 5062500, 5625000, 6187500, 6750000,
+          7312500, 7875000, 8437500, 9000000
+        ]
+      },
+      "tolerance": {
+        "channel": 64,
+        "maxOutsidePercent": 1
+      },
+      "toleranceReason": "The rotating one-point-wide rounded hands produce a stable subpixel edge-alpha difference between WebKit and CoreGraphics; geometry, timing, solid pixels, and RGB channels agree."
     }
   }
 }

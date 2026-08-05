@@ -26,6 +26,7 @@ import {
   loadAnimationFixtures,
   validateAnimationManifest,
 } from "./manifest";
+import { generateSpinnerShowcaseGif } from "./spinner-showcase";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = resolve(__dirname, "../../..");
@@ -693,6 +694,8 @@ async function main(): Promise<void> {
   if (videos && preparationErrors.length === 0 && results.every((result) => result.status === "pass")) {
     console.log("  Encoding review-only MP4 artifacts...");
     generateReviewVideos(fixtures, comparisonItems);
+    const showcase = generateSpinnerShowcaseGif(fixtures);
+    if (showcase) console.log(`  Generated verified spinner showcase: ${showcase}`);
   }
   const limits = ANIMATION_BUDGETS.limits;
   const budgetFailures: string[] = [];

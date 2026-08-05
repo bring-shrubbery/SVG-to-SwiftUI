@@ -6,5 +6,11 @@ Project-authored fixtures are covered by the repository MIT license. The followi
 | --- | --- | --- | --- |
 | `vendor-smil-three-dots.svg` | Sam Herbert, SVG-Loaders | `561eacac2f46e2b02e48df547324dcea94a6a1c5` | MIT; `vendor-licenses/SamHerbert-SVG-Loaders-LICENSE.md` |
 | `vendor-css-ring.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
+| `vendor-spinner-css-12-dots-scale-rotate.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
+| `vendor-spinner-css-blocks-shuffle-3.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
+| `vendor-spinner-css-blocks-wave.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
+| `vendor-spinner-css-bouncing-ball.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
+| `vendor-spinner-css-clock.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
+| `vendor-spinner-css-tadpole.svg` | n3r4zzurr0, svg-spinners | `abfa05c49acf005b8b1e0ef8eb25a67a7057eb20` | MIT; `vendor-licenses/svg-spinners-LICENSE` |
 
 Source URLs and exact hashes are machine-verified by `bun run animation-test:verify-sources`.

@@ -16,7 +16,8 @@ const SUPPORT_PATH = resolve(__dirname, "swiftui-renderer-support.swift");
 // Keep each generated Swift source small enough for slower GitHub macOS runners.
 // Swift type-checking this many independent View declarations is superlinear;
 // one monolithic corpus can exceed the per-process timeout without a code error.
-const MAX_BATCH_SIZE = 500;
+// Keep generated Swift compilation units small enough for stable type-checking on CI runners.
+const MAX_BATCH_SIZE = 50;
 const SWIFT_RENDERER_VERSION = "real-swiftui-srgb-v2";
 
 export interface BatchTestItem {
@@ -210,6 +211,30 @@ async function compileAndRenderBatch(
   }
 }
 
+async function compileAndRenderWithFallback(
+  support: string,
+  batch: BatchTestItem[],
+  rendersDir: string,
+  cache: Record<string, SwiftRenderCacheEntry>,
+  fresh: boolean,
+): Promise<Map<string, string>> {
+  try {
+    await compileAndRenderBatch(support, batch, rendersDir, cache, fresh);
+    return new Map();
+  } catch (error) {
+    if (batch.length === 1) {
+      return new Map([[batch[0]!.name, error instanceof Error ? error.message : String(error)]]);
+    }
+    const midpoint = Math.ceil(batch.length / 2);
+    console.warn(
+      `  Swift could not compile a ${batch.length}-view batch; retrying as ${midpoint} and ${batch.length - midpoint} views...`,
+    );
+    const left = await compileAndRenderWithFallback(support, batch.slice(0, midpoint), rendersDir, cache, fresh);
+    const right = await compileAndRenderWithFallback(support, batch.slice(midpoint), rendersDir, cache, fresh);
+    return new Map([...left, ...right]);
+  }
+}
+
 export async function runBatchVisualTest(
   items: BatchTestItem[],
   rendersDir: string,
@@ -226,12 +251,8 @@ export async function runBatchVisualTest(
   const renderingErrors = new Map<string, string>();
   for (let start = 0; start < items.length; start += MAX_BATCH_SIZE) {
     const batch = items.slice(start, start + MAX_BATCH_SIZE);
-    try {
-      await compileAndRenderBatch(support, batch, rendersDir, swiftCache, fresh);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      for (const item of batch) renderingErrors.set(item.name, message);
-    }
+    const batchErrors = await compileAndRenderWithFallback(support, batch, rendersDir, swiftCache, fresh);
+    for (const [name, message] of batchErrors) renderingErrors.set(name, message);
   }
   writeFileSync(swiftCachePath, JSON.stringify(swiftCache, null, 2));
 

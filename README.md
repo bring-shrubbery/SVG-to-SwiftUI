@@ -22,6 +22,12 @@ The compiler targets the complete **static appearance of SVG 2 and Filter Effect
 
 Declarative SVG animation is compiled too: SMIL timing and values, `<animate>`, `<set>`, transforms, motion paths, timed discard, deterministic events, and CSS `@keyframes`. The versioned [dynamic profile](packages/svg-to-swiftui-core/conformance/svg-animation-profile.json) contains **234 classified entries and zero unsupported blockers**. Browser scripting, live DOM/network mutation, navigation, and media playback remain intentionally outside the deterministic native runtime.
 
+## Animated SVGs become native SwiftUI
+
+![Six CSS SVG spinners compiled and rendered as native SwiftUI](content/svg-spinners-benchmark.gif)
+
+These six real-world [SVG Spinners](https://github.com/n3r4zzurr0/svg-spinners) examples are compiled into native SwiftUI. Every frame in this GIF comes from the generated SwiftUI after it passed an exact-time RGBA comparison against WebKit's rendering of the original SVG. Run `bun run animation-test:spinner-showcase` on macOS to reproduce it.
+
 ## SVG in. Native SwiftUI out.
 
 This Ghostscript Tiger contains 240 paths, 241 groups, transforms, strokes, and many colors. The generated Swift compiles and renders as native SwiftUI while retaining the original detail.

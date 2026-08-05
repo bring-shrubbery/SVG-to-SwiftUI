@@ -42,6 +42,7 @@
     "visual-test": "bun run visual-tests/run-visual-tests.ts",
     "visual-test:verify": "bun visual-tests/verify-manifest.ts",
     "animation-test": "bun run animation-tests/run-animation-tests.ts",
+    "animation-test:spinner-showcase": "bun run animation-tests/run-animation-tests.ts --tag spinner-showcase --fresh --videos",
     "animation-test:verify": "bun animation-tests/verify-manifest.ts",
     "animation-test:verify-sources": "bun animation-tests/verify-source-lock.ts",
     "animation-test:update-source-lock": "bun animation-tests/update-source-lock.ts",

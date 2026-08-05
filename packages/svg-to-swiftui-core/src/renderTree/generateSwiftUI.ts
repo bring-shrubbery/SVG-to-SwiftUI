@@ -2997,7 +2997,7 @@ function createTextHelper(
       ? [`${indentation}let animationIntervals: [String: [(begin: Double, end: Double)]]`, ""]
       : []),
     `${indentation}var body: some View {`,
-    `${i2}Canvas { context, size in`,
+    `${i2}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${i3}context.withCGContext { graphics in`,
     `${i4}graphics.saveGState()`,
     `${i4}graphics.scaleBy(x: size.width / ${formatNumber(coordinateSpace.width)}, y: size.height / ${formatNumber(coordinateSpace.height)})`,
@@ -3369,7 +3369,7 @@ function renderGradientNode(
     node.spreadExpression ?? `.${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}`;
   const linearRGB = node.linearRGBExpression ?? String(gradient.colorInterpolation === "linearRGB");
   const lines = [
-    `${prefix}Canvas { context, size in`,
+    `${prefix}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${inner}let clipPath = ${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size))`,
     `${inner}let stops = ${stops}`,
     `${inner}if let gradient = svgGradient(stops: stops, spread: ${spread}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${linearRGB}) {`,
@@ -3404,18 +3404,130 @@ function renderGradientNode(
   return lines;
 }
 
+interface ViewRenderContext {
+  filterRenderers: string[][];
+  nextFilterRenderer: number;
+  patternRenderers: string[][];
+  nextPatternRenderer: number;
+  transformRenderers: string[][];
+  nextTransformRenderer: number;
+  nextViewBinding: number;
+  animated: boolean;
+  eventDriven: boolean;
+}
+
+const MAX_INLINE_ANIMATED_GROUP_CHILDREN = 4;
+
+function renderBoundViewNode(
+  node: GeneratedViewNode,
+  level: number,
+  indentation: string,
+  renderContext: ViewRenderContext,
+): string[] {
+  const prefix = indentation.repeat(level);
+  const bindingName = `renderedView${renderContext.nextViewBinding++}`;
+  const rendered = renderViewNode(node, level, indentation, renderContext);
+  return [
+    `${prefix}let ${bindingName} = ${rendered[0]!.slice(prefix.length)}`,
+    ...rendered.slice(1),
+    `${prefix}${bindingName}`,
+  ];
+}
+
+function renderAnimatedTransform(expression: string, indentation: string, renderContext: ViewRenderContext): string {
+  const rendererName = `animatedTransform${renderContext.nextTransformRenderer++}`;
+  const rendererParameters = [
+    "documentTime: Double",
+    "proxy: GeometryProxy",
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const rendererArguments = [
+    "documentTime: documentTime",
+    "proxy: proxy",
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
+  renderContext.transformRenderers.push([
+    `private func ${rendererName}(${rendererParameters}) -> CGAffineTransform {`,
+    `${indentation}${expression}`,
+    "}",
+  ]);
+  return `${rendererName}(${rendererArguments})`;
+}
+
+function renderFilterSource(
+  node: Extract<GeneratedViewNode, { type: "group" }>,
+  indentation: string,
+  renderContext: ViewRenderContext,
+): string {
+  const rendererName = `drawFilterSource${renderContext.nextFilterRenderer++}`;
+  const rendererParameters = [
+    "graphics: CGContext",
+    "size: CGSize",
+    ...(renderContext.animated ? ["documentTime: Double"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const rendererArguments = [
+    "graphics: graphics",
+    "size: size",
+    ...(renderContext.animated ? ["documentTime: documentTime"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
+  renderContext.filterRenderers.push([
+    `private func ${rendererName}(${rendererParameters}) {`,
+    ...renderGeneratedCommands(node.children, "graphics", 1, indentation),
+    "}",
+  ]);
+  return `${rendererName}(${rendererArguments})`;
+}
+
 function renderPatternNode(
   node: Extract<GeneratedViewNode, { type: "pattern" }>,
   level: number,
   indentation: string,
+  renderContext: ViewRenderContext,
 ): string[] {
   const prefix = indentation.repeat(level);
   const inner = indentation.repeat(level + 1);
+  const rendererName = `drawPattern${renderContext.nextPatternRenderer++}`;
+  const cgRendererName = `${rendererName}CG`;
+  const rendererParameters = [
+    "context: inout GraphicsContext",
+    "size: CGSize",
+    ...(renderContext.animated ? ["documentTime: Double"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const rendererArguments = [
+    "context: &context",
+    "size: size",
+    ...(renderContext.animated ? ["documentTime: documentTime"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
+  const cgRendererParameters = [
+    "graphics: CGContext",
+    "size: CGSize",
+    ...(renderContext.animated ? ["documentTime: Double"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const cgRendererArguments = [
+    "graphics: graphics",
+    "size: size",
+    ...(renderContext.animated ? ["documentTime: documentTime"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
+  renderContext.patternRenderers.push([
+    `${indentation}private func ${rendererName}(${rendererParameters}) {`,
+    `${indentation.repeat(2)}context.withCGContext { (graphics: CGContext) in`,
+    `${indentation.repeat(3)}${cgRendererName}(${cgRendererArguments})`,
+    `${indentation.repeat(2)}}`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func ${cgRendererName}(${cgRendererParameters}) {`,
+    ...renderPatternCommands(node, "graphics", 2, indentation),
+    `${indentation}}`,
+  ]);
   const lines = [
-    `${prefix}Canvas { context, size in`,
-    `${inner}context.withCGContext { graphics in`,
-    ...renderPatternCommands(node, "graphics", level + 2, indentation),
-    `${inner}}`,
+    `${prefix}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
+    `${inner}${rendererName}(${rendererArguments})`,
     `${prefix}}`,
   ];
   return lines;
@@ -3762,22 +3874,28 @@ function appendAccessibilityModifiers(
   if (trait) lines.push(`${prefix}.accessibilityAddTraits(.${trait})`);
 }
 
-function renderViewNode(node: GeneratedViewNode, level: number, indentation: string): string[] {
+function renderViewNode(
+  node: GeneratedViewNode,
+  level: number,
+  indentation: string,
+  renderContext: ViewRenderContext,
+): string[] {
   const prefix = indentation.repeat(level);
   if (node.type === "group" && node.presentationCondition) {
     const { presentationCondition, ...visibleNode } = node;
     return [
       `${prefix}if ${presentationCondition} {`,
-      ...renderViewNode(visibleNode, level + 1, indentation),
+      ...renderViewNode(visibleNode, level + 1, indentation, renderContext),
       `${prefix}}`,
     ];
   }
   if (node.type === "group" && node.animationTransform) {
     const { animationTransform, ...staticNode } = node;
+    const transform = renderAnimatedTransform(animationTransform, indentation, renderContext);
     return [
       `${prefix}GeometryReader { proxy in`,
-      ...renderViewNode(staticNode, level + 1, indentation),
-      `${prefix}${indentation}.transformEffect(${animationTransform})`,
+      ...renderViewNode(staticNode, level + 1, indentation, renderContext),
+      `${prefix}${indentation}.transformEffect(${transform})`,
       `${prefix}}`,
     ];
   }
@@ -3787,7 +3905,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
     const inner = `${prefix}${indentation}`;
     const deep = `${inner}${indentation}`;
     const lines = [
-      `${prefix}Canvas { context, size in`,
+      `${prefix}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
       `${inner}context.withCGContext { graphics in`,
       `${deep}graphics.saveGState()`,
     ];
@@ -3810,11 +3928,15 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
     return lines;
   }
   if (node.type === "gradient") return renderGradientNode(node, level, indentation);
-  if (node.type === "pattern") return renderPatternNode(node, level, indentation);
+  if (node.type === "pattern") return renderPatternNode(node, level, indentation, renderContext);
+  const filterSource =
+    node.filter && renderContext.animated ? renderFilterSource(node, indentation, renderContext) : undefined;
   const lines = node.filter
     ? [
-        `${prefix}SVGFilteredCanvas(definition: ${filterDefinitionLiteral(node.filter)}, canvas: CGSize(width: ${formatNumber(node.filter.canvas.width)}, height: ${formatNumber(node.filter.canvas.height)}), drawSource: { graphics, size in`,
-        ...renderGeneratedCommands(node.children, "graphics", level + 1, indentation),
+        `${prefix}SVGFilteredCanvas(definition: ${filterDefinitionLiteral(node.filter)}, canvas: CGSize(width: ${formatNumber(node.filter.canvas.width)}, height: ${formatNumber(node.filter.canvas.height)}), drawSource: { (graphics: CGContext, size: CGSize) in`,
+        ...(filterSource
+          ? [`${prefix}${indentation}${filterSource}`]
+          : renderGeneratedCommands(node.children, "graphics", level + 1, indentation)),
         `${prefix}}, renderFilterImages: { size, scale in`,
         `${prefix}${indentation}var images: [String: CGImage] = [:]`,
         ...node.filter.imageHelpers.flatMap(({ key, name, animated }) => [
@@ -3827,7 +3949,12 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       ]
     : [`${prefix}ZStack {`];
   if (!node.filter) {
-    for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation));
+    const extractChildren = renderContext.animated && node.children.length > MAX_INLINE_ANIMATED_GROUP_CHILDREN;
+    for (const child of node.children) {
+      if (extractChildren && !(child.type === "group" && child.presentationCondition))
+        lines.push(...renderBoundViewNode(child, level + 1, indentation, renderContext));
+      else lines.push(...renderViewNode(child, level + 1, indentation, renderContext));
+    }
     lines.push(`${prefix}}`);
   }
   // Flatten the source subtree before applying SVG effects. SwiftUI otherwise
@@ -3847,7 +3974,9 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       );
       if (node.clipPath.children.length === 0)
         lines.push(`${prefix}${indentation}${indentation}${indentation}Color.clear`);
-      else for (const child of node.clipPath.children) lines.push(...renderViewNode(child, level + 3, indentation));
+      else
+        for (const child of node.clipPath.children)
+          lines.push(...renderViewNode(child, level + 3, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}${indentation}}`,
         `${prefix}${indentation}${indentation}.frame(width: proxy.size.width, height: proxy.size.height)`,
@@ -3861,7 +3990,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       lines.push(
         `${prefix}.mask {`,
         `${prefix}${indentation}GeometryReader { proxy in`,
-        `${prefix}${indentation}${indentation}Canvas { context, size in`,
+        `${prefix}${indentation}${indentation}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
         `${prefix}${indentation}${indentation}${indentation}var matrix = ColorMatrix()`,
         `${prefix}${indentation}${indentation}${indentation}matrix.r1 = 0`,
         `${prefix}${indentation}${indentation}${indentation}matrix.g2 = 0`,
@@ -3879,7 +4008,9 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       );
       if (node.mask.children.length === 0)
         lines.push(`${prefix}${indentation}${indentation}${indentation}${indentation}Color.clear`);
-      else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 4, indentation));
+      else
+        for (const child of node.mask.children)
+          lines.push(...renderViewNode(child, level + 4, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}${indentation}${indentation}}`,
         `${prefix}${indentation}${indentation}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
@@ -3891,7 +4022,9 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       );
       if (node.mask.children.length === 0)
         lines.push(`${prefix}${indentation}${indentation}${indentation}${indentation}Color.clear`);
-      else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 4, indentation));
+      else
+        for (const child of node.mask.children)
+          lines.push(...renderViewNode(child, level + 4, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}${indentation}${indentation}}`,
         `${prefix}${indentation}${indentation}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
@@ -3902,7 +4035,9 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
     } else {
       lines.push(`${prefix}.mask {`, `${prefix}${indentation}ZStack {`);
       if (node.mask.children.length === 0) lines.push(`${prefix}${indentation}${indentation}Color.clear`);
-      else for (const child of node.mask.children) lines.push(...renderViewNode(child, level + 2, indentation));
+      else
+        for (const child of node.mask.children)
+          lines.push(...renderViewNode(child, level + 2, indentation, renderContext));
       lines.push(
         `${prefix}${indentation}}`,
         `${prefix}${indentation}.clipShape(${shapeHelperCall(node.mask.clip)})`,
@@ -4171,7 +4306,7 @@ private struct SVGFilteredCanvas: View {
     @Environment(\\.displayScale) private var displayScale
 
     var body: some View {
-        Canvas { context, size in
+        Canvas { (context: inout GraphicsContext, size: CGSize) in
             if let image = render(size: size) {
                 context.draw(Image(decorative: image, scale: displayScale), in: CGRect(origin: .zero, size: size))
             }
@@ -5376,7 +5511,7 @@ function createImageHelper(
       ? [`${indentation}let animationIntervals: [String: [(begin: Double, end: Double)]]`, ""]
       : []),
     `${indentation}var body: some View {`,
-    `${i2}Canvas { context, size in`,
+    `${i2}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${i3}context.clip(to: Path(CGRect(x: ${formatNumber(node.viewport.x)}, y: ${formatNumber(node.viewport.y)}, width: ${formatNumber(node.viewport.width)}, height: ${formatNumber(node.viewport.height)})).applying(${runtimeTransform(helper.transform, coordinateSpace)}))`,
     `${i3}context.transform = ${helper.transformExpression ?? runtimeTransform(imageTransform, coordinateSpace)}`,
   ];
@@ -5455,7 +5590,7 @@ function createFilterImageHelper(helper: FilterImageHelper, indentationSize: num
     `private struct ${helper.name}: View {`,
     ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
     `${indentation}var body: some View {`,
-    `${i2}Canvas { context, size in`,
+    `${i2}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${i3}guard size.width > 0, size.height > 0 else { return }`,
     `${i3}let viewport = CGAffineTransform(a: size.width / ${formatNumber(canvas.width)}, b: 0, c: 0, d: size.height / ${formatNumber(canvas.height)}, tx: ${formatNumber(-canvas.x)} * size.width / ${formatNumber(canvas.width)}, ty: ${formatNumber(-canvas.y)} * size.height / ${formatNumber(canvas.height)})`,
     `${i3}context.transform = viewport`,
@@ -5621,12 +5756,23 @@ function createView(
     document.animationProgram.animations.length > 0 ||
     imageHelpers.some((helper) => helper.animated) ||
     filterImageHelpers.some((helper) => helper.animated);
+  const renderContext: ViewRenderContext = {
+    filterRenderers: [],
+    nextFilterRenderer: 0,
+    patternRenderers: [],
+    nextPatternRenderer: 0,
+    transformRenderers: [],
+    nextTransformRenderer: 0,
+    nextViewBinding: 0,
+    animated,
+    eventDriven,
+  };
   const content = [
     ...(eventDriven
       ? [`${indentation}let animationIntervals = Self.svgAnimationIntervals(events: animationEvents)`]
       : []),
     `${indentation}ZStack {`,
-    ...nodes.flatMap((node) => renderViewNode(node, 2, indentation)),
+    ...nodes.flatMap((node) => renderViewNode(node, 2, indentation, renderContext)),
     `${indentation}}`,
   ];
   const body: string[] = animated
@@ -6227,6 +6373,9 @@ function createView(
         "}",
       ]
     : ["var body: some View {", ...content, "}"];
+  for (const renderer of renderContext.patternRenderers) body.push("", ...renderer);
+  for (const renderer of renderContext.filterRenderers) body.push("", ...renderer);
+  for (const renderer of renderContext.transformRenderers) body.push("", ...renderer);
   for (const helper of helpers) {
     const pathFunction = createFunctionTemplate({
       name: "path",

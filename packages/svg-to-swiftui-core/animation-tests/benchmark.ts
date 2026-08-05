@@ -12,9 +12,13 @@ const budgets = JSON.parse(readFileSync(resolve(import.meta.dir, "animation-budg
 };
 const manifest = JSON.parse(readFileSync(resolve(import.meta.dir, "animation-fixture-manifest.json"), "utf8")) as {
   benchmarkLadder: Array<{ fixture: string }>;
+  benchmarkSuites: Array<{ fixtures: string[] }>;
 };
-const ladder = new Set(manifest.benchmarkLadder.map((item) => item.fixture));
-const fixtures = loadAnimationFixtures().filter((fixture) => ladder.has(fixture.name));
+const benchmarkNames = new Set([
+  ...manifest.benchmarkLadder.map((item) => item.fixture),
+  ...manifest.benchmarkSuites.flatMap((suite) => suite.fixtures),
+]);
+const fixtures = loadAnimationFixtures().filter((fixture) => benchmarkNames.has(fixture.name));
 const errors: string[] = [];
 const results = [];
 for (const fixture of fixtures) {
@@ -68,4 +72,6 @@ if (errors.length) {
   console.error(errors.join("\n"));
   process.exit(1);
 }
-console.log(`Animation budgets passed: ${results.length} ladder fixtures, ${totalFrames} frames, deterministic Swift`);
+console.log(
+  `Animation budgets passed: ${results.length} benchmark fixtures, ${totalFrames} frames, deterministic Swift`,
+);
