@@ -1,5 +1,33 @@
 # svg-to-swiftui-core
 
+## 0.5.0
+
+### Minor Changes
+
+- aa721f2: Preserve solid fill and stroke colors by generating layered SwiftUI views for multicolor SVGs.
+- 7985ec5: Preserve SVG-AAM accessibility semantics in generated SwiftUI and resolve switch and conditional-processing attributes deterministically through an explicit static environment.
+- 67c1bb3: Render SVG dash arrays and offsets, validated caps, joins, and miter limits, percentage and physical-unit stroke values, non-scaling strokes, SVG-equivalent dashed basic shapes, and transform-aware painted bounds with browser-matched RGBA coverage.
+- 3d35be0: Render typed SVG clipping paths with clip rules, user-space and object-bounding-box coordinates, transforms, nested intersections, diagnostics, and browser-matched RGBA regression coverage.
+- cf933c3: Preserve SVG painter order, display and visibility semantics, independent paint opacity, isolated element and group opacity, explicit isolation, and transformed painted bounds in generated SwiftUI views.
+- 6f79927: Add the versioned SVG2 static conformance matrix, detailed conversion APIs, stable source-located diagnostics, complete dynamic-content reporting, release gates, and generated conformance report.
+- 8a1ae21: Add standards-based embedded CSS parsing, selector matching, cascade and inheritance, custom properties, computed SVG 2 presentation styles, CSS geometry, paint order, diagnostics, and visual regression coverage.
+- af7dd25: Add exact static SVG filter color and compositing support for all `feBlend` modes, every `feColorMatrix` form, all `feComponentTransfer` functions, and Porter-Duff plus arithmetic `feComposite` operators. Generated SwiftUI uses deterministic premultiplied CPU RGBA math with sRGB/linearRGB processing, structured malformed-value diagnostics, numeric reference tests, and full-RGBA visual grids.
+- 53221c8: Add typed SVG filter graphs and a generated premultiplied RGBA runtime for Gaussian blur, offset, flood, merge, and drop-shadow primitives.
+- 92c2034: Render SVG diffuse and specular lighting with distant, point, and spot light sources, exact surface normals, primitive-unit coordinates, transforms, color-space handling, and deterministic diagnostics.
+- 2920ae8: Add static SVG support for `feConvolveMatrix`, `feMorphology`, `feDisplacementMap`, `feTile`, `feTurbulence`, and `feImage`. The typed graph and generated SwiftUI runtime now cover spatial sampling, deterministic seeded noise, local/raster/SVG image inputs, safety limits, structured diagnostics, numeric reference tests, and full-RGBA visual comparisons.
+- 54f7f49: Render static SVG foreignObject content through a secure conversion-time RGBA snapshot adapter, with deterministic binary artifacts, resource sandboxing, placement, compositing, accessibility, and browser-matched visual coverage. Add the official pinned Playwright Chromium adapter as a separate package.
+- 0390677: Render SVG linear and radial gradient paint servers with typed inheritance, CSS stops, coordinate systems, transforms, spread methods, focal circles, fallbacks, explicit color interpolation, and deterministic vector-backed SwiftUI Canvas output.
+- 60cbeda: Render complete SVG marker shadow trees for marker-start, marker-mid, and marker-end with spec-accurate vertex tangents, orientation, units, reference points, viewBox mapping, overflow, context paint, paint order, effects, diagnostics, and painted bounds.
+- 93655a0: Render typed SVG alpha and luminance masks, all Level 1 blend modes, isolation, and ordered group compositing with browser-accurate RGBA regression coverage.
+- 9c5db60: Render SVG pattern paint servers as typed, inherited, vector-backed SwiftUI Canvas tiles with coordinate-system, transform, viewBox, clipping, nesting, alpha, fill, stroke, and cycle-diagnostic support.
+- f37d304: Add standards-based SVG length resolution, root and nested viewports, complete preserveAspectRatio mapping, symbol/use viewport sizing, static view fragments, and overflow clipping.
+- fc47ee0: Generate tintable shapes and layered views from one typed SVG render tree, with deterministic capability analysis and strict diagnostics for unsupported content.
+
+### Patch Changes
+
+- 5071ffa: Upgrade visual regression coverage to compile real SwiftUI Shape and View output and compare deterministic full RGBA renders.
+- 7139560: Apply SVG element and group transforms to generated SwiftUI paths.
+
 ## Unreleased
 
 ### Minor Changes
