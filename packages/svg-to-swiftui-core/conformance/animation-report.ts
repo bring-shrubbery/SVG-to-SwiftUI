@@ -16,7 +16,7 @@ export function renderAnimationReport(): string {
     "",
     "Generated from `ANIMATION_ATTRIBUTE_REGISTRY`. Do not edit by hand.",
     "",
-    "This report describes `<animate>` and `<set>` property wiring. Transform, motion, and CSS animation have separate roadmap tickets.",
+    "This report describes declarative animation wiring. Attribute rows cover `<animate>` and `<set>`; specialized animation elements are listed separately.",
     "",
     "## Summary",
     "",
@@ -32,6 +32,13 @@ export function renderAnimationReport(): string {
       const target = Array.isArray(entry.targetElements) ? entry.targetElements.join(", ") : entry.targetElements;
       return `| \`${entry.canonicalName}\` | ${entry.family} | ${entry.namespaces.join(", ")} | ${entry.invalidates.join(", ")} | ${target} | ${labels[entry.runtimeBinding]} |`;
     }),
+    "",
+    "## Specialized animation elements",
+    "",
+    "| Element | Status | Evidence |",
+    "| --- | --- | --- |",
+    "| `<animateTransform>` | implemented | typed parser/sampler/composition tests; 18-frame `benchmark-06-animate-transform` |",
+    "| `<animateMotion>` | pending roadmap ticket | not yet wired to SwiftUI |",
     "",
   ];
   return lines.join("\n");

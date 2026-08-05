@@ -2,10 +2,12 @@ import type { ElementNode } from "svg-parser";
 import { defaultFontMetrics } from "../lengths";
 import { parseViewBox } from "../viewports";
 import {
+  type AnimateTransformType,
   type AnimationCalculation,
   type AnimationValueContext,
   type AnimationValueSet,
   animationAttributeSpec,
+  parseAnimateTransformValueSet,
   parseAnimationValueSet,
   parseKeySplines,
   parseKeyTimes,
@@ -82,6 +84,7 @@ export interface AnimationDefinition {
   source: SourceLocation;
   target?: AnimationTarget;
   kind: AnimationKind;
+  transformType?: AnimateTransformType;
   authoredAttributeName?: string;
   attributeName?: string;
   attributeType: "auto" | "XML" | "CSS";
@@ -308,19 +311,21 @@ function parseValue(
 }
 
 function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSupport">): boolean {
-  if (!(["animate", "set"] as AnimationKind[]).includes(definition.kind)) return false;
+  if (!(["animate", "set", "animateTransform"] as AnimationKind[]).includes(definition.kind)) return false;
   const attribute = definition.attributeName ? resolveAnimationAttribute(definition.attributeName) : undefined;
   const resourceSupported =
     definition.target?.binding === "resource" &&
     definition.target.tagName.toLowerCase() === "stop" &&
     attribute?.runtimeBinding === "gradient-stop";
   const renderNodeSupported =
-    definition.target?.binding === "render-node" && attribute?.runtimeBinding === "render-node";
+    definition.target?.binding === "render-node" &&
+    (attribute?.runtimeBinding === "render-node" ||
+      (definition.kind === "animateTransform" && definition.attributeName === "transform"));
   if (
     !definition.target?.renderable ||
     (!renderNodeSupported && !resourceSupported) ||
     !definition.attributeName ||
-    definition.attributeName === "transform" ||
+    (definition.attributeName === "transform" && definition.kind !== "animateTransform") ||
     !propertyAppliesToTarget(definition.attributeName, definition.target.tagName)
   )
     return false;
@@ -512,11 +517,13 @@ export function buildAnimationProgram(
     const attributeTypeSource = property(element, "attributeType");
     const attributeType: AnimationDefinition["attributeType"] =
       attributeTypeSource === "XML" || attributeTypeSource === "CSS" ? attributeTypeSource : "auto";
-    const attributeSpec = authoredAttributeName
-      ? resolveAnimationAttribute(authoredAttributeName, attributeType)
+    const effectiveAttributeName =
+      kind === "animateTransform" ? (authoredAttributeName ?? "transform") : authoredAttributeName;
+    const attributeSpec = effectiveAttributeName
+      ? resolveAnimationAttribute(effectiveAttributeName, attributeType)
       : undefined;
     const attributeName = attributeSpec?.canonicalName;
-    if ((kind === "animate" || kind === "set") && !authoredAttributeName)
+    if ((kind === "animate" || kind === "set" || kind === "animateTransform") && !authoredAttributeName)
       diagnostic(
         diagnostics,
         element,
@@ -539,6 +546,14 @@ export function buildAnimationProgram(
         "incompatible-animation-attribute-type",
         `${authoredAttributeName} is not available in the requested ${attributeType} namespace.`,
         "attributeType",
+      );
+    if (kind === "animateTransform" && authoredAttributeName && authoredAttributeName !== "transform")
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-transform-attribute",
+        `<animateTransform> can only target the transform attribute; received '${authoredAttributeName}'.`,
+        "attributeName",
       );
     const restartValue = property(element, "restart");
     const fillValue = property(element, "fill");
@@ -564,15 +579,42 @@ export function buildAnimationProgram(
         : "always",
       fill: fillValue === "freeze" ? "freeze" : "remove",
     };
-    const value = parseValue(
-      element,
-      attributeName,
-      targetSnapshot?.context ?? animationValueContext,
-      attributeName
-        ? (targetSnapshot?.baseValues[attributeName] ??
-            (targetElement ? property(targetElement, attributeName) : undefined))
-        : undefined,
+    const transformTypeSource = property(element, "type") ?? "translate";
+    const transformType = (["translate", "scale", "rotate", "skewX", "skewY"] as const).find(
+      (candidate) => candidate === transformTypeSource,
     );
+    if (kind === "animateTransform" && !transformType)
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-transform-type",
+        `animateTransform type must be translate, scale, rotate, skewX, or skewY; received '${transformTypeSource}'.`,
+        "type",
+      );
+    const baseRaw = attributeName
+      ? (targetSnapshot?.baseValues[attributeName] ??
+        (targetElement ? property(targetElement, attributeName) : undefined))
+      : undefined;
+    const value =
+      kind === "animateTransform" && transformType && attributeName === "transform"
+        ? (parseAnimateTransformValueSet(
+            transformType,
+            {
+              ...(baseRaw ? { base: baseRaw } : {}),
+              ...(property(element, "from") === undefined ? {} : { from: property(element, "from") }),
+              ...(property(element, "to") === undefined ? {} : { to: property(element, "to") }),
+              ...(property(element, "by") === undefined ? {} : { by: property(element, "by") }),
+              ...(property(element, "values") === undefined
+                ? {}
+                : {
+                    values: property(element, "values")!
+                      .split(";")
+                      .map((item) => item.trim()),
+                  }),
+            },
+            targetSnapshot?.context ?? animationValueContext,
+          ) ?? { family: "unsupported" as const })
+        : parseValue(element, attributeName, targetSnapshot?.context ?? animationValueContext, baseRaw);
     const calcModeSource = property(element, "calcMode");
     const defaultCalcMode = kind === "set" ? "discrete" : kind === "animateMotion" ? "paced" : "linear";
     const calcMode = ["discrete", "linear", "paced", "spline"].includes(calcModeSource ?? "")
@@ -601,6 +643,7 @@ export function buildAnimationProgram(
       source: source(element),
       ...(target ? { target } : {}),
       kind,
+      ...(kind === "animateTransform" && transformType ? { transformType } : {}),
       ...(authoredAttributeName ? { authoredAttributeName } : {}),
       ...(attributeName ? { attributeName } : {}),
       attributeType,
@@ -779,6 +822,14 @@ export function buildAnimationProgram(
           ? "The authored animation values are invalid for the target attribute's value family."
           : `The animation value family for '${authoredAttributeName ?? ""}' is unknown; the compiler will not guess.`,
         "attributeName",
+      );
+    if (kind === "animateTransform" && transformType && value.family === "unsupported")
+      diagnostic(
+        diagnostics,
+        element,
+        "invalid-animation-transform-value",
+        `One or more ${transformType} values have invalid syntax or arity.`,
+        property(element, "values") === undefined ? "from" : "values",
       );
     if (value.family !== "unsupported") {
       if (value.form === "invalid")

@@ -66,6 +66,8 @@ export interface AnimationTransformComponent {
   values: readonly number[];
 }
 
+export type AnimateTransformType = Exclude<AnimationTransformComponent["kind"], "matrix">;
+
 export type TypedAnimationValue =
   | { family: "number" | "integer" | "opacity" | "length" | "angle"; value: number }
   | { family: "color"; value: AnimationColor }
@@ -533,6 +535,101 @@ function parseTransforms(source: string): AnimationTransformComponent[] | undefi
   return components.length > 0 && /^[\s,]*$/.test(source.slice(last)) ? components : undefined;
 }
 
+function transformComponent(type: AnimateTransformType, source: string, context: AnimationValueContext) {
+  const tokens = source
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  const parsed = tokens.map((token, index) => {
+    if (type === "translate") return parseLength(token, context, index === 0 ? "horizontal" : "vertical");
+    if (type === "rotate" && index > 0) return parseLength(token, context, index === 1 ? "horizontal" : "vertical");
+    if (type === "rotate" || type === "skewX" || type === "skewY") return parseAngle(token);
+    try {
+      return parsePlainNumber(token, `animateTransform ${type}`);
+    } catch {
+      return undefined;
+    }
+  });
+  if (parsed.some((value) => value === undefined)) return undefined;
+  const values = parsed as number[];
+  switch (type) {
+    case "translate":
+      if (values.length !== 1 && values.length !== 2) return undefined;
+      return { kind: type, values: [values[0]!, values[1] ?? 0] } as const;
+    case "scale":
+      if (values.length !== 1 && values.length !== 2) return undefined;
+      return { kind: type, values: [values[0]!, values[1] ?? values[0]!] } as const;
+    case "rotate":
+      if (values.length !== 1 && values.length !== 3) return undefined;
+      return { kind: type, values: [values[0]!, values[1] ?? 0, values[2] ?? 0] } as const;
+    case "skewX":
+    case "skewY":
+      return values.length === 1 ? ({ kind: type, values } as const) : undefined;
+  }
+}
+
+/** Parse one bare animateTransform value using the grammar selected by its type attribute. */
+export function parseAnimateTransformValue(
+  type: AnimateTransformType,
+  source: string,
+  context: AnimationValueContext,
+): TypedAnimationValue | undefined {
+  const component = transformComponent(type, source, context);
+  return component ? { family: "transform", components: [component] } : undefined;
+}
+
+function neutralAnimateTransformValue(type: AnimateTransformType): TypedAnimationValue {
+  const values = type === "rotate" ? [0, 0, 0] : type === "translate" || type === "scale" ? [0, 0] : [0];
+  return { family: "transform", components: [{ kind: type, values }] };
+}
+
+/** Build a typed animateTransform value set while retaining the target's full base transform list. */
+export function parseAnimateTransformValueSet(
+  type: AnimateTransformType,
+  raw: { base?: string; from?: string; to?: string; by?: string; values?: readonly string[] },
+  context: AnimationValueContext,
+): AnimationValueSet | undefined {
+  const attribute = animationAttributeSpec("transform")!;
+  const base = raw.base ? parseAnimationValue(attribute, raw.base, context) : undefined;
+  const effectiveBase =
+    base ??
+    ({
+      family: "transform",
+      components: [{ kind: "matrix", values: [1, 0, 0, 1, 0, 0] }],
+    } as const);
+  const parse = (value: string | undefined) =>
+    value === undefined ? undefined : parseAnimateTransformValue(type, value, context);
+  const from = parse(raw.from);
+  const to = parse(raw.to);
+  const by = parse(raw.by);
+  const values = raw.values?.map((value) => parse(value));
+  if ((raw.from !== undefined && !from) || (raw.to !== undefined && !to) || (raw.by !== undefined && !by))
+    return undefined;
+  if (values?.some((value) => !value)) return undefined;
+  const neutral = neutralAnimateTransformValue(type);
+  const form = values
+    ? "values"
+    : from && to
+      ? "from-to"
+      : from && by
+        ? "from-by"
+        : to
+          ? "from-to"
+          : by
+            ? "by"
+            : "invalid";
+  return {
+    family: "transform",
+    attribute,
+    base: effectiveBase,
+    ...(from ? { from } : to ? { from: neutral } : {}),
+    ...(to ? { to } : {}),
+    ...(by ? { by } : {}),
+    ...(values ? { values: values as TypedAnimationValue[] } : {}),
+    form,
+  };
+}
+
 export function parseAnimationValue(
   spec: AnimationAttributeSpec,
   source: string,
@@ -685,6 +782,8 @@ function vectors(value: TypedAnimationValue): number[] | undefined {
       return value.points.flatMap((point) => [point.x, point.y]);
     case "viewBox":
       return [value.value.x, value.value.y, value.value.width, value.value.height];
+    case "transform":
+      return value.components.flatMap((component) => [...component.values]);
     default:
       return undefined;
   }
@@ -694,7 +793,18 @@ function compatible(left: TypedAnimationValue, right: TypedAnimationValue): bool
   if (!sameFamily(left, right)) return false;
   const leftVector = vectors(left);
   const rightVector = vectors(right);
-  if (leftVector || rightVector) return leftVector?.length === rightVector?.length;
+  if (leftVector || rightVector) {
+    if (left.family === "transform" && right.family === "transform")
+      return (
+        left.components.length === right.components.length &&
+        left.components.every(
+          (component, index) =>
+            component.kind === right.components[index]!.kind &&
+            component.values.length === right.components[index]!.values.length,
+        )
+      );
+    return leftVector?.length === rightVector?.length;
+  }
   if (left.family === "paint" && right.family === "paint")
     return left.value.type === "color" && right.value.type === "color";
   if (left.family === "path" && right.family === "path")
@@ -741,6 +851,17 @@ function fromVector(template: TypedAnimationValue, values: readonly number[]): T
       };
     case "viewBox":
       return { family: "viewBox", value: { x: values[0]!, y: values[1]!, width: values[2]!, height: values[3]! } };
+    case "transform": {
+      let offset = 0;
+      return {
+        family: "transform",
+        components: template.components.map((component) => {
+          const result = { ...component, values: values.slice(offset, offset + component.values.length) };
+          offset += component.values.length;
+          return result;
+        }),
+      };
+    }
     default:
       return template;
   }
@@ -748,6 +869,7 @@ function fromVector(template: TypedAnimationValue, values: readonly number[]): T
 
 export function animationValuesEqual(left: TypedAnimationValue, right: TypedAnimationValue, epsilon = 1e-12): boolean {
   if (!sameFamily(left, right)) return false;
+  if (left.family === "transform" && right.family === "transform" && !compatible(left, right)) return false;
   const leftVector = vectors(left);
   const rightVector = vectors(right);
   if (leftVector && rightVector)
@@ -1014,7 +1136,7 @@ function segmentForProgress(
   const discreteOnly = !values.every((value, index) => index === 0 || compatible(values[index - 1]!, value));
   let mode = discreteOnly ? "discrete" : calculation.calcMode;
   let fallback: AnimationValueSample["fallback"] = discreteOnly ? "incompatible-values" : undefined;
-  if (["discrete", "transform"].includes(values[0]!.family)) {
+  if (values[0]!.family === "discrete") {
     mode = "discrete";
     fallback = "discrete-only";
   }
@@ -1091,7 +1213,12 @@ export function sampleAnimationValue(
     if (accumulated) effect = addAnimationValues(effect, accumulated) ?? effect;
   }
   const additive = set.form === "by" || (set.form !== "to" && calculation.additive === "sum");
-  if (additive && set.attribute.additive) effect = addAnimationValues(underlying, effect) ?? effect;
+  if (additive && set.attribute.additive) {
+    effect =
+      underlying.family === "transform" && effect.family === "transform"
+        ? { family: "transform", components: [...underlying.components, ...effect.components] }
+        : (addAnimationValues(underlying, effect) ?? effect);
+  }
   return {
     value: normalizeAnimationValue(effect, set.attribute),
     segment: selected.segment,

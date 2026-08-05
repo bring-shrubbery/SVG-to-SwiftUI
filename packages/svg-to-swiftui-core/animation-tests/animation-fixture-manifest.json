@@ -276,6 +276,46 @@
         ]
       },
       "expectDistinctReferenceFrames": true
+    },
+    "benchmark-06-animate-transform": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 160,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "accumulate",
+        "additive",
+        "animate-transform",
+        "benchmark-06",
+        "clip",
+        "filter",
+        "gradient",
+        "marker",
+        "mask",
+        "nested-transform",
+        "non-scaling-stroke",
+        "paced",
+        "pattern",
+        "rotate",
+        "scale",
+        "skew-x",
+        "skew-y",
+        "spline",
+        "text",
+        "transform-sandwich",
+        "translate",
+        "use"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000, 1000001, 1249999, 1250000, 1499999,
+          1500000, 1749999, 1750000, 1999999, 2000000
+        ]
+      },
+      "expectDistinctReferenceFrames": true
     }
   }
 }

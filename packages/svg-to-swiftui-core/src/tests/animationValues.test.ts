@@ -12,6 +12,8 @@ import {
   cubicBezierProgress,
   interpolateAnimationValue,
   normalizeAnimationValue,
+  parseAnimateTransformValue,
+  parseAnimateTransformValueSet,
   parseAnimationValue,
   parseAnimationValueSet,
   parseKeySplines,
@@ -137,7 +139,7 @@ describe("typed SVG animation values", () => {
     ["fill", "red", "blue", true, true, true],
     ["d", "M0 0 L1 1", "M2 2 L3 3", true, true, false],
     ["viewBox", "0 0 10 10", "2 4 20 30", true, true, true],
-    ["transform", "translate(0)", "translate(10)", false, false, false],
+    ["transform", "translate(0)", "translate(10)", true, true, true],
     ["stroke-linecap", "butt", "round", false, false, false],
   ])("defines equality, interpolation, distance, and addition for the %s family", (attribute, leftSource, rightSource, interpolable, measurable, addable) => {
     const spec = animationAttributeSpec(attribute)!;
@@ -184,6 +186,25 @@ describe("typed SVG animation values", () => {
     const gradient = parseAnimationValue(paintSpec, "url(#g)", context)!;
     expect(serializeAnimationValue(interpolateAnimationValue(red, blue, 0.5)!)).toBe("rgba(127.5 0 127.5 / 1)");
     expect(interpolateAnimationValue(red, gradient, 0.5)).toBeUndefined();
+  });
+
+  test("parses every animateTransform type, canonical defaults, units, and invalid arities", () => {
+    expect(serializeAnimationValue(parseAnimateTransformValue("translate", "1in 50%", context)!)).toBe(
+      "translate(96 50)",
+    );
+    expect(serializeAnimationValue(parseAnimateTransformValue("scale", "-2", context)!)).toBe("scale(-2 -2)");
+    expect(serializeAnimationValue(parseAnimateTransformValue("rotate", `${Math.PI}rad 10 20`, context)!)).toBe(
+      "rotate(180 10 20)",
+    );
+    expect(serializeAnimationValue(parseAnimateTransformValue("skewX", ".25turn", context)!)).toBe("skewX(90)");
+    expect(serializeAnimationValue(parseAnimateTransformValue("skewY", "-45deg", context)!)).toBe("skewY(-45)");
+    expect(parseAnimateTransformValue("translate", "1 2 3", context)).toBeUndefined();
+    expect(parseAnimateTransformValue("rotate", "20 10", context)).toBeUndefined();
+    expect(parseAnimateTransformValue("skewX", "20 30", context)).toBeUndefined();
+    const translate = parseAnimateTransformValue("translate", "1 2", context)!;
+    const scale = parseAnimateTransformValue("scale", "1 2", context)!;
+    expect(animationValuesEqual(translate, scale)).toBe(false);
+    expect(interpolateAnimationValue(translate, scale, 0.5)).toBeUndefined();
   });
 });
 
@@ -315,6 +336,44 @@ describe("animation calculation and composition", () => {
       { values: lower, calculation: calculation(), progress: 0.5, repeatIteration: 0, documentOrder: 1 },
     ]);
     expect(scalar(composed)).toBe(12);
+  });
+
+  test("interpolates, accumulates, and post-multiplies animateTransform values", () => {
+    const scale = parseAnimateTransformValueSet("scale", { base: "translate(4 5)", from: "2", to: "3" }, context)!;
+    expect(serializeAnimationValue(sampleAnimationValue(scale, calculation(), 0.5)!.value)).toBe("scale(2.5 2.5)");
+    expect(serializeAnimationValue(sampleAnimationValue(scale, calculation({ accumulate: "sum" }), 0, 2)!.value)).toBe(
+      "scale(8 8)",
+    );
+    expect(serializeAnimationValue(sampleAnimationValue(scale, calculation({ additive: "sum" }), 1)!.value)).toBe(
+      "translate(4 5) scale(3 3)",
+    );
+
+    const fromBy = parseAnimateTransformValueSet("translate", { from: "10 5", by: "3 -2" }, context)!;
+    expect(serializeAnimationValue(sampleAnimationValue(fromBy, calculation(), 1)!.value)).toBe("translate(13 3)");
+
+    const rotate = parseAnimateTransformValueSet("rotate", { from: "0 20 10", to: "90 20 10" }, context)!;
+    const composed = composeAnimationSandwich(scale.base, [
+      { values: scale, calculation: calculation(), progress: 1, repeatIteration: 0, documentOrder: 1 },
+      {
+        values: rotate,
+        calculation: calculation({ additive: "sum" }),
+        progress: 1,
+        repeatIteration: 0,
+        documentOrder: 2,
+      },
+    ]);
+    expect(serializeAnimationValue(composed)).toBe("scale(3 3) rotate(90 20 10)");
+
+    const wrappedRotation = parseAnimateTransformValueSet("rotate", { from: "350", to: "10" }, context)!;
+    expect(serializeAnimationValue(sampleAnimationValue(wrappedRotation, calculation(), 0.5)!.value)).toBe(
+      "rotate(180 0 0)",
+    );
+    const crossingScale = parseAnimateTransformValueSet("scale", { from: "-1 2", to: "1 0" }, context)!;
+    expect(serializeAnimationValue(sampleAnimationValue(crossingScale, calculation(), 0.5)!.value)).toBe("scale(0 1)");
+    const nearSingularSkew = parseAnimateTransformValueSet("skewX", { from: "89", to: "89.9" }, context)!;
+    expect(serializeAnimationValue(sampleAnimationValue(nearSingularSkew, calculation(), 0.5)!.value)).toBe(
+      "skewX(89.45)",
+    );
   });
 
   test("uses the lower sandwich result as a to-animation's underlying value", () => {

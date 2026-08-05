@@ -685,6 +685,8 @@ export interface RenderShape {
   geometryAuthored?: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
+  /** Splits the target's authored transform from structural transforms such as use positioning/viewBox mapping. */
+  transformAnimation?: { base: AffineTransform; suffix: AffineTransform; viewportPrefix?: AffineTransform };
   source: SourceLocation;
   /** Coordinate context at the referencing element, retained for user-space paint percentages. */
   paintContext: NodeCoordinateContext;
@@ -713,6 +715,7 @@ export interface RenderGroup {
   children: RenderNode[];
   style: ComputedStyle;
   transform: AffineTransform;
+  transformAnimation?: { base: AffineTransform; suffix: AffineTransform; viewportPrefix?: AffineTransform };
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
   accessibility?: AccessibilityMetadata;
@@ -744,6 +747,7 @@ export interface RenderText {
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
+  transformAnimation?: { base: AffineTransform; suffix: AffineTransform; viewportPrefix?: AffineTransform };
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
   accessibility?: AccessibilityMetadata;
@@ -839,6 +843,7 @@ export interface RenderImage {
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
+  transformAnimation?: { base: AffineTransform; suffix: AffineTransform; viewportPrefix?: AffineTransform };
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
   accessibility?: AccessibilityMetadata;
@@ -867,6 +872,7 @@ export interface RenderForeignObject {
   attributes: Readonly<Record<string, string | number>>;
   style: ComputedStyle;
   transform: AffineTransform;
+  transformAnimation?: { base: AffineTransform; suffix: AffineTransform; viewportPrefix?: AffineTransform };
   source: SourceLocation;
   paintContext: NodeCoordinateContext;
   accessibility?: AccessibilityMetadata;

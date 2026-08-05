@@ -28,6 +28,7 @@ export type {
 } from "./renderTree/animation";
 export { sampleAnimatedPresentationValue, sampleNumericAnimation } from "./renderTree/animation";
 export type {
+  AnimateTransformType,
   AnimationAttributeRegistryEntry,
   AnimationAttributeSpec,
   AnimationCalculation,
@@ -52,6 +53,8 @@ export {
   cubicBezierProgress,
   interpolateAnimationValue,
   normalizeAnimationValue,
+  parseAnimateTransformValue,
+  parseAnimateTransformValueSet,
   parseAnimationValue,
   parseAnimationValueSet,
   parseKeySplines,

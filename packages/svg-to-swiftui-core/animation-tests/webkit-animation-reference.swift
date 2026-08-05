@@ -70,15 +70,22 @@ final class AnimationSnapshotRenderer: NSObject, WKNavigationDelegate {
         let script = """
         (() => {
           const root = document.documentElement;
-          if (typeof root.pauseAnimations === 'function') root.pauseAnimations();
+          const timeContainers = [root, ...root.querySelectorAll('svg')];
+          for (const container of timeContainers) {
+            if (typeof container.pauseAnimations === 'function') container.pauseAnimations();
+          }
           window.__svgTimingEvents = window.__svgTimingEvents || new Set();
           for (const event of [\(events)]) {
             if (window.__svgTimingEvents.has(event.key) || !event.target) continue;
-            if (typeof root.setCurrentTime === 'function') root.setCurrentTime(event.time);
+            for (const container of timeContainers) {
+              if (typeof container.setCurrentTime === 'function') container.setCurrentTime(event.time);
+            }
             event.target.dispatchEvent(new Event(event.name));
             window.__svgTimingEvents.add(event.key);
           }
-          if (typeof root.setCurrentTime === 'function') root.setCurrentTime(\(seconds));
+          for (const container of timeContainers) {
+            if (typeof container.setCurrentTime === 'function') container.setCurrentTime(\(seconds));
+          }
           for (const animation of document.getAnimations()) {
             animation.pause();
             try { animation.currentTime = \(milliseconds); } catch (_) {}

@@ -1917,7 +1917,8 @@ function buildNestedSVG(
   const viewBox = safeViewBox(element, context);
   const preserveAspectRatio = safePreserveAspectRatio(element, context);
   const outerTransform = computedTransform(element, resolved, context);
-  const transform = multiplyTransforms(outerTransform, viewBoxTransform(viewBox, rect, preserveAspectRatio));
+  const viewportTransform = viewBoxTransform(viewBox, rect, preserveAspectRatio);
+  const transform = multiplyTransforms(outerTransform, viewportTransform);
   const overflow = String(resolved.effective.overflow ?? "hidden").toLowerCase();
   const zeroSized = rect.width === 0 || rect.height === 0 || viewBox?.width === 0 || viewBox?.height === 0;
   const childCoordinate: CoordinateContext = {
@@ -1933,6 +1934,7 @@ function buildNestedSVG(
       : childElements(element).flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
     style: resolved.style,
     transform,
+    transformAnimation: { base: outerTransform, suffix: viewportTransform, viewportPrefix: IDENTITY_TRANSFORM },
     source: sourceLocation(element),
     paintContext: {
       viewport: { ...coordinate.viewport },
@@ -1978,7 +1980,9 @@ function buildViewportUse(
   const useTransform = computedTransform(use, useResolved, context);
   const referencedTransform = computedTransform(referenced, referencedResolved, context);
   const outerTransform = multiplyTransforms(useTransform, referencedTransform);
-  const transform = multiplyTransforms(outerTransform, viewBoxTransform(viewBox, rect, preserveAspectRatio));
+  const viewportTransform = viewBoxTransform(viewBox, rect, preserveAspectRatio);
+  const transformSuffix = multiplyTransforms(referencedTransform, viewportTransform);
+  const transform = multiplyTransforms(useTransform, transformSuffix);
   const overflow = String(referencedResolved.effective.overflow ?? "hidden").toLowerCase();
   const zeroSized = rect.width === 0 || rect.height === 0 || viewBox?.width === 0 || viewBox?.height === 0;
   const childCoordinate: CoordinateContext = {
@@ -2011,6 +2015,7 @@ function buildViewportUse(
     children: zeroSized ? [] : [referencedGroup],
     style: useResolved.style,
     transform,
+    transformAnimation: { base: useTransform, suffix: transformSuffix, viewportPrefix: referencedTransform },
     source: sourceLocation(use),
     paintContext: {
       viewport: { ...coordinate.viewport },
@@ -2070,7 +2075,8 @@ function buildUse(
   const resolved = resolvedPresentation(element, inherited, coordinate, context);
   const rect = viewportRect(element, coordinate, context, { width: 0, height: 0 }, resolved);
   const position = { ...IDENTITY_TRANSFORM, e: rect.x, f: rect.y };
-  const transform = multiplyTransforms(computedTransform(element, resolved, context), position);
+  const baseTransform = computedTransform(element, resolved, context);
+  const transform = multiplyTransforms(baseTransform, position);
   return [
     {
       type: "group",
@@ -2083,6 +2089,7 @@ function buildUse(
       ),
       style: resolved.style,
       transform,
+      transformAnimation: { base: baseTransform, suffix: position },
       source: sourceLocation(element),
       paintContext: {
         viewport: { ...coordinate.viewport },
@@ -2462,7 +2469,8 @@ export function buildRenderDocument(
       hasReferencedPreserveAspectRatio: false,
     };
   }
-  const rootTransform = multiplyTransforms(computedTransform(svg, resolved, context), properties.viewBoxTransform);
+  const rootBaseTransform = computedTransform(svg, resolved, context);
+  const rootTransform = multiplyTransforms(rootBaseTransform, properties.viewBoxTransform);
   const childCoordinate = { ...coordinate, fontMetrics: resolved.fontMetrics };
   const root: RenderGroup = {
     type: "group",
@@ -2473,6 +2481,11 @@ export function buildRenderDocument(
         : childElements(svg).flatMap((child) => buildNode(child, resolved.effective, childCoordinate, context)),
     style: resolved.style,
     transform: rootTransform,
+    transformAnimation: {
+      base: rootBaseTransform,
+      suffix: properties.viewBoxTransform,
+      viewportPrefix: IDENTITY_TRANSFORM,
+    },
     source: sourceLocation(svg),
     paintContext: {
       viewport: { ...coordinate.viewport },
@@ -3205,6 +3218,10 @@ export function buildRenderDocument(
       "mix-blend-mode": node.style.blendMode,
       isolation: node.style.isolation,
     });
+    if (!values.transform) {
+      const matrix = node.transformAnimation?.base ?? node.transform;
+      values.transform = `matrix(${matrix.a} ${matrix.b} ${matrix.c} ${matrix.d} ${matrix.e} ${matrix.f})`;
+    }
     if (node.type === "shape") {
       for (const [name, value] of Object.entries(node.geometry)) {
         if (name !== "type" && value !== undefined) values[name] = String(value);
