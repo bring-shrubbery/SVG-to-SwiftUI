@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#0f172a"/>
+  <defs>
+    <path id="curve" d="M10 24 C28 2 52 46 72 20" pathLength="100"/>
+    <path id="loop" d="M112 20 C138 4 151 28 137 45 C122 61 96 47 100 29 Z"/>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="1.2"/>
+    </filter>
+    <linearGradient id="ship-fill"><stop stop-color="#fbbf24"/><stop offset="1" stop-color="#fb7185"/></linearGradient>
+  </defs>
+
+  <path d="M10 24 C28 2 52 46 72 20" fill="none" stroke="#334155" stroke-width="1"/>
+  <g id="auto-ship">
+    <animateMotion dur="2s" rotate="auto" fill="freeze"><mpath href="#curve"/></animateMotion>
+    <path d="M-7 -4 L8 0 L-7 4 L-3 0 Z" fill="url(#ship-fill)" stroke="#fff7ed" stroke-width="1"/>
+  </g>
+
+  <path d="M112 20 C138 4 151 28 137 45 C122 61 96 47 100 29 Z" fill="none" stroke="#334155" stroke-width="1"/>
+  <g id="closed-loop">
+    <animateMotion dur="2s" rotate="auto-reverse" fill="freeze"><mpath xlink:href="#loop"/></animateMotion>
+    <path d="M-6 -3 L7 0 L-6 3 Z" fill="#38bdf8"/>
+  </g>
+
+  <g transform="translate(4 54) scale(.92)">
+    <g id="keypoints-target" transform="rotate(-4)">
+      <animateTransform attributeName="transform" type="rotate" values="-4;8;-4" additive="sum" dur="2s" fill="freeze"/>
+      <animateMotion path="M4 12 C36 -8 60 28 88 9" keyTimes="0;.35;1" keyPoints="0;.18;1" calcMode="spline" keySplines=".42 0 .58 1;.2 .8 .4 1" rotate="auto" dur="2s" fill="freeze"/>
+      <g filter="url(#glow)"><path d="M-6 -4 L8 0 L-6 4 Z" fill="#a78bfa"/></g>
+    </g>
+  </g>
+
+  <g id="point-pairs">
+    <animateMotion values="105,75;137,67;148,90" calcMode="linear" rotate="15" dur="2s" fill="freeze"/>
+    <rect x="-6" y="-4" width="12" height="8" rx="2" fill="#34d399" stroke="#ecfdf5"/>
+    <path d="M0 0 H7" stroke="#052e16" stroke-width="1.5"/>
+  </g>
+
+  <g id="discrete-motion">
+    <animateMotion values="104,56;124,56;146,56" calcMode="discrete" rotate="0" dur="2s" fill="freeze"/>
+    <path d="M-3 -3 H3 V3 H-3 Z" fill="#e879f9"/>
+  </g>
+
+  <g id="additive-motion">
+    <animateMotion from="12,104" to="77,104" dur="1s" repeatCount="2" accumulate="sum" fill="freeze"/>
+    <animateMotion values="0,0;0,-5;0,0" additive="sum" dur="1s" repeatCount="2" fill="freeze"/>
+    <path d="M-5 -5 H5 V5 H-5 Z M-2 0 H7" fill="#f97316" stroke="#fff7ed" stroke-width="1"/>
+  </g>
+
+  <path d="M10 48 H150 M10 96 H150" stroke="#1e293b" stroke-width="1" stroke-dasharray="2 3"/>
+</svg>

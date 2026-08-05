@@ -15,6 +15,7 @@ import {
   sampleAnimationValue,
   validateAnimationCalculation,
 } from "./animationValues";
+import { type MotionDefinition, parseMotionDefinition } from "./motion";
 import { type DeterministicTimingEvent, sampleSMILProgram, sampleSMILTiming } from "./smilTiming";
 import type { RenderDiagnostic, SourceLocation } from "./types";
 
@@ -85,6 +86,7 @@ export interface AnimationDefinition {
   target?: AnimationTarget;
   kind: AnimationKind;
   transformType?: AnimateTransformType;
+  motion?: MotionDefinition;
   authoredAttributeName?: string;
   attributeName?: string;
   attributeType: "auto" | "XML" | "CSS";
@@ -311,7 +313,8 @@ function parseValue(
 }
 
 function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSupport">): boolean {
-  if (!(["animate", "set", "animateTransform"] as AnimationKind[]).includes(definition.kind)) return false;
+  if (!(["animate", "set", "animateTransform", "animateMotion"] as AnimationKind[]).includes(definition.kind))
+    return false;
   const attribute = definition.attributeName ? resolveAnimationAttribute(definition.attributeName) : undefined;
   const resourceSupported =
     definition.target?.binding === "resource" &&
@@ -320,7 +323,8 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
   const renderNodeSupported =
     definition.target?.binding === "render-node" &&
     (attribute?.runtimeBinding === "render-node" ||
-      (definition.kind === "animateTransform" && definition.attributeName === "transform"));
+      (definition.kind === "animateTransform" && definition.attributeName === "transform") ||
+      (definition.kind === "animateMotion" && definition.attributeName === "motion"));
   if (
     !definition.target?.renderable ||
     (!renderNodeSupported && !resourceSupported) ||
@@ -344,6 +348,20 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
     (!Number.isFinite(definition.timing.repeatCount.value) || definition.timing.repeatCount.value <= 0)
   )
     return false;
+  if (definition.kind === "animateMotion") {
+    if (!definition.motion) return false;
+    const keyPoints = definition.composition.keyPoints;
+    const keyTimes = definition.composition.keyTimes;
+    if (keyPoints && (!keyTimes || keyPoints.length !== keyTimes.length || keyPoints.length < 2)) return false;
+    const motionPointCount = keyPoints?.length ?? definition.motion.keyDistances.length;
+    if (keyTimes && keyTimes.length !== motionPointCount) return false;
+    if (
+      definition.composition.calcMode === "spline" &&
+      definition.composition.keySplines?.length !== motionPointCount - 1
+    )
+      return false;
+    return true;
+  }
   if (definition.value.family === "unsupported" || definition.value.form === "invalid") return false;
   if (definition.kind === "set" && !definition.value.to && !definition.value.values?.length) return false;
   const count = definition.value.values?.length ?? 2;
@@ -518,11 +536,15 @@ export function buildAnimationProgram(
     const attributeType: AnimationDefinition["attributeType"] =
       attributeTypeSource === "XML" || attributeTypeSource === "CSS" ? attributeTypeSource : "auto";
     const effectiveAttributeName =
-      kind === "animateTransform" ? (authoredAttributeName ?? "transform") : authoredAttributeName;
+      kind === "animateTransform"
+        ? (authoredAttributeName ?? "transform")
+        : kind === "animateMotion"
+          ? "motion"
+          : authoredAttributeName;
     const attributeSpec = effectiveAttributeName
       ? resolveAnimationAttribute(effectiveAttributeName, attributeType)
       : undefined;
-    const attributeName = attributeSpec?.canonicalName;
+    const attributeName = kind === "animateMotion" ? "motion" : attributeSpec?.canonicalName;
     if ((kind === "animate" || kind === "set" || kind === "animateTransform") && !authoredAttributeName)
       diagnostic(
         diagnostics,
@@ -631,6 +653,11 @@ export function buildAnimationProgram(
       ...(keySplinesSource === undefined ? {} : { keySplines: parseKeySplines(keySplinesSource) ?? [] }),
       ...(keyPointsSource === undefined ? {} : { keyPoints: parseKeyTimes(keyPointsSource) ?? [] }),
     };
+    const parsedMotion =
+      kind === "animateMotion"
+        ? parseMotionDefinition(element, definitions, duplicateIds, targetSnapshot?.context ?? animationValueContext)
+        : undefined;
+    if (parsedMotion) diagnostics.push(...parsedMotion.diagnostics);
     const dependencies = [...timing.begin, ...timing.end]
       .filter(
         (time): time is Extract<AnimationTime, { type: "syncbase" | "repeat" }> =>
@@ -644,6 +671,7 @@ export function buildAnimationProgram(
       ...(target ? { target } : {}),
       kind,
       ...(kind === "animateTransform" && transformType ? { transformType } : {}),
+      ...(parsedMotion?.motion ? { motion: parsedMotion.motion } : {}),
       ...(authoredAttributeName ? { authoredAttributeName } : {}),
       ...(attributeName ? { attributeName } : {}),
       attributeType,
@@ -813,7 +841,7 @@ export function buildAnimationProgram(
         );
       }
     }
-    if (value.family === "unsupported")
+    if (value.family === "unsupported" && kind !== "animateMotion")
       diagnostic(
         diagnostics,
         element,
@@ -831,7 +859,7 @@ export function buildAnimationProgram(
         `One or more ${transformType} values have invalid syntax or arity.`,
         property(element, "values") === undefined ? "from" : "values",
       );
-    if (value.family !== "unsupported") {
+    if (value.family !== "unsupported" && kind !== "animateMotion") {
       if (value.form === "invalid")
         diagnostic(
           diagnostics,
@@ -872,7 +900,44 @@ export function buildAnimationProgram(
           composition.additive === "sum" ? "additive" : "accumulate",
         );
     }
-    if (runtimeSupport === "pending" && value.family !== "unsupported")
+    if (kind === "animateMotion" && composition.keyPoints) {
+      if (!composition.keyTimes || composition.keyPoints.length !== composition.keyTimes.length)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-animation-motion-key-points",
+          "animateMotion keyPoints requires a matching keyTimes entry for every point.",
+          "keyPoints",
+        );
+      if (composition.calcMode === "spline" && composition.keySplines?.length !== composition.keyPoints.length - 1)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-animation-motion-key-splines",
+          "Spline motion requires one keySpline per keyPoints interval.",
+          "keySplines",
+        );
+    }
+    if (kind === "animateMotion" && parsedMotion?.motion && !composition.keyPoints) {
+      const pointCount = parsedMotion.motion.keyDistances.length;
+      if (composition.keyTimes && composition.keyTimes.length !== pointCount)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-animation-motion-key-times",
+          `Motion path has ${pointCount} authored points, so keyTimes must contain ${pointCount} entries.`,
+          "keyTimes",
+        );
+      if (composition.calcMode === "spline" && composition.keySplines?.length !== pointCount - 1)
+        diagnostic(
+          diagnostics,
+          element,
+          "invalid-animation-motion-key-splines",
+          `Motion path has ${pointCount - 1} intervals, so keySplines must contain ${pointCount - 1} entries.`,
+          "keySplines",
+        );
+    }
+    if (runtimeSupport === "pending" && (value.family !== "unsupported" || kind === "animateMotion"))
       diagnostic(
         diagnostics,
         element,

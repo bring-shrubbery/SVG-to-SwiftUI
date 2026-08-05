@@ -101,6 +101,24 @@ const REQUIRED_ANIMATE_TRANSFORM_BENCHMARK_TAGS = [
   "use",
 ] as const;
 
+const REQUIRED_ANIMATE_MOTION_BENCHMARK_TAGS = [
+  "accumulate",
+  "additive",
+  "animate-motion",
+  "auto-reverse",
+  "auto-rotate",
+  "closed-path",
+  "discrete",
+  "explicit-rotate",
+  "key-points",
+  "mpath",
+  "nested-transform",
+  "path-length",
+  "point-pairs",
+  "spline",
+  "transform-sandwich",
+] as const;
+
 function validateBackground(value: string | null): void {
   if (value !== null && !/^#([\da-f]{6}|[\da-f]{8})$/i.test(value))
     throw new Error(`Background must be null, #RRGGBB, or #RRGGBBAA: ${value}`);
@@ -347,6 +365,14 @@ export function validateAnimationManifest(): string[] {
   for (const tag of REQUIRED_ANIMATE_TRANSFORM_BENCHMARK_TAGS)
     if (!animateTransformBenchmarkTags.has(tag))
       errors.push(`animateTransform comparison benchmark does not cover required tag: ${tag}`);
+  const animateMotionBenchmarkTags = new Set(
+    fixtures
+      .filter((fixture) => fixture.mode === "comparison" && fixture.tags.includes("benchmark-07"))
+      .flatMap((fixture) => fixture.tags),
+  );
+  for (const tag of REQUIRED_ANIMATE_MOTION_BENCHMARK_TAGS)
+    if (!animateMotionBenchmarkTags.has(tag))
+      errors.push(`animateMotion comparison benchmark does not cover required tag: ${tag}`);
   if (valueGoldens.version !== 1) errors.push(`Unsupported animation value golden version: ${valueGoldens.version}`);
   if (!Number.isFinite(valueGoldens.tolerance) || valueGoldens.tolerance <= 0)
     errors.push("Animation value golden tolerance must be finite and positive");

@@ -162,6 +162,64 @@ describe("typed SVG animation program", () => {
       ]),
     );
   });
+
+  test("parses animateMotion paths, point pairs, mpath shapes, rotation, and keyPoints", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 100 60">
+        <defs><path id="curve" d="M0 0 C20 0 20 30 50 30" pathLength="10"/><circle id="ring" cx="30" cy="30" r="12"/></defs>
+        <g id="path-target"><animateMotion path="M0 0 L20 0 L20 20" rotate="auto" keyTimes="0;.4;1" keyPoints="0;.25;1" calcMode="spline" keySplines=".4 0 .6 1;.4 0 .6 1" dur="2s"/></g>
+        <rect id="mpath-target"><animateMotion rotate="auto-reverse" dur="2s"><mpath href="#curve"/></animateMotion></rect>
+        <g id="shape-target"><animateMotion rotate="1.57079632679rad" dur="2s"><mpath href="#ring"/></animateMotion></g>
+        <g id="points-target"><animateMotion from="10%, 1em" by="20, 10" dur="2s"/></g>
+      </svg>`);
+    expect(document.animationProgram.animations).toHaveLength(4);
+    expect(document.animationProgram.animations[0]).toMatchObject({
+      kind: "animateMotion",
+      attributeName: "motion",
+      runtimeSupport: "typed",
+      motion: { source: "path", rotate: { type: "auto", reverse: false } },
+    });
+    expect(document.animationProgram.animations[1]).toMatchObject({
+      runtimeSupport: "typed",
+      motion: {
+        source: "mpath",
+        authoredLength: 10,
+        rotate: { type: "auto", reverse: true },
+        referenceChain: ["#curve"],
+      },
+    });
+    expect(document.animationProgram.animations[2]?.motion?.rotate.type).toBe("angle");
+    expect((document.animationProgram.animations[2]?.motion?.rotate as { degrees: number }).degrees).toBeCloseTo(90);
+    expect(document.animationProgram.animations[3]?.motion?.points[0]).toMatchObject({ x: 10, y: 16 });
+  });
+
+  test("diagnoses invalid, missing, external, wrong-type, empty, cyclic, rotate, origin, and keyPoint motion", () => {
+    const result = convertWithDiagnostics(`
+      <svg viewBox="0 0 20 20">
+        <defs><g id="wrong"/><path id="empty" d="M0 0"/><mpath id="a" href="#b"/><mpath id="b" href="#a"/></defs>
+        <g><animateMotion dur="1s"><mpath/></animateMotion></g>
+        <g><animateMotion dur="1s"><mpath href="https://example.com/path"/></animateMotion></g>
+        <g><animateMotion dur="1s"><mpath href="#missing"/></animateMotion></g>
+        <g><animateMotion dur="1s"><mpath href="#wrong"/></animateMotion></g>
+        <g><animateMotion dur="1s"><mpath href="#empty"/></animateMotion></g>
+        <g><animateMotion dur="1s"><mpath href="#a"/></animateMotion></g>
+        <g><animateMotion path="bad" rotate="sideways" origin="layout" keyTimes="0;1" keyPoints="0;.5;1" dur="1s"/></g>
+      </svg>`);
+    expect(result.diagnostics.map((item) => item.code)).toEqual(
+      expect.arrayContaining([
+        "missing-animation-motion-path-reference",
+        "external-animation-motion-path",
+        "missing-animation-motion-path-target",
+        "invalid-animation-motion-path-target",
+        "empty-animation-motion-path",
+        "cyclic-animation-motion-path-reference",
+        "invalid-animation-motion-path",
+        "invalid-animation-motion-rotate",
+        "unsupported-animation-motion-origin",
+        "invalid-animation-motion-key-points",
+      ]),
+    );
+  });
 });
 
 describe("generated animation clock", () => {
@@ -211,5 +269,21 @@ describe("generated animation clock", () => {
     expect(swift).toContain(".transformEffect(AnimatedTransform.svgAnimatedTransformCorrection");
     expect(swift.match(/svgAnimatedValue\(documentTime: documentTime/g)?.length).toBeGreaterThanOrEqual(2);
     expect(swift).not.toContain("@State private var");
+  });
+
+  test("generates deterministic motion metrics and composes motion after animated transforms", () => {
+    const swift = convert(
+      `<svg viewBox="0 0 100 60"><g transform="scale(1.2)">
+        <animateTransform attributeName="transform" type="rotate" from="0" to="30" dur="2s"/>
+        <animateMotion path="M0 0 C20 0 30 30 60 20" rotate="auto" dur="2s" fill="freeze"/>
+        <path d="M-5 -3 L8 0 L-5 3 Z" fill="orange"/>
+      </g></svg>`,
+      { structName: "AnimatedMotion", strict: true },
+    );
+    expect(swift).toContain("svgAnimatedMotion(documentTime: documentTime");
+    expect(swift).toContain("SVGAnimationMotionPoint(");
+    expect(swift).toContain("animatedMotion: AnimatedMotion.svgAnimatedMotion");
+    expect(swift).toContain("svgMultiplyTransform(animatedBase, svgMultiplyTransform(animatedMotion, animatedSuffix))");
+    expect(swift).toContain(".transformEffect(AnimatedMotion.svgAnimatedTransformCorrection");
   });
 });

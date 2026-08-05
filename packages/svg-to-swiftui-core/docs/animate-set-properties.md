@@ -8,7 +8,7 @@ The cascade is resolved before animation parsing. CSS winners, inheritance, expl
 
 `ANIMATION_ATTRIBUTE_REGISTRY` is the source of truth for exact names, XML/CSS namespaces, typed value families, target kinds, invalidation categories, and runtime binding. The generated [animation report](../conformance/ANIMATION_REPORT.md) exposes implemented and pending entries without guessing support.
 
-Resource values that require rebuilding a filter, marker, mask, clip, or paint-server graph remain explicitly `pending-resource` and emit `unsupported-animation-semantics`. `<animateTransform>` is documented separately in [its implemented contract](./animate-transform.md); motion paths and CSS keyframes remain roadmap work.
+Resource values that require rebuilding a filter, marker, mask, clip, or paint-server graph remain explicitly `pending-resource` and emit `unsupported-animation-semantics`. `<animateTransform>` and [`<animateMotion>`](./animate-motion.md) are documented separately; CSS keyframes remain roadmap work.
 
 Diagnostics use stable codes for missing/wrong targets, incompatible `attributeType`, non-applicable properties, malformed values/calculation metadata, unresolved resource URLs, and parsed-but-unwired semantics. Permissive mode keeps the immutable base; strict mode rejects warnings.
 
