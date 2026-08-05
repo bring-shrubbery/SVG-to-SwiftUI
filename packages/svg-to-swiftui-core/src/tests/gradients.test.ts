@@ -133,7 +133,7 @@ describe("typed SVG gradient resources", () => {
       reasons: expect.arrayContaining(["document uses an SVG gradient paint server"]),
     });
     const output = convert(source);
-    expect(output).toContain("Canvas { context, size in");
+    expect(output).toContain("Canvas { (context: inout GraphicsContext, size: CGSize) in");
     expect(output).toContain("drawLinearGradient");
   });
 

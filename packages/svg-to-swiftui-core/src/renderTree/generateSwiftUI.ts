@@ -2997,7 +2997,7 @@ function createTextHelper(
       ? [`${indentation}let animationIntervals: [String: [(begin: Double, end: Double)]]`, ""]
       : []),
     `${indentation}var body: some View {`,
-    `${i2}Canvas { context, size in`,
+    `${i2}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${i3}context.withCGContext { graphics in`,
     `${i4}graphics.saveGState()`,
     `${i4}graphics.scaleBy(x: size.width / ${formatNumber(coordinateSpace.width)}, y: size.height / ${formatNumber(coordinateSpace.height)})`,
@@ -3369,7 +3369,7 @@ function renderGradientNode(
     node.spreadExpression ?? `.${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}`;
   const linearRGB = node.linearRGBExpression ?? String(gradient.colorInterpolation === "linearRGB");
   const lines = [
-    `${prefix}Canvas { context, size in`,
+    `${prefix}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${inner}let clipPath = ${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size))`,
     `${inner}let stops = ${stops}`,
     `${inner}if let gradient = svgGradient(stops: stops, spread: ${spread}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${linearRGB}) {`,
@@ -3412,7 +3412,7 @@ function renderPatternNode(
   const prefix = indentation.repeat(level);
   const inner = indentation.repeat(level + 1);
   const lines = [
-    `${prefix}Canvas { context, size in`,
+    `${prefix}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${inner}context.withCGContext { graphics in`,
     ...renderPatternCommands(node, "graphics", level + 2, indentation),
     `${inner}}`,
@@ -3787,7 +3787,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
     const inner = `${prefix}${indentation}`;
     const deep = `${inner}${indentation}`;
     const lines = [
-      `${prefix}Canvas { context, size in`,
+      `${prefix}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
       `${inner}context.withCGContext { graphics in`,
       `${deep}graphics.saveGState()`,
     ];
@@ -3861,7 +3861,7 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
       lines.push(
         `${prefix}.mask {`,
         `${prefix}${indentation}GeometryReader { proxy in`,
-        `${prefix}${indentation}${indentation}Canvas { context, size in`,
+        `${prefix}${indentation}${indentation}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
         `${prefix}${indentation}${indentation}${indentation}var matrix = ColorMatrix()`,
         `${prefix}${indentation}${indentation}${indentation}matrix.r1 = 0`,
         `${prefix}${indentation}${indentation}${indentation}matrix.g2 = 0`,
@@ -4171,7 +4171,7 @@ private struct SVGFilteredCanvas: View {
     @Environment(\\.displayScale) private var displayScale
 
     var body: some View {
-        Canvas { context, size in
+        Canvas { (context: inout GraphicsContext, size: CGSize) in
             if let image = render(size: size) {
                 context.draw(Image(decorative: image, scale: displayScale), in: CGRect(origin: .zero, size: size))
             }
@@ -5376,7 +5376,7 @@ function createImageHelper(
       ? [`${indentation}let animationIntervals: [String: [(begin: Double, end: Double)]]`, ""]
       : []),
     `${indentation}var body: some View {`,
-    `${i2}Canvas { context, size in`,
+    `${i2}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${i3}context.clip(to: Path(CGRect(x: ${formatNumber(node.viewport.x)}, y: ${formatNumber(node.viewport.y)}, width: ${formatNumber(node.viewport.width)}, height: ${formatNumber(node.viewport.height)})).applying(${runtimeTransform(helper.transform, coordinateSpace)}))`,
     `${i3}context.transform = ${helper.transformExpression ?? runtimeTransform(imageTransform, coordinateSpace)}`,
   ];
@@ -5455,7 +5455,7 @@ function createFilterImageHelper(helper: FilterImageHelper, indentationSize: num
     `private struct ${helper.name}: View {`,
     ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
     `${indentation}var body: some View {`,
-    `${i2}Canvas { context, size in`,
+    `${i2}Canvas { (context: inout GraphicsContext, size: CGSize) in`,
     `${i3}guard size.width > 0, size.height > 0 else { return }`,
     `${i3}let viewport = CGAffineTransform(a: size.width / ${formatNumber(canvas.width)}, b: 0, c: 0, d: size.height / ${formatNumber(canvas.height)}, tx: ${formatNumber(-canvas.x)} * size.width / ${formatNumber(canvas.width)}, ty: ${formatNumber(-canvas.y)} * size.height / ${formatNumber(canvas.height)})`,
     `${i3}context.transform = viewport`,
