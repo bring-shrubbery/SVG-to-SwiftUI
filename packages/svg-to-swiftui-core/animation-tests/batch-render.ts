@@ -33,6 +33,14 @@ export interface AnimationBatchItem {
   fonts: string[];
   expectedMode: ExpectedOutputMode;
   usesDocumentTime: boolean;
+  usesAnimationEvents: boolean;
+  events: Array<{
+    timeMicroseconds: number;
+    name: string;
+    targetId?: string;
+    order?: number;
+    payload?: { x?: number; y?: number; button?: number; key?: string };
+  }>;
   tolerance: RgbaTolerance;
   frames: AnimationBatchFrame[];
 }
@@ -64,6 +72,21 @@ function swiftString(value: string): string {
   return JSON.stringify(value).replaceAll("/", "/");
 }
 
+function swiftOptional(value: number | string | undefined): string {
+  return value === undefined ? "nil" : typeof value === "string" ? swiftString(value) : String(value);
+}
+
+function swiftEvents(item: AnimationBatchItem): string {
+  return `[${item.events
+    .map((event) => {
+      const payload = event.payload
+        ? `${item.swiftTypeName}.SVGAnimationEvent.Payload(x: ${swiftOptional(event.payload.x)}, y: ${swiftOptional(event.payload.y)}, button: ${swiftOptional(event.payload.button)}, key: ${swiftOptional(event.payload.key)})`
+        : "nil";
+      return `${item.swiftTypeName}.SVGAnimationEvent(time: ${event.timeMicroseconds}e-6, name: ${swiftString(event.name)}, targetID: ${swiftOptional(event.targetId)}, order: ${swiftOptional(event.order)}, payload: ${payload})`;
+    })
+    .join(", ")}]`;
+}
+
 function generatedSource(support: string, items: AnimationBatchItem[]): string {
   const declarations = items
     .map(
@@ -74,6 +97,8 @@ function generatedSource(support: string, items: AnimationBatchItem[]): string {
   const factories = items
     .map((item) => {
       if (item.expectedMode === "shape") return `    { _ in AnyView(${item.swiftTypeName}().fill(Color.black)) }`;
+      if (item.usesAnimationEvents)
+        return `    { time in AnyView(${item.swiftTypeName}(documentTime: Double(time) / 1_000_000, animationEvents: ${swiftEvents(item)})) }`;
       return item.usesDocumentTime
         ? `    { time in AnyView(${item.swiftTypeName}(documentTime: Double(time) / 1_000_000)) }`
         : `    { _ in AnyView(${item.swiftTypeName}()) }`;
@@ -181,6 +206,8 @@ export async function runAnimationBatch(
             fonts: item.fonts,
             expectedMode: item.expectedMode,
             usesDocumentTime: item.usesDocumentTime,
+            usesAnimationEvents: item.usesAnimationEvents,
+            events: item.events,
             timeMicroseconds: frame.timeMicroseconds,
           }),
           ...item.fonts.map((font) => readFileSync(resolve(__dirname, font))),

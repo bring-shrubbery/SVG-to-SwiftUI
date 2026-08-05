@@ -626,6 +626,8 @@ async function main(): Promise<void> {
           fonts: fixture.fonts,
           expectedMode,
           usesDocumentTime: swiftCode.includes("init(documentTime: Double? = nil"),
+          usesAnimationEvents: swiftCode.includes("animationEvents: [SVGAnimationEvent] = []"),
+          events: fixture.events,
           tolerance: fixture.tolerance,
           frames: fixture.frames.map((frame) => ({
             ...frame,

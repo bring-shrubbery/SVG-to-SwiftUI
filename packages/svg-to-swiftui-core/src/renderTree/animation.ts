@@ -33,6 +33,7 @@ export type AnimationTime =
   | { type: "offset"; seconds: number }
   | { type: "syncbase"; animationId: string; phase: "begin" | "end"; offsetSeconds: number }
   | { type: "repeat"; animationId: string; iteration: number; offsetSeconds: number }
+  | { type: "repeatEvent"; animationId: string; offsetSeconds: number }
   | { type: "event"; targetId?: string; event: string; offsetSeconds: number }
   | { type: "accessKey"; key: string; offsetSeconds: number }
   | { type: "wallclock"; value: string }
@@ -134,6 +135,25 @@ const ANIMATION_TAGS = new Map<string, AnimationKind>([
   ["discard", "discard"],
 ]);
 
+export const SUPPORTED_ANIMATION_EVENTS = [
+  "activate",
+  "blur",
+  "click",
+  "focus",
+  "focusin",
+  "focusout",
+  "mousedown",
+  "mouseenter",
+  "mouseleave",
+  "mouseout",
+  "mouseover",
+  "mouseup",
+  "pointerdown",
+  "pointerup",
+] as const;
+
+const SUPPORTED_ANIMATION_EVENT_SET = new Set<string>(SUPPORTED_ANIMATION_EVENTS);
+
 function children(element: ElementNode): ElementNode[] {
   return element.children.filter(
     (child): child is ElementNode => typeof child !== "string" && child.type === "element",
@@ -220,6 +240,20 @@ function parseTime(raw: string): AnimationTime {
           phase: reference[2]!.toLowerCase() as "begin" | "end",
           offsetSeconds: parsedOffset,
         };
+  }
+  const lifecycle = /^([\w:.-]+)\.(beginEvent|endEvent|repeatEvent)([+-].+)?$/i.exec(value);
+  if (lifecycle) {
+    const parsedOffset = lifecycle[3] ? parseClock(lifecycle[3]) : 0;
+    if (parsedOffset === undefined) return { type: "invalid", syntax: value };
+    const eventName = lifecycle[2]!.toLowerCase();
+    if (eventName === "repeatevent")
+      return { type: "repeatEvent", animationId: lifecycle[1]!, offsetSeconds: parsedOffset };
+    return {
+      type: "syncbase",
+      animationId: lifecycle[1]!,
+      phase: eventName === "beginevent" ? "begin" : "end",
+      offsetSeconds: parsedOffset,
+    };
   }
   const event = /^(?:([\w:.-]+)\.)?([a-z][\w-]*)([+-].+)?$/i.exec(value);
   if (event) {
@@ -393,6 +427,16 @@ function parseValue(
 }
 
 function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSupport">): boolean {
+  const deterministicTime = (time: AnimationTime) =>
+    ["offset", "syncbase", "repeat", "repeatEvent", "event", "indefinite"].includes(time.type) &&
+    (time.type !== "event" || SUPPORTED_ANIMATION_EVENT_SET.has(time.event.toLowerCase()));
+  if (definition.kind === "discard")
+    return (
+      !!definition.target?.renderable &&
+      definition.target.binding === "render-node" &&
+      definition.timing.begin.every(deterministicTime) &&
+      definition.timing.end.every(deterministicTime)
+    );
   if (
     !(["animate", "set", "animateTransform", "animateMotion", "cssAnimation"] as AnimationKind[]).includes(
       definition.kind,
@@ -426,7 +470,6 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
       (!Number.isFinite(definition.timing.duration.seconds) || definition.timing.duration.seconds < 0))
   )
     return false;
-  const deterministicTime = (time: AnimationTime) => ["offset", "syncbase", "repeat", "indefinite"].includes(time.type);
   if (!definition.timing.begin.every(deterministicTime) || !definition.timing.end.every(deterministicTime))
     return false;
   if (
@@ -747,8 +790,8 @@ export function buildAnimationProgram(
     if (parsedMotion) diagnostics.push(...parsedMotion.diagnostics);
     const dependencies = [...timing.begin, ...timing.end]
       .filter(
-        (time): time is Extract<AnimationTime, { type: "syncbase" | "repeat" }> =>
-          time.type === "syncbase" || time.type === "repeat",
+        (time): time is Extract<AnimationTime, { type: "syncbase" | "repeat" | "repeatEvent" }> =>
+          time.type === "syncbase" || time.type === "repeat" || time.type === "repeatEvent",
       )
       .map((time) => time.animationId);
     const baseDefinition = {
@@ -769,7 +812,11 @@ export function buildAnimationProgram(
       dependencies,
     };
     let runtimeSupport: AnimationDefinition["runtimeSupport"] = target ? "pending" : "invalid";
-    if (isRuntimeSupported(baseDefinition)) runtimeSupport = "typed";
+    const eventSourcesAvailable = [...timing.begin, ...timing.end].every(
+      (time) =>
+        time.type !== "event" || !time.targetId || (!duplicateIds.has(time.targetId) && definitions.has(time.targetId)),
+    );
+    if (eventSourcesAvailable && isRuntimeSupported(baseDefinition)) runtimeSupport = "typed";
     const definition: AnimationDefinition = { ...baseDefinition, runtimeSupport };
     animations.push(definition);
 
@@ -845,6 +892,26 @@ export function buildAnimationProgram(
           "accessKey timing has no deterministic native input mapping; the instance remains unresolved.",
           timing.begin.includes(time) ? "begin" : "end",
         );
+      if (time.type === "event") {
+        if (!SUPPORTED_ANIMATION_EVENT_SET.has(time.event.toLowerCase()))
+          diagnostic(
+            diagnostics,
+            element,
+            "unsupported-animation-event",
+            `Event '${time.event}' has no deterministic native adapter; the timing instance remains unresolved.`,
+            timing.begin.includes(time) ? "begin" : "end",
+          );
+        if (time.targetId && (duplicateIds.has(time.targetId) || !definitions.has(time.targetId)))
+          diagnostic(
+            diagnostics,
+            element,
+            duplicateIds.has(time.targetId) ? "ambiguous-animation-event-target" : "missing-animation-event-target",
+            duplicateIds.has(time.targetId)
+              ? `Event target #${time.targetId} is ambiguous because that id is duplicated.`
+              : `Event target #${time.targetId} does not exist.`,
+            timing.begin.includes(time) ? "begin" : "end",
+          );
+      }
     }
     if (timing.repeatCount.type === "count" && !Number.isFinite(timing.repeatCount.value))
       diagnostic(
@@ -928,7 +995,7 @@ export function buildAnimationProgram(
         );
       }
     }
-    if (value.family === "unsupported" && kind !== "animateMotion")
+    if (value.family === "unsupported" && kind !== "animateMotion" && kind !== "discard")
       diagnostic(
         diagnostics,
         element,

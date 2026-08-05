@@ -6,7 +6,9 @@ import {
   computeSMILActiveDuration,
   convert,
   convertWithDiagnostics,
+  normalizeDeterministicTimingEvents,
   resolveSMILIntervals,
+  sampleDiscardedTargets,
   sampleNumericAnimation,
   sampleSMILProgram,
   sampleSMILTiming,
@@ -83,6 +85,103 @@ describe("SMIL timing syntax and graph", () => {
     expect(result.intervals.get("d")?.[0]?.begin).toBeCloseTo(0.6);
     expect(result.samples.get("b")?.state).toBe("active");
     expect(result.intervals.get("c")).toHaveLength(1);
+  });
+
+  test("normalizes immutable traces and preserves explicit equal-time order", () => {
+    const original = [
+      { time: 1, name: " CLICK ", targetId: " trigger ", order: 2, payload: { button: 0 } },
+      { time: 0.5, name: "focus", targetId: "trigger" },
+      { time: 1, name: "click", targetId: "trigger", order: 1 },
+      { time: Number.NaN, name: "ignored" },
+    ] as const;
+    const normalized = normalizeDeterministicTimingEvents(original);
+
+    expect(normalized).toEqual([
+      { time: 0.5, name: "focus", targetId: "trigger" },
+      { time: 1, name: "click", targetId: "trigger", order: 1 },
+      { time: 1, name: "click", targetId: "trigger", order: 2, payload: { button: 0 } },
+    ]);
+    expect(original[0]!.name).toBe(" CLICK ");
+  });
+
+  test("supports beginEvent, endEvent, and repeatEvent lifecycle aliases", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 20 20"><rect id="box" width="10" height="10"/>
+        <animate id="source" href="#box" attributeName="x" from="0" to="10" begin="click" dur="1s" repeatCount="3"/>
+        <animate id="onBegin" href="#box" attributeName="y" from="0" to="1" begin="source.beginEvent+100ms" dur="1s"/>
+        <animate id="onEnd" href="#box" attributeName="y" from="0" to="1" begin="source.endEvent" dur="1s"/>
+        <animate id="onRepeat" href="#box" attributeName="y" from="0" to="1" begin="source.repeatEvent+50ms" dur="100ms"/>
+      </svg>`);
+    const result = sampleSMILProgram(document.animationProgram, 4, [{ time: 0.25, name: "click" }]);
+
+    expect(result.intervals.get("onBegin")?.[0]?.begin).toBeCloseTo(0.35);
+    expect(result.intervals.get("onEnd")?.[0]?.begin).toBeCloseTo(3.25);
+    expect(result.intervals.get("onRepeat")?.map((interval) => interval.begin)).toEqual([1.3, 2.3]);
+  });
+
+  test("classifies unsupported and unresolved event sources", () => {
+    const source = `<svg viewBox="0 0 10 10"><rect id="box" width="5" height="5"><animate attributeName="x" from="0" to="1" begin="missing.click;box.wheel" dur="1s"/></rect></svg>`;
+    const permissive = convertWithDiagnostics(source);
+    expect(permissive.diagnostics.map((item) => item.code)).toEqual(
+      expect.arrayContaining(["missing-animation-event-target", "unsupported-animation-event"]),
+    );
+    expect(permissive.swift).not.toContain("SVGAnimationEvent");
+    expect(() => convert(source, { strict: true })).toThrow(
+      /(missing-animation-event-target|unsupported-animation-event)/,
+    );
+  });
+
+  test("removes discard targets at exact boundaries from pure event traces", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 20 20"><circle id="trigger" cx="1" cy="1" r="1"/><g id="card" transform="translate(2 2)"><rect width="10" height="10"/></g>
+        <discard id="remove" href="#card" begin="trigger.click+200ms"/>
+      </svg>`);
+    const targetKey = document.animationProgram.animations[0]!.target!.key;
+    const outOfOrderTrace = [
+      { time: 1, name: "click", targetId: "trigger", order: 2 },
+      { time: 0.5, name: "click", targetId: "trigger", order: 1 },
+    ];
+
+    const late = sampleDiscardedTargets(document.animationProgram, 100, outOfOrderTrace);
+    const early = sampleDiscardedTargets(document.animationProgram, 0.699999, outOfOrderTrace);
+    const boundary = sampleDiscardedTargets(document.animationProgram, 0.7, outOfOrderTrace);
+    expect(late).toContain(targetKey);
+    expect(early).not.toContain(targetKey);
+    expect(boundary).toContain(targetKey);
+  });
+
+  test("emits deterministic Swift event input, native adapters, discard, and hit-testing semantics", () => {
+    const swift = convert(`
+      <svg viewBox="0 0 40 20"><defs><clipPath id="clip"><rect width="20" height="20"/></clipPath></defs>
+        <g id="trigger" clip-path="url(#clip)" transform="translate(2 0)" tabindex="0" aria-label="Trigger" pointer-events="none">
+          <rect width="16" height="16"/>
+          <animate attributeName="opacity" from="0" to="1" begin="trigger.click;trigger.focus;trigger.pointerdown;trigger.mouseenter;trigger.activate" dur="1s"/>
+        </g>
+        <discard href="#trigger" begin="trigger.blur+1s"/>
+      </svg>`);
+
+    expect(swift).toContain("struct SVGAnimationEvent: Hashable, Codable, Sendable");
+    expect(swift).toContain("animationEvents: [SVGAnimationEvent] = []");
+    expect(swift).toContain("onTapGesture");
+    expect(swift).toContain("SVGFocusEventModifier");
+    expect(swift).toContain("DragGesture(minimumDistance: 0)");
+    expect(swift).toContain("accessibilityAction(.default)");
+    expect(swift).toContain("allowsHitTesting(false)");
+    expect(swift).toContain("svgIsDiscarded");
+    expect(swift).toContain("@Environment(\\.accessibilityReduceMotion) private var reduceMotion");
+    expect(swift).toContain("content(at: 0, animationEvents: suppliedAnimationEvents + interactionAnimationEvents)");
+    expect(swift).toContain('.accessibilityLabel("Trigger")');
+    expect(swift).not.toContain("evaluateJavaScript");
+  });
+
+  test("leaves eventless generated documents free of interaction state and adapters", () => {
+    const swift = convert(
+      `<svg viewBox="0 0 10 10"><rect width="5" height="5"><animate attributeName="x" from="0" to="5" dur="1s"/></rect></svg>`,
+    );
+    expect(swift).toContain("init(documentTime: Double? = nil, respectsReducedMotion: Bool = false)");
+    expect(swift).not.toContain("SVGAnimationEvent");
+    expect(swift).not.toContain("onTapGesture");
+    expect(swift).not.toContain("allowsHitTesting");
   });
 
   test("terminates dependency cycles as unresolved with stable diagnostics", () => {

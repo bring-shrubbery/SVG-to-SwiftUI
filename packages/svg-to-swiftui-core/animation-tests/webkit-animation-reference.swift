@@ -10,6 +10,7 @@ struct AnimationEventTask: Decodable {
     let timeMicroseconds: Int64
     let name: String
     let targetId: String?
+    let order: Int?
 }
 
 struct AnimationRenderTask: Decodable {
@@ -61,9 +62,10 @@ final class AnimationSnapshotRenderer: NSObject, WKNavigationDelegate {
         let milliseconds = Double(frame.timeMicroseconds) / 1_000
         let events = task.events
             .filter { $0.timeMicroseconds <= frame.timeMicroseconds }
-            .map { event in
+            .enumerated()
+            .map { index, event in
                 let target = event.targetId.map { "document.getElementById(\(javascriptString($0)))" } ?? "root"
-                let key = "\(event.timeMicroseconds):\(event.targetId ?? ""):\(event.name)"
+                let key = "\(event.timeMicroseconds):\(event.order ?? index):\(event.targetId ?? ""):\(event.name)"
                 return "{ key: \(javascriptString(key)), time: \(Double(event.timeMicroseconds) / 1_000_000), target: \(target), name: \(javascriptString(event.name)) }"
             }
             .joined(separator: ",")

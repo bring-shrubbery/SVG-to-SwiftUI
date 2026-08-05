@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <defs>
+    <rect id="tile" width="18" height="18" rx="4"/>
+    <clipPath id="stageClip"><rect x="4" y="4" width="88" height="40" rx="8"/></clipPath>
+  </defs>
+  <rect width="96" height="48" fill="#172033"/>
+  <g clip-path="url(#stageClip)">
+    <g id="trigger" transform="translate(8 15)" aria-label="Start animation">
+      <use href="#tile" fill="#60a5fa"/>
+    </g>
+    <rect id="moving" x="34" y="15" width="18" height="18" rx="4" fill="#f97316">
+      <animate attributeName="x" from="34" to="62" begin="trigger.click" dur="400ms" fill="freeze"/>
+    </rect>
+    <g id="removed" transform="translate(70 15)">
+      <use href="#tile" fill="#a78bfa"/>
+    </g>
+  </g>
+  <!-- WebKit does not implement SVG2 discard; this equivalent SMIL set keeps it a visual oracle. -->
+  <set href="#removed" attributeName="display" to="none" begin="trigger.click+600ms"/>
+  <discard href="#removed" begin="trigger.click+600ms"/>
+</svg>

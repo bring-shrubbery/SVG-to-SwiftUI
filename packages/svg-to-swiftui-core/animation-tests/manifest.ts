@@ -173,6 +173,8 @@ export interface AnimationTimelineEvent {
   timeMicroseconds: number;
   name: string;
   targetId?: string;
+  order?: number;
+  payload?: { x?: number; y?: number; button?: number; key?: string };
 }
 
 interface RawAnimationFixture {
@@ -479,10 +481,14 @@ export function validateAnimationManifest(): string[] {
           event.timeMicroseconds < 0 ||
           event.timeMicroseconds > fixture.timeline.durationMicroseconds ||
           event.name.trim() === "" ||
+          (event.order !== undefined && !Number.isSafeInteger(event.order)) ||
+          (event.payload?.x !== undefined && !Number.isFinite(event.payload.x)) ||
+          (event.payload?.y !== undefined && !Number.isFinite(event.payload.y)) ||
+          (event.payload?.button !== undefined && !Number.isSafeInteger(event.payload.button)) ||
           (index > 0 && event.timeMicroseconds < fixture.events[index - 1]!.timeMicroseconds),
       )
     )
-      errors.push(`${prefix} events must be named, ordered, safe microsecond times inside the timeline`);
+      errors.push(`${prefix} events and payloads must be named, ordered, finite, and inside the timeline`);
     if (fixture.frames.length === 0) errors.push(`${prefix} timeline must produce at least one frame`);
     if (fixture.frames.length > 10_000) errors.push(`${prefix} timeline must not exceed 10,000 frames`);
     const times = fixture.frames.map((frame) => frame.timeMicroseconds);

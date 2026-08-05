@@ -250,6 +250,8 @@ Generated animated views expose deterministic and production clock paths. See th
 
 SMIL scheduling is compiled separately from drawing. See the [SMIL timing contract](docs/smil-timing.md) for supported syntax, state samples, deterministic events, dependency ordering, and strict/permissive fallbacks.
 
+Eventbase timing, native gesture/focus/accessibility adapters, immutable event traces, and timed `<discard>` removal are covered by the [event timing and discard contract](docs/event-timing-discard.md). The temporal harness supplies the same serialized trace to WebKit and generated Swift before comparing every scheduled frame.
+
 Typed interpolation, paced/spline sampling, additive composition, and repeat accumulation are documented in the [SVG animation value contract](docs/animation-values.md).
 
 `<animate>` and `<set>` now drive native geometry, presentation, text, viewport, inheritance, and gradient-stop rendering. See the [property contract](docs/animate-set-properties.md) and generated [animation attribute report](conformance/ANIMATION_REPORT.md) for exact implemented and pending properties.
