@@ -30,12 +30,23 @@ export interface SwiftUIGeneratorConfig {
   resources?: ResourceConfiguration;
   /** Bounded deterministic CPU execution for SVG filter primitives. */
   filters?: FilterConfiguration;
+  /** Bounded deterministic compilation for declarative SVG/CSS animation. */
+  animations?: AnimationConfiguration;
   /** Conversion-time renderer for static SVG <foreignObject> content. Async conversion is required. */
   foreignObjectRenderer?: ForeignObjectRenderer;
   /** Bounded rasterization and artifact behavior for static <foreignObject> snapshots. */
   foreignObjects?: ForeignObjectConfiguration;
   /** Deterministic language and capability inputs used by static SVG semantics. */
   staticEnvironment?: StaticEnvironment;
+}
+
+export interface AnimationConfiguration {
+  /** Maximum compiled SMIL/CSS animation effects. Defaults to 1024. */
+  maxDefinitions?: number;
+  /** Maximum keyframe blocks consumed by one CSS animation. Defaults to 2048. */
+  maxKeyframes?: number;
+  /** Maximum timing dependency traversal depth. Defaults to 128. */
+  maxDependencyDepth?: number;
 }
 
 export interface FilterConfiguration {

@@ -27,6 +27,10 @@
     "visual-test:verify": "bun run --filter svg-to-swiftui-core visual-test:verify",
     "animation-test": "bun run --filter svg-to-swiftui-core animation-test",
     "animation-test:verify": "bun run --filter svg-to-swiftui-core animation-test:verify",
+    "animation-test:verify-sources": "bun run --filter svg-to-swiftui-core animation-test:verify-sources",
+    "animation-test:benchmark": "bun run --filter svg-to-swiftui-core animation-test:benchmark",
+    "animation-conformance:verify": "bun run --filter svg-to-swiftui-core animation-conformance:verify",
+    "animation-conformance:report": "bun run --filter svg-to-swiftui-core animation-conformance:report",
     "conformance:verify": "bun run --filter svg-to-swiftui-core conformance:verify",
     "conformance:report": "bun run --filter svg-to-swiftui-core conformance:report",
     "conformance:benchmark": "bun run --filter svg-to-swiftui-core conformance:benchmark"

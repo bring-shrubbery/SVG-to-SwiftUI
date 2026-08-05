@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "limits": {
+    "inputBytesPerFixture": 262144,
+    "generatedSwiftBytesPerFixture": 5242880,
+    "conversionMillisecondsPerFixture": 10000,
+    "compileMillisecondsPerBatch": 900000,
+    "firstFrameRenderMilliseconds": 10000,
+    "subsequentFrameRenderMilliseconds": 5000,
+    "peakResidentMemoryBytes": 1610612736,
+    "animationDefinitionsPerDocument": 1024,
+    "keyframesPerAnimation": 2048,
+    "dependencyDepth": 128,
+    "eventTraceEntries": 4096,
+    "pathMetricPoints": 131072,
+    "filterPixelsPerFrame": 16000000,
+    "framesPerFixture": 1000,
+    "framesPerRun": 5000,
+    "reviewArtifactBytesPerFixture": 268435456
+  },
+  "benchmarks": {
+    "lightweight": "benchmark-01-numeric-cx",
+    "heavy": "benchmark-10-complex-scene"
+  }
+}

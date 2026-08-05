@@ -14,6 +14,7 @@ import {
   type AnimationValueContext,
   type AnimationValueSet,
   animationAttributeSpec,
+  matchNeutralTransformValue,
   parseAnimateTransformValueSet,
   parseAnimationValue,
   parseAnimationValueSet,
@@ -503,7 +504,11 @@ export function buildAnimationProgram(
   diagnostics: RenderDiagnostic[],
   targetSnapshots: ReadonlyMap<string, AnimationTargetSnapshot> = new Map(),
   cssKeyframes: ReadonlyMap<string, CSSKeyframesRule> = new Map(),
+  limits: { maxDefinitions?: number; maxKeyframes?: number; maxDependencyDepth?: number; strict?: boolean } = {},
 ): AnimationProgram {
+  const maxDefinitions = Math.max(1, Math.floor(limits.maxDefinitions ?? 1024));
+  const maxKeyframes = Math.max(2, Math.floor(limits.maxKeyframes ?? 2048));
+  const maxDependencyDepth = Math.max(1, Math.floor(limits.maxDependencyDepth ?? 128));
   let parsedRootViewBox: ReturnType<typeof parseViewBox>;
   try {
     parsedRootViewBox = parseViewBox(property(root, "viewBox"));
@@ -546,8 +551,16 @@ export function buildAnimationProgram(
   };
   visit(root);
 
+  if (animationElements.length > maxDefinitions)
+    diagnostics.push({
+      code: "animation-definition-limit",
+      message: `Document contains ${animationElements.length} animation elements; only the first ${maxDefinitions} are compiled.`,
+      severity: limits.strict ? "error" : "warning",
+      source: source(animationElements[maxDefinitions]!.element),
+    });
+
   const animations: AnimationDefinition[] = [];
-  for (const { element, kind } of animationElements) {
+  for (const { element, kind } of animationElements.slice(0, maxDefinitions)) {
     const documentOrder = order.get(element)!;
     const authoredId = property(element, "id");
     const stableId = authoredId || `animation-${String(documentOrder).padStart(6, "0")}`;
@@ -1121,7 +1134,16 @@ export function buildAnimationProgram(
         );
         continue;
       }
-      const properties = new Set(rule.blocks.flatMap((block) => block.declarations.map((item) => item.property)));
+      if (rule.blocks.length > maxKeyframes)
+        diagnostics.push({
+          code: "animation-keyframe-limit",
+          message: `@keyframes ${instance.name} has ${rule.blocks.length} blocks; only the first ${maxKeyframes} are compiled.`,
+          severity: limits.strict ? "error" : "warning",
+          source: source(targetElement),
+          attribute: "animation-name",
+        });
+      const ruleBlocks = rule.blocks.slice(0, maxKeyframes);
+      const properties = new Set(ruleBlocks.flatMap((block) => block.declarations.map((item) => item.property)));
       for (const attributeName of properties) {
         if (attributeName.startsWith("--")) continue;
         if (targetSnapshot.importantProperties?.[attributeName]) continue;
@@ -1138,7 +1160,7 @@ export function buildAnimationProgram(
         }
         const baseRaw = targetSnapshot.baseValues[attributeName];
         if (baseRaw === undefined) continue;
-        const base = parseAnimationValue(attribute, baseRaw, targetSnapshot.context);
+        let base = parseAnimationValue(attribute, baseRaw, targetSnapshot.context);
         if (!base) {
           diagnostic(
             diagnostics,
@@ -1150,7 +1172,7 @@ export function buildAnimationProgram(
           continue;
         }
         const entries: Array<{ offset: number; value: typeof base; timingFunction: CSSTimingFunction }> = [];
-        for (const block of rule.blocks) {
+        for (const block of ruleBlocks) {
           const declaration = [...block.declarations].reverse().find((item) => item.property === attributeName);
           if (!declaration) continue;
           const resolved = substituteVariables(declaration.value, (name) => {
@@ -1172,6 +1194,15 @@ export function buildAnimationProgram(
             continue;
           }
           entries.push({ offset: block.offset, value, timingFunction });
+        }
+        if (attribute.family === "transform") {
+          const template = entries.find(
+            (entry) => entry.value.family === "transform" && entry.value.components.length > 0,
+          )?.value;
+          if (template) {
+            base = matchNeutralTransformValue(base, template);
+            for (const entry of entries) entry.value = matchNeutralTransformValue(entry.value, template);
+          }
         }
         if (!entries.some((entry) => entry.offset === 0))
           entries.unshift({ offset: 0, value: base, timingFunction: instance.timingFunction });
@@ -1249,6 +1280,16 @@ export function buildAnimationProgram(
     }
   }
 
+  if (animations.length > maxDefinitions) {
+    diagnostics.push({
+      code: "animation-definition-limit",
+      message: `Compiled animation effects exceed ${maxDefinitions}; later CSS effects are omitted deterministically.`,
+      severity: limits.strict ? "error" : "warning",
+      source: source(root),
+    });
+    animations.splice(maxDefinitions);
+  }
+
   const compositions = new Map<string, AnimationDefinition[]>();
   for (const animation of animations) {
     if (!animation.target || !animation.attributeName) continue;
@@ -1266,6 +1307,16 @@ export function buildAnimationProgram(
   const dependencyCycles: string[][] = [];
   const visitDependency = (animation: AnimationDefinition, path: string[]): void => {
     if (visited.has(animation.stableId)) return;
+    if (path.length >= maxDependencyDepth) {
+      diagnostics.push({
+        code: "animation-dependency-depth-limit",
+        message: `Animation dependency traversal exceeded ${maxDependencyDepth} levels at #${animation.stableId}.`,
+        severity: limits.strict ? "error" : "warning",
+        source: animation.source,
+      });
+      visited.add(animation.stableId);
+      return;
+    }
     if (visiting.has(animation.stableId)) {
       const start = path.indexOf(animation.stableId);
       const cycle = [...path.slice(Math.max(0, start)), animation.stableId];

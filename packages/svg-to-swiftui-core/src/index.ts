@@ -52,6 +52,7 @@ export {
   composeAnimationSandwich,
   cubicBezierProgress,
   interpolateAnimationValue,
+  matchNeutralTransformValue,
   normalizeAnimationValue,
   parseAnimateTransformValue,
   parseAnimateTransformValueSet,

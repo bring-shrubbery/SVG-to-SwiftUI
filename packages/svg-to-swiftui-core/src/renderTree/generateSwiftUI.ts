@@ -1,7 +1,7 @@
 import type { ElementNode } from "svg-parser";
 import { parseRGBAColor, type RGBAColor, swiftUIColor } from "../colorUtils";
 import { handleElement } from "../elementHandlers";
-import { lengthContext, type ParsedSVGLength, resolveSVGLength } from "../lengths";
+import { lengthContext, type ParsedSVGLength, parseSVGLength, resolveSVGLength } from "../lengths";
 import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { IDENTITY_TRANSFORM, multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
@@ -664,7 +664,36 @@ function buildViewNodes(
     if (!animatedBase && !animatedSuffix && !animatedMotion && !animatedBaseOverride) return undefined;
     const ancestors = transforms.reduce(multiplyTransforms, IDENTITY_TRANSFORM);
     const staticTransform = multiplyTransforms(ancestors, node.transform);
-    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBaseOverride ?? (animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base))}, animatedMotion: ${animatedMotion ?? "CGAffineTransform.identity"}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
+    const origin = (() => {
+      const raw = String(node.style.presentation["transform-origin"] ?? "0 0").trim();
+      let tokens = raw.split(/\s+/).filter(Boolean).slice(0, 2);
+      if (tokens.length === 1)
+        tokens = ["top", "bottom"].includes(tokens[0]!.toLowerCase()) ? ["center", tokens[0]!] : [tokens[0]!, "center"];
+      if (["top", "bottom"].includes(tokens[0]?.toLowerCase() ?? "")) tokens = [tokens[1] ?? "center", tokens[0]!];
+      const box = context.options.viewBox;
+      const resolve = (token: string | undefined, axis: "horizontal" | "vertical") => {
+        const lower = (token ?? "0").toLowerCase();
+        if (lower === "center") return axis === "horizontal" ? box.x + box.width / 2 : box.y + box.height / 2;
+        if (lower === "left") return box.x;
+        if (lower === "right") return box.x + box.width;
+        if (lower === "top") return box.y;
+        if (lower === "bottom") return box.y + box.height;
+        try {
+          const value = resolveSVGLength(parseSVGLength(lower), {
+            viewport: { width: box.width, height: box.height },
+            rootViewport: node.paintContext.rootViewport,
+            fontMetrics: node.paintContext.fontMetrics,
+            axis,
+            percentageBasis: axis === "horizontal" ? "viewport-width" : "viewport-height",
+          });
+          return (axis === "horizontal" ? box.x : box.y) + (typeof value === "number" ? value : 0);
+        } catch {
+          return 0;
+        }
+      };
+      return { x: resolve(tokens[0], "horizontal"), y: resolve(tokens[1], "vertical") };
+    })();
+    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBaseOverride ?? (animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base))}, animatedMotion: ${animatedMotion ?? "CGAffineTransform.identity"}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, originX: ${formatNumber(origin.x)}, originY: ${formatNumber(origin.y)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
   };
 
   const numericBase = (
@@ -5946,8 +5975,10 @@ function createView(
         `${indentation}return svgMultiplyTransform(animatedOutput, staticOutput.inverted())`,
         "}",
         "",
-        "private static func svgAnimatedTransformCorrection(animatedBase: CGAffineTransform, animatedMotion: CGAffineTransform, animatedSuffix: CGAffineTransform, ancestors: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect) -> CGAffineTransform {",
-        `${indentation}let target = svgMultiplyTransform(animatedBase, svgMultiplyTransform(animatedMotion, animatedSuffix))`,
+        "private static func svgAnimatedTransformCorrection(animatedBase: CGAffineTransform, animatedMotion: CGAffineTransform, animatedSuffix: CGAffineTransform, originX: Double, originY: Double, ancestors: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect) -> CGAffineTransform {",
+        `${indentation}let origin = CGAffineTransform(translationX: originX, y: originY)`,
+        `${indentation}let centeredBase = svgMultiplyTransform(origin, svgMultiplyTransform(animatedBase, CGAffineTransform(translationX: -originX, y: -originY)))`,
+        `${indentation}let target = svgMultiplyTransform(centeredBase, svgMultiplyTransform(animatedMotion, animatedSuffix))`,
         `${indentation}let animatedUser = svgMultiplyTransform(ancestors, target)`,
         `${indentation}let animatedOutput = svgOutputTransform(animatedUser, size: outputSize, coordinateSpace: coordinateSpace)`,
         `${indentation}let staticOutput = svgOutputTransform(staticTransform, size: outputSize, coordinateSpace: coordinateSpace)`,

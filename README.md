@@ -8,7 +8,7 @@ Convert SVG artwork into native, scalable SwiftUI code—while preserving the or
 [![npm](https://img.shields.io/npm/v/svg-to-swiftui-core.svg)](https://www.npmjs.com/package/svg-to-swiftui-core)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Try the web app](https://svg-to-swiftui.quassum.com?utm_source=github&utm_medium=readme) · [Install the Figma plugin](https://dub.sh/figma-to-swiftui) · [Read the conformance report](packages/svg-to-swiftui-core/conformance/REPORT.md)
+[Try the web app](https://svg-to-swiftui.quassum.com?utm_source=github&utm_medium=readme) · [Install the Figma plugin](https://dub.sh/figma-to-swiftui) · [Static report](packages/svg-to-swiftui-core/conformance/REPORT.md) · [Animation report](packages/svg-to-swiftui-core/conformance/ANIMATION_REPORT.md)
 
 ## Production SVGs, not just simple icons
 
@@ -18,8 +18,9 @@ The compiler targets the complete **static appearance of SVG 2 and Filter Effect
 - **0 unsupported static blockers** in the versioned 449-entry conformance inventory
 - **1,909 deterministic visual tests** that compile and render the generated SwiftUI
 - Strict and permissive conversion modes with structured, source-located diagnostics
+- Exact-time animation playback with injectable clocks and immutable event traces
 
-Animations, scripts, navigation, media playback, and other dynamic browser behavior are intentionally outside the static rendering profile. Declarative animation support is now being built through the ordered [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94). See the [full, machine-verified static coverage matrix](packages/svg-to-swiftui-core/conformance/REPORT.md) for exact current support and limitations.
+Declarative SVG animation is compiled too: SMIL timing and values, `<animate>`, `<set>`, transforms, motion paths, timed discard, deterministic events, and CSS `@keyframes`. The versioned [dynamic profile](packages/svg-to-swiftui-core/conformance/svg-animation-profile.json) contains **234 classified entries and zero unsupported blockers**. Browser scripting, live DOM/network mutation, navigation, and media playback remain intentionally outside the deterministic native runtime.
 
 ## SVG in. Native SwiftUI out.
 
@@ -76,6 +77,8 @@ SVG source → generate Swift → compile with swiftc → render with SwiftUI �
 
 The original SVG is independently rendered as the reference. The harness compares transparent RGBA output—not screenshots judged by eye—and reports channel, alpha, and differing-pixel metrics. The corpus includes small focused cases, real icon libraries, design-tool exports, and complex artwork such as the Ghostscript Tiger.
 
+Animation coverage uses a 10-step known-good ladder, from one numeric property through a combined scene with motion, transforms, paint servers, compositing, filters, text, and CSS. WebKit and generated SwiftUI render identical microsecond timestamps for frame-by-frame comparison. CI also publishes reference, SwiftUI, side-by-side, and amplified-difference videos for review.
+
 ## Run locally
 
 ```sh
@@ -116,4 +119,4 @@ Created by [Antoni Silvestrovic](https://antoni.ai). You can also follow Antoni 
 
 ## License
 
-The project is available under the [MIT License](LICENSE). Separately licensed visual-test fixtures are documented in [visual test attribution](packages/svg-to-swiftui-core/visual-tests/ATTRIBUTION.md).
+The project is available under the [MIT License](LICENSE). Separately sourced fixtures are documented in [static visual attribution](packages/svg-to-swiftui-core/visual-tests/ATTRIBUTION.md) and [animation attribution](packages/svg-to-swiftui-core/animation-tests/ATTRIBUTION.md).

@@ -1,47 +1,45 @@
-import { ANIMATION_ATTRIBUTE_REGISTRY } from "../src/renderTree/animationValues";
-
-const labels = {
-  "render-node": "implemented",
-  "gradient-stop": "implemented",
-  resource: "implemented",
-  "pending-resource": "pending resource wiring",
-  "pending-follow-up": "pending follow-up",
-} as const;
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { buildAnimationProfile } from "./animation-profile";
 
 export function renderAnimationReport(): string {
+  const profile = buildAnimationProfile();
+  const manifest = JSON.parse(
+    readFileSync(resolve(import.meta.dir, "../animation-tests/animation-fixture-manifest.json"), "utf8"),
+  ) as {
+    benchmarkLadder: Array<{ rank: number; fixture: string; capability: string }>;
+  };
   const counts = new Map<string, number>();
-  for (const entry of ANIMATION_ATTRIBUTE_REGISTRY)
-    counts.set(labels[entry.runtimeBinding], (counts.get(labels[entry.runtimeBinding]) ?? 0) + 1);
+  for (const entry of profile.entries) counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
   const lines = [
-    "# Declarative animation attribute report",
+    "# Declarative SVG animation conformance",
     "",
-    "Generated from `ANIMATION_ATTRIBUTE_REGISTRY`. Do not edit by hand.",
+    "Generated from the versioned machine-readable dynamic profile. Do not edit by hand.",
     "",
-    "This report describes declarative animation wiring. Attribute rows cover `<animate>`, `<set>`, and CSS `@keyframes`; specialized animation systems are listed separately.",
+    "The supported profile is deterministic declarative SVG/SMIL and CSS animation compiled to native SwiftUI. A browser DOM, script runtime, navigation, media playback, and live network access are outside the security boundary.",
     "",
     "## Summary",
     "",
-    "| Status | Attributes |",
+    "| Status | Entries |",
     "| --- | ---: |",
     ...[...counts].map(([status, count]) => `| ${status} | ${count} |`),
     "",
-    "## Registry",
+    "## Known-good benchmark ladder",
     "",
-    "| Attribute | Value family | Namespace | Invalidation | Target | Runtime |",
-    "| --- | --- | --- | --- | --- | --- |",
-    ...ANIMATION_ATTRIBUTE_REGISTRY.map((entry) => {
-      const target = Array.isArray(entry.targetElements) ? entry.targetElements.join(", ") : entry.targetElements;
-      return `| \`${entry.canonicalName}\` | ${entry.family} | ${entry.namespaces.join(", ")} | ${entry.invalidates.join(", ")} | ${target} | ${labels[entry.runtimeBinding]} |`;
-    }),
+    "Every comparison compiles generated Swift, renders exact document times, and compares lossless premultiplied-sRGB RGBA pixels against WebKit.",
     "",
-    "## Specialized animation elements",
+    "| Rank | Fixture | Capability |",
+    "| ---: | --- | --- |",
+    ...manifest.benchmarkLadder.map((item) => `| ${item.rank} | \`${item.fixture}\` | ${item.capability} |`),
     "",
-    "| Element | Status | Evidence |",
-    "| --- | --- | --- |",
-    "| `<animateTransform>` | implemented | typed parser/sampler/composition tests; 18-frame `benchmark-06-animate-transform` |",
-    "| `<animateMotion>` / `<mpath>` | implemented | metric/parser/composition tests; 18-frame `benchmark-07-animate-motion` |",
-    "| CSS `@keyframes` | implemented | cascade/timing/value tests; 18-frame `benchmark-08-css-keyframes` |",
-    "| Animated resources, filters, and nested text | implemented | resource/filter/text unit evidence; 9-frame `benchmark-09-animated-resources` |",
+    "## Complete inventory",
+    "",
+    "| Feature | Status | Unit evidence | Temporal tag | Limitation |",
+    "| --- | --- | --- | --- | --- |",
+    ...profile.entries.map(
+      (entry) =>
+        `| \`${entry.id}\` | ${entry.status} | ${entry.unitEvidence.join(", ")} | ${entry.temporalTags.join(", ")} | ${entry.limitations.join(" ") || "—"} |`,
+    ),
     "",
   ];
   return lines.join("\n");

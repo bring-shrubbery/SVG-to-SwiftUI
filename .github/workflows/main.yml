@@ -43,6 +43,15 @@ jobs:
       - name: Verify animation fixture manifest
         run: bun run animation-test:verify
 
+      - name: Verify animation fixture provenance
+        run: bun run animation-test:verify-sources
+
+      - name: Verify dynamic SVG conformance inventory
+        run: bun run animation-conformance:verify
+
+      - name: Verify animation compiler budgets
+        run: bun run animation-test:benchmark
+
       - name: Verify SVG2 static conformance inventory
         run: bun run conformance:verify
 
@@ -56,7 +65,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: svg2-static-conformance-report
-          path: packages/svg-to-swiftui-core/conformance/REPORT.md
+          path: |
+            packages/svg-to-swiftui-core/conformance/REPORT.md
+            packages/svg-to-swiftui-core/conformance/ANIMATION_REPORT.md
+            packages/svg-to-swiftui-core/conformance/svg-animation-profile.json
+            packages/svg-to-swiftui-core/animation-tests/renders/benchmark-summary.json
           if-no-files-found: error
 
   visual:

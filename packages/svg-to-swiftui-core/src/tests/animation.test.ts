@@ -8,6 +8,27 @@ const numericAnimation = `
   </svg>`;
 
 describe("typed SVG animation program", () => {
+  test("bounds animation definitions, keyframes, and dependency traversal deterministically", () => {
+    const definitions = `<svg viewBox="0 0 10 10"><circle cx="1" cy="1" r="1">${Array.from({ length: 3 }, (_, index) => `<animate id="a${index}" attributeName="cx" from="1" to="2" dur="1s"/>`).join("")}</circle></svg>`;
+    const limited = convertWithDiagnostics(definitions, { animations: { maxDefinitions: 1 } });
+    expect(limited.diagnostics.map((item) => item.code)).toContain("animation-definition-limit");
+    expect(() => convert(definitions, { strict: true, animations: { maxDefinitions: 1 } })).toThrow(
+      /animation-definition-limit/,
+    );
+
+    const keyframes = convertWithDiagnostics(
+      `<svg viewBox="0 0 10 10"><style>@keyframes many{0%{opacity:0}50%{opacity:.5}100%{opacity:1}}circle{animation:many 1s}</style><circle cx="5" cy="5" r="4"/></svg>`,
+      { animations: { maxKeyframes: 2 } },
+    );
+    expect(keyframes.diagnostics.map((item) => item.code)).toContain("animation-keyframe-limit");
+
+    const dependencies = convertWithDiagnostics(
+      `<svg viewBox="0 0 10 10"><circle cx="1" cy="1" r="1"><animate id="c" attributeName="cx" begin="b.end" from="3" to="4" dur="1s"/><animate id="b" attributeName="cx" begin="a.end" from="2" to="3" dur="1s"/><animate id="a" attributeName="cx" from="1" to="2" dur="1s"/></circle></svg>`,
+      { animations: { maxDependencyDepth: 1 } },
+    );
+    expect(dependencies.diagnostics.map((item) => item.code)).toContain("animation-dependency-depth-limit");
+  });
+
   test("preserves parent and href targets, typed timing, base values, dependencies, and source order", () => {
     const document = __testing.parseRenderDocument(`
       <svg viewBox="0 0 20 20">
@@ -283,7 +304,7 @@ describe("generated animation clock", () => {
     expect(swift).toContain("svgAnimatedMotion(documentTime: documentTime");
     expect(swift).toContain("SVGAnimationMotionPoint(");
     expect(swift).toContain("animatedMotion: AnimatedMotion.svgAnimatedMotion");
-    expect(swift).toContain("svgMultiplyTransform(animatedBase, svgMultiplyTransform(animatedMotion, animatedSuffix))");
+    expect(swift).toContain("svgMultiplyTransform(centeredBase, svgMultiplyTransform(animatedMotion, animatedSuffix))");
     expect(swift).toContain(".transformEffect(AnimatedMotion.svgAnimatedTransformCorrection");
   });
 });

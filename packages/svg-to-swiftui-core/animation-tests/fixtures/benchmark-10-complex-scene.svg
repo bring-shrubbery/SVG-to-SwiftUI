@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 128">
+  <rect width="180" height="128" fill="#07111f"/>
+  <style>
+    @keyframes pulse { 0% { opacity: .35; } 50% { opacity: 1; } 100% { opacity: .35; } }
+    @keyframes css-orbit { from { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } to { transform: rotate(-8deg); } }
+    #css-pulse { animation: pulse 2s ease-in-out infinite; }
+    #css-card { animation: css-orbit 2s ease-in-out infinite; transform-origin: 145px 93px; }
+  </style>
+  <defs>
+    <linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="8" y1="0" x2="94" y2="0">
+      <animate attributeName="x2" values="94;128;94" dur="2s" repeatCount="indefinite"/>
+      <stop offset="0" stop-color="#38bdf8"><animate attributeName="stop-color" values="#38bdf8;#a78bfa;#38bdf8" dur="2s" repeatCount="indefinite"/></stop>
+      <stop offset="1" stop-color="#f97316"><animate attributeName="stop-opacity" values="1;.55;1" dur="2s" repeatCount="indefinite"/></stop>
+    </linearGradient>
+    <pattern id="scan" width="10" height="10" patternUnits="userSpaceOnUse">
+      <animate attributeName="patternTransform" values="translate(0 0);translate(3 0);translate(0 0)" dur="2s" repeatCount="indefinite"/>
+      <rect width="4" height="10" fill="#34d399"><animate attributeName="width" values="4;8;4" dur="2s" repeatCount="indefinite"/></rect>
+    </pattern>
+    <clipPath id="iris"><circle cx="50" cy="83" r="13"><animate attributeName="r" values="13;30;13" dur="2s" repeatCount="indefinite"/></circle></clipPath>
+    <mask id="wipe" maskUnits="userSpaceOnUse" x="98" y="62" width="70" height="38">
+      <rect x="98" y="62" width="32" height="38" fill="white"><animate attributeName="x" values="98;136;98" dur="2s" repeatCount="indefinite"/></rect>
+    </mask>
+    <filter id="soft" filterUnits="userSpaceOnUse" x="94" y="4" width="74" height="48">
+      <feGaussianBlur stdDeviation="0"><animate attributeName="stdDeviation" values="0;1.8;0" dur="2s" repeatCount="indefinite"/></feGaussianBlur>
+    </filter>
+    <path id="flight" d="M14 48 C48 18 78 67 112 35 S155 24 166 45"/>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="0" markerUnits="userSpaceOnUse">
+      <animate attributeName="orient" values="0;28;0" dur="2s" repeatCount="indefinite"/>
+      <path d="M0 0L8 4L0 8Z" fill="#facc15"><animate attributeName="fill" values="#facc15;#fb7185;#facc15" dur="2s" repeatCount="indefinite"/></path>
+    </marker>
+  </defs>
+
+  <rect id="gradient-card" x="8" y="8" width="82" height="34" rx="7" fill="url(#sky)">
+    <animate attributeName="width" values="82;112;82" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="rx" values="7;15;7" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="104" y="8" width="60" height="34" rx="7" fill="#e879f9" filter="url(#soft)"/>
+
+  <path d="M14 48 C48 18 78 67 112 35 S155 24 166 45" fill="none" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <g id="ship">
+    <animateMotion dur="2s" rotate="auto" repeatCount="indefinite"><mpath href="#flight"/></animateMotion>
+    <path d="M-7 -4L9 0L-7 4L-3 0Z" fill="#f8fafc" stroke="#38bdf8"/>
+  </g>
+
+  <rect x="8" y="62" width="82" height="38" rx="6" fill="url(#scan)" clip-path="url(#iris)"/>
+  <rect x="98" y="62" width="70" height="38" rx="6" fill="#60a5fa" mask="url(#wipe)"/>
+
+  <g id="css-card"><rect x="126" y="105" width="38" height="14" rx="4" fill="#f97316"/></g>
+  <circle id="css-pulse" cx="111" cy="112" r="8" fill="#22d3ee"/>
+  <text x="12" y="117" font-family="Helvetica" font-size="12" font-weight="700" fill="#f8fafc">SVG
+    <animate attributeName="x" values="12;54;12" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="fill" values="#f8fafc;#facc15;#f8fafc" dur="2s" repeatCount="indefinite"/>
+    <animateTransform attributeName="transform" type="rotate" values="0 28 113;8 28 113;0 28 113" dur="2s" repeatCount="indefinite"/>
+  </text>
+</svg>

@@ -751,6 +751,44 @@ function neutralAnimateTransformValue(type: AnimateTransformType): TypedAnimatio
   return { family: "transform", components: [{ kind: type, values }] };
 }
 
+function identityTransform(value: TypedAnimationValue): boolean {
+  if (value.family !== "transform") return false;
+  if (value.components.length === 0) return true;
+  return value.components.every((component) => {
+    if (component.kind === "translate") return component.values.every((item) => item === 0);
+    if (component.kind === "scale") return component.values.every((item) => item === 1);
+    if (component.kind === "rotate" || component.kind === "skewX" || component.kind === "skewY")
+      return component.values[0] === 0;
+    return (
+      component.kind === "matrix" &&
+      component.values.length === 6 &&
+      component.values.every((item, index) => item === [1, 0, 0, 1, 0, 0][index])
+    );
+  });
+}
+
+/** Match CSS `none`/identity to the other transform list's neutral functions before interpolation. */
+export function matchNeutralTransformValue(
+  value: TypedAnimationValue,
+  template: TypedAnimationValue,
+): TypedAnimationValue {
+  if (value.family !== "transform" || template.family !== "transform" || !identityTransform(value)) return value;
+  return {
+    family: "transform",
+    components: template.components.map((component) => ({
+      kind: component.kind,
+      values:
+        component.kind === "scale"
+          ? component.values.map(() => 1)
+          : component.kind === "matrix"
+            ? [1, 0, 0, 1, 0, 0]
+            : component.kind === "rotate" && component.values.length === 3
+              ? [0, component.values[1]!, component.values[2]!]
+              : component.values.map(() => 0),
+    })),
+  };
+}
+
 /** Build a typed animateTransform value set while retaining the target's full base transform list. */
 export function parseAnimateTransformValueSet(
   type: AnimateTransformType,

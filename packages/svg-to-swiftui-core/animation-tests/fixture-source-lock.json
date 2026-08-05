@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "algorithm": "sha256",
+  "fixtures": [
+    {
+      "name": "benchmark-01-numeric-cx",
+      "path": "fixtures/benchmark-01-numeric-cx.svg",
+      "sha256": "dfd13aa2b86a36b5c70c5e74a26055957840873ccfd9485856ee2de304e2f315",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-01-numeric-cx.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-02-smil-timing",
+      "path": "fixtures/benchmark-02-smil-timing.svg",
+      "sha256": "e3094c4bca9268bd6c8e8821f290b30a36afeaa0f95b3a99bf41c79c45abb59b",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-02-smil-timing.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-03-advanced-timing",
+      "path": "fixtures/benchmark-03-advanced-timing.svg",
+      "sha256": "9725a1d861379f522e003eeb55f69387e7fdead07d2496978ccdc3efba22ec40",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-03-advanced-timing.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-04-interpolation-composition",
+      "path": "fixtures/benchmark-04-interpolation-composition.svg",
+      "sha256": "8eaa8353300f4853436727dffefda5df8af14c0dd9fa834966c5ff1a288b72f5",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-04-interpolation-composition.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-05-animate-set-properties",
+      "path": "fixtures/benchmark-05-animate-set-properties.svg",
+      "sha256": "27326243b4e5ba8a3542c16cbf4db2b2d618c05d3d7ffa51d7ace27cbc9f92e9",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-05-animate-set-properties.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-06-animate-transform",
+      "path": "fixtures/benchmark-06-animate-transform.svg",
+      "sha256": "d30bf2b461dcce8b2a3e910331608dbfefd603fd3057247c6138638a32c9e042",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-06-animate-transform.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-07-animate-motion",
+      "path": "fixtures/benchmark-07-animate-motion.svg",
+      "sha256": "f8435f6537f9f5ee24e2a92cd54d4bff3d2cbc383586891645e7ceadd9c3b8c3",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-07-animate-motion.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-08-css-keyframes",
+      "path": "fixtures/benchmark-08-css-keyframes.svg",
+      "sha256": "cb703d84698c21b33cf52c01bf852750ea848ea77cea8abc4b9c5e461b12f716",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-08-css-keyframes.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-09-animated-resources",
+      "path": "fixtures/benchmark-09-animated-resources.svg",
+      "sha256": "e1fd29eb3998b8189436064da54787e60f83fd58a720aa1bf8322e459a67bd1e",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-09-animated-resources.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-10-complex-scene",
+      "path": "fixtures/benchmark-10-complex-scene.svg",
+      "sha256": "3b895e64b3ccfc4c58bf2bcb829ec8add05b1f4246e39ad78f705904885c866b",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-10-complex-scene.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-color-opacity",
+      "path": "fixtures/benchmark-color-opacity.svg",
+      "sha256": "be0a4494e1c031872f27b97a50642b11a75f68ffd9f36dc7dec0a6173155b35a",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-color-opacity.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "benchmark-compositing-text",
+      "path": "fixtures/benchmark-compositing-text.svg",
+      "sha256": "25043852a3dc6a9214fa85ab53397dcb7c96da533477e96c2d0507ca8875bccd",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/benchmark-compositing-text.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "event-discard-interactions",
+      "path": "fixtures/event-discard-interactions.svg",
+      "sha256": "9aec11be5b175770fe9b04763126c8d43f582276502fa1e77ef9356d0d467953",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/event-discard-interactions.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "harness-static-clock",
+      "path": "fixtures/harness-static-clock.svg",
+      "sha256": "08bb7af610db998c44dfb872c357740c5bc7789766a873c1057c67ce65e1d812",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/harness-static-clock.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-css-seek",
+      "path": "fixtures/reference-css-seek.svg",
+      "sha256": "e5abbd34c0f71a69d1d59ac31e65251859b6ca5879304b2ef728afe383a70335",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-css-seek.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-calculation-modes",
+      "path": "fixtures/reference-smil-calculation-modes.svg",
+      "sha256": "9f8f51567280ac829cfd9d9c4fd0cd28546d9d7c8fe40666eec9e592de60ab36",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-calculation-modes.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-clock-controls",
+      "path": "fixtures/reference-smil-clock-controls.svg",
+      "sha256": "2da2d406cdb39fe981e51a3ef4972a5d61bc199e701a481a1503a7dc263f1c3e",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-clock-controls.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-composition",
+      "path": "fixtures/reference-smil-composition.svg",
+      "sha256": "4531c87a574bb3ed9713e44f725ef747b8ef9f5c8628ed796a42284a9b354868",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-composition.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-dependencies",
+      "path": "fixtures/reference-smil-dependencies.svg",
+      "sha256": "7237d5d76a2ed1b7feb9b5771cd59ac81cc158c3cec1fee6ba901878b2b6aa94",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-dependencies.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-edge-cases",
+      "path": "fixtures/reference-smil-edge-cases.svg",
+      "sha256": "dcf738efb6229306225b7d87c6b58288ba24bf67f30abb8687db7b8dcda58e95",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-edge-cases.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-eventbase",
+      "path": "fixtures/reference-smil-eventbase.svg",
+      "sha256": "f074cd39fb5dd87f1a66c6d5bab56dc5888c6f7ab45358c0b5a0f1e71160bfd5",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-eventbase.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-lists-path",
+      "path": "fixtures/reference-smil-lists-path.svg",
+      "sha256": "b5355b18dfede1c2780ddf9e311658a8009fe7266e3fff342c2dfa02d7b6a01f",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-lists-path.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "reference-smil-value-families",
+      "path": "fixtures/reference-smil-value-families.svg",
+      "sha256": "49a7cfd25cb02edcaa236b5ba2f143e191461c039cc234a1c8aa3c0aa6fa65b4",
+      "author": "SVG to SwiftUI contributors",
+      "license": "MIT",
+      "licenseFile": "../../../LICENSE",
+      "sourceURL": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/blob/main/packages/svg-to-swiftui-core/reference-smil-value-families.svg",
+      "upstreamRevision": "repository"
+    },
+    {
+      "name": "vendor-css-ring",
+      "path": "fixtures/vendor-css-ring.svg",
+      "sha256": "e8ab6e81d656ce17f717e8b40d3a764c2ccdea9ee0d2a0f3451e6fa422485612",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/90-ring-with-bg.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+    },
+    {
+      "name": "vendor-smil-three-dots",
+      "path": "fixtures/vendor-smil-three-dots.svg",
+      "sha256": "6964e53120c17725a5cc6d0a1f456c84acf3efda18c9104d9395be0bd3f180dd",
+      "author": "Sam Herbert",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/SamHerbert-SVG-Loaders-LICENSE.md",
+      "sourceURL": "https://github.com/SamHerbert/SVG-Loaders/blob/561eacac2f46e2b02e48df547324dcea94a6a1c5/svg-loaders/three-dots.svg",
+      "upstreamRevision": "561eacac2f46e2b02e48df547324dcea94a6a1c5"
+    }
+  ]
+}

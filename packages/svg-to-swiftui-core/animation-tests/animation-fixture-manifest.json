@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "defaults": {
     "scale": 2,
     "background": null,
@@ -12,6 +12,26 @@
       "maxMeanAlphaError": 3
     }
   },
+  "benchmarkLadder": [
+    { "rank": 1, "fixture": "benchmark-01-numeric-cx", "capability": "one numeric geometry property" },
+    { "rank": 2, "fixture": "benchmark-color-opacity", "capability": "color and opacity" },
+    { "rank": 3, "fixture": "benchmark-02-smil-timing", "capability": "repeat, fill, and exact boundaries" },
+    { "rank": 4, "fixture": "benchmark-06-animate-transform", "capability": "transform animation" },
+    { "rank": 5, "fixture": "benchmark-07-animate-motion", "capability": "motion path and orientation" },
+    {
+      "rank": 6,
+      "fixture": "benchmark-05-animate-set-properties",
+      "capability": "simultaneous geometry, paint, and presentation"
+    },
+    {
+      "rank": 7,
+      "fixture": "benchmark-09-animated-resources",
+      "capability": "gradient, pattern, and marker resources"
+    },
+    { "rank": 8, "fixture": "benchmark-compositing-text", "capability": "clip, mask, filter, and text composition" },
+    { "rank": 9, "fixture": "benchmark-08-css-keyframes", "capability": "CSS keyframes mixed with SVG presentation" },
+    { "rank": 10, "fixture": "benchmark-10-complex-scene", "capability": "combined real-world declarative scene" }
+  ],
   "fixtures": {
     "harness-static-clock": {
       "mode": "comparison",
@@ -431,6 +451,126 @@
         "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
       },
       "expectDistinctReferenceFrames": true
+    },
+    "benchmark-color-opacity": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "expectedMode": "view",
+      "tags": ["benchmark-ladder", "color", "opacity", "paint", "smil-values"],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000]
+      },
+      "expectDistinctReferenceFrames": true
+    },
+    "benchmark-compositing-text": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 160,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "benchmark-ladder",
+        "clip-content",
+        "filter-parameters",
+        "mask-content",
+        "text",
+        "text-character-position"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
+      }
+    },
+    "benchmark-10-complex-scene": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 180,
+      "height": 128,
+      "expectedMode": "view",
+      "tags": [
+        "animate-motion",
+        "animate-transform",
+        "benchmark-10",
+        "benchmark-ladder",
+        "clip-content",
+        "color",
+        "complex-scene",
+        "css-keyframes",
+        "filter-parameters",
+        "geometry",
+        "gradient-coordinates",
+        "marker-content",
+        "mask-content",
+        "mixed-css-smil",
+        "mpath",
+        "pattern-content",
+        "repeat",
+        "resource-consumers",
+        "text",
+        "transform"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000, 1000001, 1249999, 1250000, 1499999,
+          1500000, 1749999, 1750000, 1999999, 2000000
+        ]
+      },
+      "tolerance": {
+        "channel": 24,
+        "maxOutsidePercent": 5.5,
+        "maxMeanRgbError": 5.5,
+        "maxMeanAlphaError": 3
+      },
+      "toleranceReason": "The dense combined scene compounds WebKit/CoreGraphics edge antialiasing across animated rounded clips, repeating pattern seams, text glyphs, and filter boundaries; solid interiors, timing, positions, colors, and alpha remain exact enough to reject semantic regressions."
+    },
+    "vendor-smil-three-dots": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 120,
+      "height": 30,
+      "background": "#0f172aff",
+      "expectedMode": "view",
+      "tags": ["real-world", "smil", "vendor"],
+      "provenance": {
+        "author": "Sam Herbert",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/SamHerbert-SVG-Loaders-LICENSE.md",
+        "sourceURL": "https://github.com/SamHerbert/SVG-Loaders/blob/561eacac2f46e2b02e48df547324dcea94a6a1c5/svg-loaders/three-dots.svg",
+        "upstreamRevision": "561eacac2f46e2b02e48df547324dcea94a6a1c5"
+      },
+      "timeline": {
+        "durationMicroseconds": 800000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000]
+      }
+    },
+    "vendor-css-ring": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 24,
+      "height": 24,
+      "background": "#ffffffff",
+      "expectedMode": "view",
+      "tags": ["css-keyframes", "real-world", "transform", "vendor"],
+      "provenance": {
+        "author": "Utkarsh Verma",
+        "license": "MIT",
+        "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+        "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/90-ring-with-bg.svg",
+        "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+      },
+      "timeline": {
+        "durationMicroseconds": 750000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 93750, 187500, 281250, 375000, 468750, 562500, 656250, 750000]
+      }
     }
   }
 }

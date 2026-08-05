@@ -9,9 +9,9 @@ This is the core transpiler code that you can use to convert raw SVG code into n
 
 Single-color SVGs produce a tintable `Shape`. SVGs with multiple supported solid fill or stroke colors automatically produce a layered `View` that preserves those colors and their drawing order. Set `preserveColors: false` to request the legacy single-shape output when the SVG does not require view-only features such as viewport clipping, or `preserveColors: true` to retain the original paint for a single-color SVG. Set `strict: true` to fail conversion when visible SVG content is represented but not supported by the current SwiftUI backend.
 
-### Static profile and detailed results
+### Static and animation profiles
 
-The supported target is the complete static appearance of SVG 2 plus Filter Effects Level 1. Timelines, scripts, event handlers, navigation, media playback, embedded browsing contexts, and live mutation are intentionally outside this profile. `<foreignObject>` is supported as a secure conversion-time snapshot. The versioned [machine-readable matrix](conformance/svg2-static-profile.json) classifies every SVG2 element, attribute, presentation property, and Level 1 filter primitive; the generated [human report](conformance/REPORT.md) links its implementation and evidence.
+The compiler targets the complete static appearance of SVG 2 plus Filter Effects Level 1 and declarative SVG animation. The versioned [static profile](conformance/svg2-static-profile.json) and [dynamic profile](conformance/svg-animation-profile.json) classify supported, partial, snapshotted, obsolete, and browser-only vocabulary with evidence and strict/permissive behavior. Their generated [static](conformance/REPORT.md) and [animation](conformance/ANIMATION_REPORT.md) reports are machine-verified. Scripts, navigation, media playback, embedded browsing runtimes, live mutation, and runtime network access remain intentionally outside the deterministic native profile.
 
 Use `convertDetailed()` when callers need more than the legacy Swift source string:
 
@@ -232,6 +232,9 @@ bun run visual-test:verify                       # manifest + codegen integrity 
 bun run animation-test                          # exact-time SVG/SwiftUI RGBA frame comparisons
 bun run animation-test -- --videos              # also encode review-only MP4 artifacts
 bun run animation-test:verify                   # temporal manifest integrity (all platforms)
+bun run animation-test:verify-sources           # exact hashes, revisions, and licenses
+bun run animation-test:benchmark                # deterministic codegen and animation budgets
+bun run animation-conformance:verify            # dynamic vocabulary and evidence
 bun run conformance:verify                       # complete SVG2 classification + evidence
 bun run conformance:benchmark                    # compact Shape fast-path budget
 bun run conformance:report                       # regenerate conformance/REPORT.md
@@ -245,6 +248,10 @@ The default antialiasing allowance is 24/255 per channel, at most 3% pixels outs
 ### Temporal animation tests
 
 The animation harness extends the same compiler pipeline across an exact microsecond schedule. WebKit is paused and explicitly seeks both the SVG/SMIL document timeline and CSS Web Animations timeline. Generated Swift is compiled once, then SwiftUI renders every matching timestamp through an injected deterministic time value. Each lossless frame is compared with the same premultiplied-RGBA metrics, and summaries identify the worst frame and timestamp.
+
+The manifest contains a 10-rung known-good comparison ladder: numeric values, color/opacity, timing boundaries, transforms, motion, simultaneous composition, animated paint resources, clip/mask/filter/text, CSS mixing, and a demanding combined scene. Two unmodified MIT fixtures from SVG-Loaders and svg-spinners are pinned by source hash, upstream revision, attribution, and vendored license. Review mode emits reference, SwiftUI, side-by-side, and amplified-difference MP4s; lossless PNG/RGBA comparison remains the pass/fail oracle.
+
+Conversion, source generation, Swift compilation, cold-batch and average frame rendering, peak memory, definitions, keyframes, dependencies, events, path/filter work, frame counts, and artifacts have versioned budgets in `animation-tests/animation-budgets.json`. Oversized animation definitions, CSS keyframes, and timing dependency graphs are bounded through `animations.maxDefinitions`, `animations.maxKeyframes`, and `animations.maxDependencyDepth`; permissive mode truncates deterministically with diagnostics and strict mode rejects. Static documents retain the compact `Shape` fast path without animation runtime code.
 
 Generated animated views expose deterministic and production clock paths. See the [animation clock contract](docs/animation-clock.md) for restart, pause/resume, Reduced Motion, and exact-time behavior.
 

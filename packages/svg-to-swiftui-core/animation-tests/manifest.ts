@@ -193,10 +193,17 @@ interface RawAnimationFixture {
   expectDistinctReferenceFrames?: boolean;
   tolerance?: Partial<RgbaTolerance>;
   toleranceReason?: string;
+  provenance?: {
+    author: string;
+    license: string;
+    licenseFile: string;
+    sourceURL: string;
+    upstreamRevision: string;
+  };
 }
 
 interface AnimationManifestFile {
-  version: 1;
+  version: 2;
   defaults: {
     scale: number;
     background: string | null;
@@ -204,6 +211,7 @@ interface AnimationManifestFile {
     fontFamilies?: string[];
     tolerance: RgbaTolerance;
   };
+  benchmarkLadder: Array<{ rank: number; fixture: string; capability: string }>;
   fixtures: Record<string, RawAnimationFixture>;
 }
 
@@ -268,6 +276,7 @@ export interface LoadedAnimationFixture {
   expectDistinctReferenceFrames: boolean;
   tolerance: RgbaTolerance;
   toleranceReason?: string;
+  provenance?: RawAnimationFixture["provenance"];
 }
 
 function findSvgFiles(directory = ANIMATION_FIXTURES_DIR): string[] {
@@ -323,7 +332,7 @@ export function loadAnimationValueGoldens(): AnimationValueGoldenFile {
 
 export function loadAnimationFixtures(): LoadedAnimationFixture[] {
   const manifest = readManifest();
-  if (manifest.version !== 1) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
+  if (manifest.version !== 2) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
   return Object.entries(manifest.fixtures)
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([name, entry]) => ({
@@ -346,6 +355,7 @@ export function loadAnimationFixtures(): LoadedAnimationFixture[] {
       expectDistinctReferenceFrames: entry.expectDistinctReferenceFrames ?? false,
       tolerance: { ...manifest.defaults.tolerance, ...entry.tolerance },
       ...(entry.toleranceReason ? { toleranceReason: entry.toleranceReason } : {}),
+      ...(entry.provenance ? { provenance: entry.provenance } : {}),
     }));
 }
 
@@ -370,6 +380,20 @@ export function validateAnimationManifest(): string[] {
 
   const actual = new Set(findSvgFiles().map(fixtureKey));
   const declared = new Set(fixtures.map((fixture) => fixture.name));
+  if (manifest.benchmarkLadder.length < 10) errors.push("Benchmark ladder must contain at least 10 fixtures");
+  const ladderRanks = manifest.benchmarkLadder.map((entry) => entry.rank);
+  const ladderFixtures = manifest.benchmarkLadder.map((entry) => entry.fixture);
+  if (ladderRanks.some((rank, index) => rank !== index + 1))
+    errors.push("Benchmark ladder ranks must be contiguous and start at 1");
+  if (new Set(ladderFixtures).size !== ladderFixtures.length) errors.push("Benchmark ladder fixtures must be unique");
+  for (const entry of manifest.benchmarkLadder) {
+    const fixture = fixtures.find((candidate) => candidate.name === entry.fixture);
+    if (!fixture) errors.push(`Benchmark ladder references missing fixture: ${entry.fixture}`);
+    else if (fixture.mode !== "comparison")
+      errors.push(`Benchmark ladder fixture must use comparison mode: ${entry.fixture}`);
+    if (entry.capability.trim() === "")
+      errors.push(`Benchmark ladder rank ${entry.rank} requires a capability description`);
+  }
   for (const name of actual)
     if (!declared.has(name)) errors.push(`Animation fixture missing from manifest: ${name}.svg`);
   for (const name of declared) if (!actual.has(name)) errors.push(`Animation manifest entry has no SVG: ${name}.svg`);
@@ -514,6 +538,20 @@ export function validateAnimationManifest(): string[] {
       errors.push(`${prefix} distinct-frame probes require at least two frames`);
     if (fixture.tags.length === 0) errors.push(`${prefix} at least one feature tag is required`);
     if (new Set(fixture.tags).size !== fixture.tags.length) errors.push(`${prefix} feature tags must be unique`);
+    if (fixture.tags.includes("vendor")) {
+      const provenance = fixture.provenance;
+      if (
+        !provenance ||
+        !provenance.author.trim() ||
+        !provenance.license.trim() ||
+        !/^https:\/\//.test(provenance.sourceURL) ||
+        !/^[0-9a-f]{40}$/i.test(provenance.upstreamRevision) ||
+        !existsSync(resolve(ANIMATION_TESTS_DIR, provenance.licenseFile))
+      )
+        errors.push(`${prefix} vendored fixtures require valid author, license, revision, URL, and license file`);
+    } else if (fixture.provenance) {
+      errors.push(`${prefix} provenance is reserved for vendored fixtures`);
+    }
     if (raw.tolerance && !raw.toleranceReason)
       errors.push(`${prefix} tolerance overrides require a narrow justification`);
     if (raw.toleranceReason && !raw.tolerance) errors.push(`${prefix} toleranceReason requires an override`);
