@@ -74,6 +74,7 @@ export function resolveMaskResources(
   styleResolver: SVGStyleResolver,
   rootPresentation: Presentation,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
 ): Map<string, MaskResource> {
   const resolutions = new Map<ElementNode, StyleResolution>();
   const walk = (element: ElementNode, inherited: Presentation): void => {
@@ -116,6 +117,21 @@ export function resolveMaskResources(
         diagnostics,
       ),
       maskType,
+      animationTargetKeys: Object.fromEntries(
+        ["x", "y", "width", "height", "maskUnits", "maskContentUnits", "mask-type"].flatMap((name) => {
+          const key = animationTargetKey?.(element);
+          return key ? [[name, key]] : [];
+        }),
+      ),
+      animationBaseValues: {
+        x: String(element.properties?.x ?? "-10%"),
+        y: String(element.properties?.y ?? "-10%"),
+        width: String(element.properties?.width ?? "120%"),
+        height: String(element.properties?.height ?? "120%"),
+        maskUnits: String(element.properties?.maskUnits ?? "objectBoundingBox"),
+        maskContentUnits: String(element.properties?.maskContentUnits ?? "userSpaceOnUse"),
+        "mask-type": maskType,
+      },
       source: sourceLocation(element),
       element,
       contentElements: children(element),

@@ -3,6 +3,7 @@ import { ANIMATION_ATTRIBUTE_REGISTRY } from "../src/renderTree/animationValues"
 const labels = {
   "render-node": "implemented",
   "gradient-stop": "implemented",
+  resource: "implemented",
   "pending-resource": "pending resource wiring",
   "pending-follow-up": "pending follow-up",
 } as const;
@@ -40,6 +41,7 @@ export function renderAnimationReport(): string {
     "| `<animateTransform>` | implemented | typed parser/sampler/composition tests; 18-frame `benchmark-06-animate-transform` |",
     "| `<animateMotion>` / `<mpath>` | implemented | metric/parser/composition tests; 18-frame `benchmark-07-animate-motion` |",
     "| CSS `@keyframes` | implemented | cascade/timing/value tests; 18-frame `benchmark-08-css-keyframes` |",
+    "| Animated resources, filters, and nested text | implemented | resource/filter/text unit evidence; 9-frame `benchmark-09-animated-resources` |",
     "",
   ];
   return lines.join("\n");

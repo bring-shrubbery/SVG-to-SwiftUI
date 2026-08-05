@@ -254,6 +254,8 @@ Typed interpolation, paced/spline sampling, additive composition, and repeat acc
 
 `<animate>` and `<set>` now drive native geometry, presentation, text, viewport, inheritance, and gradient-stop rendering. See the [property contract](docs/animate-set-properties.md) and generated [animation attribute report](conformance/ANIMATION_REPORT.md) for exact implemented and pending properties.
 
+Animated gradients, patterns, clips, masks, markers, filters, text positioning, images, and nested SVG timelines use consumer-specific, pure-time evaluation. See the [animated resource contract](docs/animated-resources.md) and its lossless `benchmark-09` reference comparison.
+
 Optional MP4 files are review artifacts only. They are encoded after the lossless comparisons and never decide whether a test passes. Animation compiler support is being implemented in dependency order under the [Animated SVG roadmap](https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94).
 
 ## Migration from 0.4

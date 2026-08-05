@@ -84,6 +84,9 @@ interface GradientPaintBase {
   colorInterpolation: GradientColorInterpolation;
   href?: string;
   source: SourceLocation;
+  /** Per-attribute source identity preserves href-inherited animation ownership. */
+  animationTargetKeys: Readonly<Record<string, string>>;
+  animationBaseValues: Readonly<Record<string, string>>;
 }
 
 export interface LinearGradientPaint extends GradientPaintBase {
@@ -135,42 +138,54 @@ export type FilterChannelSelector = "R" | "G" | "B" | "A";
 export type FilterMorphologyOperator = "erode" | "dilate";
 export type FilterTurbulenceType = "turbulence" | "fractalNoise";
 
-export type FilterLightSourceSpec =
-  | { type: "distant"; azimuth: number; elevation: number }
-  | { type: "point"; x: number; y: number; z: number }
-  | {
-      type: "spot";
-      x: number;
-      y: number;
-      z: number;
-      pointsAtX: number;
-      pointsAtY: number;
-      pointsAtZ: number;
-      specularExponent: number;
-      limitingConeAngle?: number;
-    };
+interface FilterAnimationTarget {
+  animationTargetKey?: string;
+  animationTargetTag?: string;
+  animationBaseValues?: Readonly<Record<string, number>>;
+}
 
-export type FilterLightSource =
-  | { type: "distant"; x: number; y: number; z: number }
-  | { type: "point"; x: number; y: number; z: number }
-  | {
-      type: "spot";
-      x: number;
-      y: number;
-      z: number;
-      pointsAtX: number;
-      pointsAtY: number;
-      pointsAtZ: number;
-      specularExponent: number;
-      limitingConeAngle?: number;
-    };
+export type FilterLightSourceSpec = FilterAnimationTarget &
+  (
+    | { type: "distant"; azimuth: number; elevation: number }
+    | { type: "point"; x: number; y: number; z: number }
+    | {
+        type: "spot";
+        x: number;
+        y: number;
+        z: number;
+        pointsAtX: number;
+        pointsAtY: number;
+        pointsAtZ: number;
+        specularExponent: number;
+        limitingConeAngle?: number;
+      }
+  );
 
-export type FilterComponentTransferFunction =
-  | { type: "identity" }
-  | { type: "table"; values: number[] }
-  | { type: "discrete"; values: number[] }
-  | { type: "linear"; slope: number; intercept: number }
-  | { type: "gamma"; amplitude: number; exponent: number; offset: number };
+export type FilterLightSource = FilterAnimationTarget &
+  (
+    | { type: "distant"; x: number; y: number; z: number }
+    | { type: "point"; x: number; y: number; z: number }
+    | {
+        type: "spot";
+        x: number;
+        y: number;
+        z: number;
+        pointsAtX: number;
+        pointsAtY: number;
+        pointsAtZ: number;
+        specularExponent: number;
+        limitingConeAngle?: number;
+      }
+  );
+
+export type FilterComponentTransferFunction = FilterAnimationTarget &
+  (
+    | { type: "identity" }
+    | { type: "table"; values: number[] }
+    | { type: "discrete"; values: number[] }
+    | { type: "linear"; slope: number; intercept: number }
+    | { type: "gamma"; amplitude: number; exponent: number; offset: number }
+  );
 
 export type FilterComponentTransferFunctions = [
   FilterComponentTransferFunction,
@@ -225,6 +240,8 @@ export interface MaskResource {
   units: MaskUnits;
   contentUnits: MaskUnits;
   maskType: MaskType;
+  animationTargetKeys: Readonly<Record<string, string>>;
+  animationBaseValues: Readonly<Record<string, string>>;
   source: SourceLocation;
   element: ElementNode;
   contentElements: ElementNode[];
@@ -264,6 +281,9 @@ export interface FilterPrimitiveRegionSpec {
 }
 
 interface FilterPrimitiveSpecBase {
+  animationTargetKey?: string;
+  animationTargetTag?: string;
+  animationBaseValues?: Readonly<Record<string, string>>;
   input?: FilterInput;
   input2?: FilterInput;
   result?: string;
@@ -379,6 +399,12 @@ export type FilterPrimitiveSpec =
   | (FilterPrimitiveSpecBase & { type: "passthrough"; input: FilterInput; element: string });
 
 interface FilterPrimitiveBase {
+  animationTargetKey?: string;
+  animationTargetTag?: string;
+  animationBaseValues?: Readonly<Record<string, string>>;
+  /** Converts authored primitive-unit values into this consumer's user space. */
+  animationScaleX: number;
+  animationScaleY: number;
   result?: string;
   input2?: FilterInput;
   subregion: RenderBounds;
@@ -501,6 +527,8 @@ export interface FilterResource {
   units: FilterUnits;
   primitiveUnits: FilterUnits;
   colorInterpolation: FilterColorInterpolation;
+  animationTargetKeys: Readonly<Record<string, string>>;
+  animationBaseValues: Readonly<Record<string, string>>;
   href?: string;
   source: SourceLocation;
   element: ElementNode;
@@ -562,6 +590,8 @@ export interface PatternPaint {
   units: PatternUnits;
   contentUnits: PatternUnits;
   transform: AffineTransform;
+  animationTargetKeys: Readonly<Record<string, string>>;
+  animationBaseValues: Readonly<Record<string, string>>;
   viewBox?: ViewBoxData;
   preserveAspectRatio: PreserveAspectRatio;
   overflow: string;
@@ -623,6 +653,8 @@ export interface MarkerResource {
   viewBox?: ViewBoxData;
   preserveAspectRatio: PreserveAspectRatio;
   overflow: string;
+  animationTargetKeys: Readonly<Record<string, string>>;
+  animationBaseValues: Readonly<Record<string, string>>;
   source: SourceLocation;
   element: ElementNode;
   contentElements: ElementNode[];
@@ -709,6 +741,9 @@ export interface MarkerPlacement {
   refX: number;
   refY: number;
   viewBoxTransform: AffineTransform;
+  resource?: MarkerResource;
+  hostAngle?: number;
+  strokeWidth?: number;
 }
 
 export interface RenderGroup {
@@ -759,6 +794,7 @@ export interface RenderText {
 }
 
 export interface RenderTextChunk {
+  animationTargetKey?: string;
   x?: number;
   y?: number;
   runs: RenderTextRun[];
@@ -778,10 +814,13 @@ export interface RenderTextCharacter {
 }
 
 export interface RenderTextLengthAdjustment {
+  animationTargetKey?: string;
   /** Character range local to the containing chunk. */
   start: number;
   end: number;
   target: number;
+  /** Share of the owning textLength range represented by this chunk. */
+  animationScale: number;
   mode: "spacing" | "spacingAndGlyphs";
 }
 
@@ -794,6 +833,7 @@ export interface RenderTextPathPoint {
 }
 
 export interface RenderTextPath {
+  animationTargetKey?: string;
   points: RenderTextPathPoint[];
   length: number;
   closed: boolean;
@@ -807,6 +847,7 @@ export interface RenderTextPath {
 }
 
 export interface RenderTextRun {
+  animationTargetKey?: string;
   text: string;
   characters: RenderTextCharacter[];
   dx: number;

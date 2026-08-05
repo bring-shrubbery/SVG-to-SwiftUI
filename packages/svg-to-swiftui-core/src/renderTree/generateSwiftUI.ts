@@ -11,10 +11,11 @@ import {
   addAnimationValues,
   animationAttributeSpec,
   parseAnimationValue,
+  resolveAnimationAttributeForTarget,
   swiftAnimationValueLiteral,
   type TypedAnimationValue,
 } from "./animationValues";
-import { renderNodeBounds } from "./bounds";
+import { objectBoundingBox, renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
 import { computeSMILRepeatingDuration, type SMILTimingInterval, sampleSMILProgram } from "./smilTiming";
@@ -30,6 +31,7 @@ import type {
   GradientStop,
   MaskInstance,
   Paint,
+  PaintServer,
   RenderDocument,
   RenderNode,
   RenderShape,
@@ -65,6 +67,10 @@ type GeneratedViewNode =
       paintOpacity: number;
       coordinateSpace: ViewBoxData;
       stopsExpression?: string;
+      coordinateExpressions?: Readonly<Record<string, string>>;
+      matrixExpression?: string;
+      spreadExpression?: string;
+      linearRGBExpression?: string;
     }
   | {
       type: "pattern";
@@ -73,6 +79,10 @@ type GeneratedViewNode =
       paintOpacity: number;
       coordinateSpace: ViewBoxData;
       patternIndex: number;
+      coordinateExpressions?: Readonly<Record<string, string>>;
+      rangeFactorX?: number;
+      rangeFactorY?: number;
+      transformCorrection?: string;
       tileClip?: string;
       contentNodes: GeneratedViewNode[];
     }
@@ -110,8 +120,10 @@ interface GeneratedMask {
 
 interface GeneratedFilter {
   instance: FilterInstance;
+  regionExpression?: string;
+  primitiveOverrides: ReadonlyArray<Readonly<Record<string, string>>>;
   canvas: ViewBoxData;
-  imageHelpers: Array<{ key: string; name: string }>;
+  imageHelpers: Array<{ key: string; name: string; animated?: boolean }>;
   maxOutputPixels: number;
 }
 
@@ -121,6 +133,7 @@ interface FilterImageHelper {
   primitive: Extract<FilterPrimitive, { type: "image" }>;
   canvas: ViewBoxData;
   subdocumentName?: string;
+  animated?: boolean;
 }
 
 interface GeneratedClipPath {
@@ -149,6 +162,25 @@ interface ViewBuildContext {
     fontSize?: string;
     letterSpacing?: string;
     wordSpacing?: string;
+    chunks: Array<{
+      x?: string;
+      y?: string;
+      startOffset?: string;
+      adjustmentTargets: Array<string | undefined>;
+      runs: Array<{
+        fontSize?: string;
+        letterSpacing?: string;
+        wordSpacing?: string;
+        fill?: string;
+        fillOpacity?: string;
+        stroke?: string;
+        strokeOpacity?: string;
+        strokeWidth?: string;
+        characterDX?: string;
+        characterDY?: string;
+        characterRotate?: string;
+      }>;
+    }>;
     animated: boolean;
   }>;
   imageHelpers: Array<{
@@ -156,6 +188,9 @@ interface ViewBuildContext {
     node: Extract<RenderNode, { type: "image" | "foreignObject" }>;
     transform: RenderNode["transform"];
     subdocumentName?: string;
+    subdocumentAnimated?: boolean;
+    animated?: boolean;
+    transformExpression?: string;
   }>;
   filterImageHelpers: FilterImageHelper[];
   subdocuments: string[][];
@@ -555,6 +590,7 @@ function buildViewNodes(
     node: RenderNode,
     transforms: RenderNode["transform"][],
     animatedSuffix?: string,
+    animatedBaseOverride?: string,
   ): string | undefined => {
     const metadata = node.transformAnimation ?? { base: node.transform, suffix: IDENTITY_TRANSFORM };
     const baseValue: TypedAnimationValue = {
@@ -575,10 +611,10 @@ function buildViewNodes(
     };
     const animatedBase = animatedValueExpression(node, "transform", baseValue);
     const animatedMotion = animatedMotionExpression(node);
-    if (!animatedBase && !animatedSuffix && !animatedMotion) return undefined;
+    if (!animatedBase && !animatedSuffix && !animatedMotion && !animatedBaseOverride) return undefined;
     const ancestors = transforms.reduce(multiplyTransforms, IDENTITY_TRANSFORM);
     const staticTransform = multiplyTransforms(ancestors, node.transform);
-    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base)}, animatedMotion: ${animatedMotion ?? "CGAffineTransform.identity"}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
+    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBaseOverride ?? (animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base))}, animatedMotion: ${animatedMotion ?? "CGAffineTransform.identity"}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
   };
 
   const numericBase = (
@@ -667,6 +703,211 @@ function buildViewNodes(
           : gradientStopLiteral(stops[index]!, opacity),
       )
       .join(", ")}])`;
+  };
+
+  const animationsForResource = (key: string | undefined, attributeName: string) =>
+    key
+      ? context.document.animationProgram.animations.filter(
+          (candidate) =>
+            candidate.runtimeSupport === "typed" &&
+            candidate.target?.key === key &&
+            candidate.attributeName === attributeName,
+        )
+      : [];
+
+  const animatedGradientExpressions = (
+    server: Extract<PaintServer, { type: "linearGradient" | "radialGradient" }>,
+    gradient: ResolvedGradient,
+    node: RenderNode,
+  ) => {
+    const valueContextForGradient = {
+      ...valueContext(node),
+      length: {
+        ...valueContext(node).length,
+        ...(server.units === "objectBoundingBox"
+          ? { viewport: { width: 1, height: 1 }, rootViewport: { width: 1, height: 1 } }
+          : {}),
+      },
+    };
+    const coordinateExpressions: Record<string, string> = {};
+    for (const name of server.type === "linearGradient"
+      ? (["x1", "y1", "x2", "y2"] as const)
+      : (["cx", "cy", "r", "fx", "fy", "fr"] as const)) {
+      const animations = animationsForResource(server.animationTargetKeys[name], name);
+      if (animations.length === 0) continue;
+      const spec = animationAttributeSpec(name);
+      const base = spec
+        ? parseAnimationValue(spec, server.animationBaseValues[name] ?? String(gradient[name]), valueContextForGradient)
+        : undefined;
+      const expression = base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+      if (expression) coordinateExpressions[name] = `${context.rootName}.svgAnimationNumber(${expression})`;
+    }
+    const spreadAnimations = animationsForResource(server.animationTargetKeys.spreadMethod, "spreadMethod");
+    const spreadBase = parseAnimationValue(
+      animationAttributeSpec("spreadMethod")!,
+      server.animationBaseValues.spreadMethod ?? server.spreadMethod,
+      valueContextForGradient,
+    );
+    const spreadValue = animatedValueExpressionFromAnimations(spreadAnimations, spreadBase!);
+    const spreadExpression = spreadValue
+      ? `(${context.rootName}.svgAnimationSource(${spreadValue}) == "repeat" ? .repeating : (${context.rootName}.svgAnimationSource(${spreadValue}) == "reflect" ? .reflect : .pad))`
+      : undefined;
+    const interpolationAnimations = animationsForResource(
+      server.animationTargetKeys["color-interpolation"],
+      "color-interpolation",
+    );
+    const interpolationBase = parseAnimationValue(
+      animationAttributeSpec("color-interpolation")!,
+      server.animationBaseValues["color-interpolation"] ?? server.colorInterpolation,
+      valueContextForGradient,
+    );
+    const interpolationValue = animatedValueExpressionFromAnimations(interpolationAnimations, interpolationBase!);
+    const linearRGBExpression = interpolationValue
+      ? `${context.rootName}.svgAnimationSource(${interpolationValue}).lowercased() == "linearrgb"`
+      : undefined;
+    const transformAnimations = animationsForResource(
+      server.animationTargetKeys.gradientTransform,
+      "gradientTransform",
+    );
+    const transformBase = parseAnimationValue(
+      animationAttributeSpec("gradientTransform")!,
+      server.animationBaseValues.gradientTransform ?? "matrix(1 0 0 1 0 0)",
+      valueContextForGradient,
+    );
+    const transformValue = animatedValueExpressionFromAnimations(transformAnimations, transformBase!);
+    let matrixExpression: string | undefined;
+    if (transformValue) {
+      const transform = server.transform;
+      const determinant = transform.a * transform.d - transform.b * transform.c;
+      if (Math.abs(determinant) > 1e-12) {
+        const inverse = {
+          a: transform.d / determinant,
+          b: -transform.b / determinant,
+          c: -transform.c / determinant,
+          d: transform.a / determinant,
+          e: (transform.c * transform.f - transform.d * transform.e) / determinant,
+          f: (transform.b * transform.e - transform.a * transform.f) / determinant,
+        };
+        const prefix = multiplyTransforms(gradient.matrix, inverse);
+        matrixExpression = `${context.rootName}.svgOutputTransform(${context.rootName}.svgMultiplyTransform(${swiftTransform(prefix)}, ${context.rootName}.svgAnimationTransform(${transformValue})), size: size, coordinateSpace: CGRect(x: ${formatNumber(context.coordinateSpace.x)}, y: ${formatNumber(context.coordinateSpace.y)}, width: ${formatNumber(context.coordinateSpace.width)}, height: ${formatNumber(context.coordinateSpace.height)}))`;
+      }
+    }
+    return {
+      ...(Object.keys(coordinateExpressions).length > 0 ? { coordinateExpressions } : {}),
+      ...(matrixExpression ? { matrixExpression } : {}),
+      ...(spreadExpression ? { spreadExpression } : {}),
+      ...(linearRGBExpression ? { linearRGBExpression } : {}),
+    };
+  };
+
+  const animatedPatternExpressions = (pattern: ResolvedPattern, node: RenderNode) => {
+    const server = pattern.server;
+    const patternContext = {
+      ...valueContext(node),
+      length: {
+        ...valueContext(node).length,
+        ...(server.units === "objectBoundingBox"
+          ? { viewport: { width: 1, height: 1 }, rootViewport: { width: 1, height: 1 } }
+          : {}),
+      },
+    };
+    const coordinateExpressions: Record<string, string> = {};
+    let rangeFactorX = 1;
+    let rangeFactorY = 1;
+    for (const name of ["x", "y", "width", "height"] as const) {
+      const animations = animationsForResource(server.animationTargetKeys[name], name);
+      if (animations.length === 0) continue;
+      const baseSource = server.animationBaseValues[name] ?? String(pattern.tile[name]);
+      const base = parseAnimationValue(animationAttributeSpec(name)!, baseSource, patternContext);
+      const expression = base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+      if (expression) coordinateExpressions[name] = `${context.rootName}.svgAnimationNumber(${expression})`;
+      if (name === "width" || name === "height") {
+        const staticExtent = pattern.tile[name];
+        const candidates = animations.flatMap((animation) => {
+          if (animation.value.family === "unsupported") return [];
+          return [
+            animation.value.base,
+            animation.value.from,
+            animation.value.to,
+            animation.value.by,
+            ...(animation.value.values ?? []),
+          ].flatMap((value) =>
+            value && "value" in value && typeof value.value === "number" && value.value > 1e-9 ? [value.value] : [],
+          );
+        });
+        const minimum = Math.min(staticExtent, ...candidates);
+        if (minimum > 1e-9) {
+          const factor = Math.ceil(staticExtent / minimum);
+          if (name === "width") rangeFactorX = Math.max(rangeFactorX, factor);
+          else rangeFactorY = Math.max(rangeFactorY, factor);
+        }
+      }
+    }
+    const transformAnimations = animationsForResource(server.animationTargetKeys.patternTransform, "patternTransform");
+    const transformBase = parseAnimationValue(
+      animationAttributeSpec("patternTransform")!,
+      server.animationBaseValues.patternTransform ?? "matrix(1 0 0 1 0 0)",
+      patternContext,
+    );
+    const transformValue = transformBase
+      ? animatedValueExpressionFromAnimations(transformAnimations, transformBase)
+      : undefined;
+    let transformCorrection: string | undefined;
+    if (transformValue) {
+      const transform = server.transform;
+      const determinant = transform.a * transform.d - transform.b * transform.c;
+      if (Math.abs(determinant) > 1e-12) {
+        const inverse = {
+          a: transform.d / determinant,
+          b: -transform.b / determinant,
+          c: -transform.c / determinant,
+          d: transform.a / determinant,
+          e: (transform.c * transform.f - transform.d * transform.e) / determinant,
+          f: (transform.b * transform.e - transform.a * transform.f) / determinant,
+        };
+        const prefix = multiplyTransforms(pattern.matrix, inverse);
+        const coordinateSpace = `CGRect(x: ${formatNumber(context.coordinateSpace.x)}, y: ${formatNumber(context.coordinateSpace.y)}, width: ${formatNumber(context.coordinateSpace.width)}, height: ${formatNumber(context.coordinateSpace.height)})`;
+        const animatedOutput = `${context.rootName}.svgOutputTransform(${context.rootName}.svgMultiplyTransform(${swiftTransform(prefix)}, ${context.rootName}.svgAnimationTransform(${transformValue})), size: size, coordinateSpace: ${coordinateSpace})`;
+        const staticOutput = `${context.rootName}.svgOutputTransform(${swiftTransform(pattern.matrix)}, size: size, coordinateSpace: ${coordinateSpace})`;
+        transformCorrection = `${context.rootName}.svgMultiplyTransform(${animatedOutput}, ${staticOutput}.inverted())`;
+      }
+    }
+    return {
+      ...(Object.keys(coordinateExpressions).length > 0 ? { coordinateExpressions } : {}),
+      ...(rangeFactorX > 1 ? { rangeFactorX } : {}),
+      ...(rangeFactorY > 1 ? { rangeFactorY } : {}),
+      ...(transformCorrection ? { transformCorrection } : {}),
+    };
+  };
+
+  const animatedMarkerBase = (node: RenderNode): string | undefined => {
+    if (node.type !== "group" || !node.markerPlacement?.resource) return undefined;
+    const placement = node.markerPlacement;
+    const resource = placement.resource!;
+    const value = (name: "orient" | "markerUnits") => {
+      const animations = animationsForResource(resource.animationTargetKeys[name], name);
+      if (animations.length === 0) return undefined;
+      const spec = resolveAnimationAttributeForTarget(name, "auto", "marker");
+      const base = spec
+        ? parseAnimationValue(spec, resource.animationBaseValues[name]!, valueContext(node))
+        : undefined;
+      return base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+    };
+    const orient = value("orient");
+    const units = value("markerUnits");
+    if (!orient && !units) return undefined;
+    const hostAngle = placement.hostAngle ?? placement.angle;
+    const orientSource = orient ? `${context.rootName}.svgAnimationSource(${orient})` : swiftString("");
+    const angle = orient
+      ? `(${orientSource} == "auto" ? ${formatNumber(hostAngle)} : (${orientSource} == "auto-start-reverse" ? ${formatNumber(hostAngle + (placement.kind === "start" ? 180 : 0))} : ${context.rootName}.svgAnimationNumber(${orient})))`
+      : formatNumber(placement.angle);
+    const unitsSource = units ? `${context.rootName}.svgAnimationSource(${units})` : swiftString(resource.units);
+    const unitScale = `(${unitsSource} == "strokeWidth" ? ${formatNumber(placement.strokeWidth ?? placement.unitScale)} : 1)`;
+    const translation = `CGAffineTransform(translationX: ${formatNumber(placement.x)}, y: ${formatNumber(placement.y)})`;
+    const rotation = `CGAffineTransform(rotationAngle: (${angle}) * .pi / 180)`;
+    const scaling = `CGAffineTransform(scaleX: ${unitScale}, y: ${unitScale})`;
+    const reference = `CGAffineTransform(translationX: ${formatNumber(-placement.refX)}, y: ${formatNumber(-placement.refY)})`;
+    return `${context.rootName}.svgMultiplyTransform(${translation}, ${context.rootName}.svgMultiplyTransform(${rotation}, ${context.rootName}.svgMultiplyTransform(${scaling}, ${context.rootName}.svgMultiplyTransform(${reference}, ${swiftTransform(placement.viewBoxTransform)}))))`;
   };
 
   const presentationCondition = (node: RenderNode): string | undefined => {
@@ -967,6 +1208,7 @@ function buildViewNodes(
   const buildFilter = (
     filter: FilterInstance | undefined,
     targetTransforms: RenderNode["transform"][],
+    targetNode: RenderNode,
   ): GeneratedFilter | undefined => {
     if (!filter || filter.invalid) return undefined;
     const transform = targetTransforms.reduce(multiplyTransforms);
@@ -992,11 +1234,17 @@ function buildViewNodes(
       if (light.type === "distant")
         return {
           type: "distant",
+          ...(light.animationTargetKey ? { animationTargetKey: light.animationTargetKey } : {}),
+          ...(light.animationTargetTag ? { animationTargetTag: light.animationTargetTag } : {}),
+          ...(light.animationBaseValues ? { animationBaseValues: light.animationBaseValues } : {}),
           x: transform.a * light.x + transform.c * light.y,
           y: transform.b * light.x + transform.d * light.y,
           z: light.z * zScale,
         };
       const position = {
+        ...(light.animationTargetKey ? { animationTargetKey: light.animationTargetKey } : {}),
+        ...(light.animationTargetTag ? { animationTargetTag: light.animationTargetTag } : {}),
+        ...(light.animationBaseValues ? { animationBaseValues: light.animationBaseValues } : {}),
         x: transform.a * light.x + transform.c * light.y + transform.e,
         y: transform.b * light.x + transform.d * light.y + transform.f,
         z: light.z * zScale,
@@ -1103,12 +1351,475 @@ function buildViewNodes(
       region: transformRegion(filter.region),
       primitives: filter.primitives.map(transformPrimitive),
     };
-    const imageHelpers: Array<{ key: string; name: string }> = [];
+    let regionExpression: string | undefined;
+    const resource = filter.resource;
+    if (resource) {
+      const bounds = objectBoundingBox(targetNode);
+      const filterContext = {
+        ...valueContext(targetNode),
+        length: {
+          ...valueContext(targetNode).length,
+          ...(resource.units === "objectBoundingBox"
+            ? { viewport: { width: 1, height: 1 }, rootViewport: { width: 1, height: 1 } }
+            : {}),
+        },
+      };
+      const animatedCoordinate = (name: "x" | "y" | "width" | "height") => {
+        const key = resource.animationTargetKeys[name];
+        const animations = animationsForResource(key, name);
+        if (animations.length === 0) return undefined;
+        const spec = animationAttributeSpec(name)!;
+        const base = parseAnimationValue(spec, resource.animationBaseValues[name]!, filterContext);
+        const value = base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+        if (!value) return undefined;
+        const number = `${context.rootName}.svgAnimationNumber(${value})`;
+        if (resource.units !== "objectBoundingBox" || !bounds) return number;
+        const extent = name === "x" || name === "width" ? bounds.width : bounds.height;
+        if (name === "width" || name === "height") return `(${number} * ${formatNumber(extent)})`;
+        const origin = name === "x" ? bounds.x : bounds.y;
+        return `(${formatNumber(origin)} + ${number} * ${formatNumber(extent)})`;
+      };
+      const x = animatedCoordinate("x");
+      const y = animatedCoordinate("y");
+      const width = animatedCoordinate("width");
+      const height = animatedCoordinate("height");
+      if (x || y || width || height)
+        regionExpression = `${context.rootName}.svgTransformedFilterRegion(x: ${x ?? formatNumber(filter.region.x)}, y: ${y ?? formatNumber(filter.region.y)}, width: ${width ?? formatNumber(filter.region.width)}, height: ${height ?? formatNumber(filter.region.height)}, transform: ${swiftTransform(transform)})`;
+    }
+    const animatedFilterTargetValue = (
+      key: string | undefined,
+      attributeName: string,
+      baseValue: string,
+      targetTagName?: string,
+    ): string | undefined => {
+      const animations = animationsForResource(key, attributeName);
+      const spec = targetTagName
+        ? resolveAnimationAttributeForTarget(attributeName, "auto", targetTagName)
+        : animationAttributeSpec(attributeName);
+      const base = spec ? parseAnimationValue(spec, baseValue, valueContext(targetNode)) : undefined;
+      return base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+    };
+    const animatedFilterValue = (primitive: FilterPrimitive, attributeName: string, baseValue: string) =>
+      animatedFilterTargetValue(primitive.animationTargetKey, attributeName, baseValue, primitive.source.element);
+    const component = (expression: string, index: number) =>
+      `${context.rootName}.svgAnimationComponent(${expression}, index: ${index})`;
+    const primitiveOverrides = filter.primitives.map((source, index): Readonly<Record<string, string>> => {
+      const output = instance.primitives[index]!;
+      const overrides: Record<string, string> = {};
+      const scaleX = source.animationScaleX || 1;
+      const scaleY = source.animationScaleY || 1;
+      const pair = (attributeName: string, x: number, y: number) =>
+        animatedFilterValue(source, attributeName, `${formatNumber(x)} ${formatNumber(y)}`);
+      const discrete = (attributeName: string, baseValue: string) => {
+        const expression = animatedFilterValue(source, attributeName, baseValue);
+        return expression ? `${context.rootName}.svgAnimationSource(${expression})` : undefined;
+      };
+      const enumExpression = (value: string, cases: Readonly<Record<string, string>>, fallback: string) =>
+        Object.entries(cases).reduceRight(
+          (result, [sourceValue, swiftValue]) =>
+            `(${value} == ${swiftString(sourceValue)} ? ${swiftValue} : ${result})`,
+          fallback,
+        );
+      const inputExpression = (attributeName: "in" | "in2", fallback: FilterInput) => {
+        const baseValue =
+          source.animationBaseValues?.[attributeName] ??
+          (fallback.type === "result"
+            ? (filter.primitives[fallback.index]?.result ?? "SourceGraphic")
+            : {
+                sourceGraphic: "SourceGraphic",
+                sourceAlpha: "SourceAlpha",
+                backgroundImage: "BackgroundImage",
+                backgroundAlpha: "BackgroundAlpha",
+                fillPaint: "FillPaint",
+                strokePaint: "StrokePaint",
+              }[fallback.type]);
+        const animated = discrete(attributeName, baseValue);
+        if (!animated) return undefined;
+        const cases: Record<string, string> = {
+          SourceGraphic: ".sourceGraphic",
+          SourceAlpha: ".sourceAlpha",
+          BackgroundImage: ".backgroundImage",
+          BackgroundAlpha: ".backgroundAlpha",
+          FillPaint: ".fillPaint",
+          StrokePaint: ".strokePaint",
+        };
+        for (let previous = 0; previous < index; previous++) {
+          const name = filter.primitives[previous]?.result;
+          if (name) cases[name] = `.result(${previous})`;
+        }
+        return enumExpression(animated, cases, filterInputLiteral(fallback));
+      };
+      if ("input" in source) {
+        const input = inputExpression("in", source.input);
+        if (input) overrides.input = input;
+      }
+      if (source.input2) {
+        const input2 = inputExpression("in2", source.input2);
+        if (input2) overrides.input2 = input2;
+      }
+      const primitiveUnits = filter.resource?.primitiveUnits ?? "userSpaceOnUse";
+      const targetBounds = objectBoundingBox(targetNode);
+      const regionContext = {
+        ...valueContext(targetNode),
+        length: {
+          ...valueContext(targetNode).length,
+          ...(primitiveUnits === "objectBoundingBox"
+            ? { viewport: { width: 1, height: 1 }, rootViewport: { width: 1, height: 1 } }
+            : {}),
+        },
+      };
+      const regionCoordinate = (name: "x" | "y" | "width" | "height") => {
+        const animations = animationsForResource(source.animationTargetKey, name);
+        if (animations.length === 0) return undefined;
+        const axisScale = name === "x" || name === "width" ? scaleX : scaleY;
+        const origin = name === "x" ? (targetBounds?.x ?? 0) : name === "y" ? (targetBounds?.y ?? 0) : 0;
+        const resolved =
+          name === "x"
+            ? source.subregion.x
+            : name === "y"
+              ? source.subregion.y
+              : name === "width"
+                ? source.subregion.width
+                : source.subregion.height;
+        const computedBase =
+          primitiveUnits === "objectBoundingBox" && axisScale !== 0 ? (resolved - origin) / axisScale : resolved;
+        const baseSource = source.animationBaseValues?.[name] ?? formatNumber(computedBase);
+        const spec = animationAttributeSpec(name)!;
+        const base = parseAnimationValue(spec, baseSource, regionContext);
+        const expression = base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+        if (!expression) return undefined;
+        const number = `${context.rootName}.svgAnimationNumber(${expression})`;
+        if (primitiveUnits !== "objectBoundingBox") return number;
+        if (name === "width" || name === "height") return `(${number} * ${formatNumber(axisScale)})`;
+        return `(${formatNumber(origin)} + ${number} * ${formatNumber(axisScale)})`;
+      };
+      const regionX = regionCoordinate("x");
+      const regionY = regionCoordinate("y");
+      const regionWidth = regionCoordinate("width");
+      const regionHeight = regionCoordinate("height");
+      if (regionX || regionY || regionWidth || regionHeight)
+        overrides.region = `${context.rootName}.svgTransformedFilterRegion(x: ${regionX ?? formatNumber(source.subregion.x)}, y: ${regionY ?? formatNumber(source.subregion.y)}, width: ${regionWidth ?? formatNumber(source.subregion.width)}, height: ${regionHeight ?? formatNumber(source.subregion.height)}, transform: ${swiftTransform(transform)})`;
+      const interpolation = discrete("color-interpolation-filters", source.colorInterpolation);
+      if (interpolation) overrides.linearRGB = `${interpolation}.lowercased() == "linearrgb"`;
+      if (source.type === "blend") {
+        const mode = discrete("mode", source.mode);
+        if (mode)
+          overrides.mode = enumExpression(
+            mode,
+            Object.fromEntries(
+              [
+                "normal",
+                "multiply",
+                "screen",
+                "overlay",
+                "darken",
+                "lighten",
+                "color-dodge",
+                "color-burn",
+                "hard-light",
+                "soft-light",
+                "difference",
+                "exclusion",
+                "hue",
+                "saturation",
+                "color",
+                "luminosity",
+              ].map((name) => [name, `.${name.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())}`]),
+            ),
+            ".normal",
+          );
+      }
+      if (source.type === "gaussianBlur" || source.type === "dropShadow") {
+        const expression = pair("stdDeviation", source.stdDeviationX / scaleX, source.stdDeviationY / scaleY);
+        if (expression) {
+          const x = `(${component(expression, 0)} * ${formatNumber(scaleX)})`;
+          const y = `(${component(expression, 1)} * ${formatNumber(scaleY)})`;
+          overrides.stdDeviationX = `hypot(${formatNumber(transform.a)} * ${x}, ${formatNumber(transform.c)} * ${y})`;
+          overrides.stdDeviationY = `hypot(${formatNumber(transform.b)} * ${x}, ${formatNumber(transform.d)} * ${y})`;
+        }
+      }
+      if (source.type === "offset" || source.type === "dropShadow") {
+        const dxExpression = animatedFilterValue(source, "dx", formatNumber(source.dx / scaleX));
+        const dyExpression = animatedFilterValue(source, "dy", formatNumber(source.dy / scaleY));
+        if (dxExpression || dyExpression) {
+          const x = dxExpression
+            ? `(${context.rootName}.svgAnimationNumber(${dxExpression}) * ${formatNumber(scaleX)})`
+            : formatNumber(source.dx);
+          const y = dyExpression
+            ? `(${context.rootName}.svgAnimationNumber(${dyExpression}) * ${formatNumber(scaleY)})`
+            : formatNumber(source.dy);
+          overrides.dx = `${formatNumber(transform.a)} * ${x} + ${formatNumber(transform.c)} * ${y}`;
+          overrides.dy = `${formatNumber(transform.b)} * ${x} + ${formatNumber(transform.d)} * ${y}`;
+        }
+      }
+      if (source.type === "morphology") {
+        const expression = pair("radius", source.radiusX / scaleX, source.radiusY / scaleY);
+        if (expression) {
+          const x = `(${component(expression, 0)} * ${formatNumber(scaleX)})`;
+          const y = `(${component(expression, 1)} * ${formatNumber(scaleY)})`;
+          overrides.radiusX = `hypot(${formatNumber(transform.a)} * ${x}, ${formatNumber(transform.b)} * ${x})`;
+          overrides.radiusY = `hypot(${formatNumber(transform.c)} * ${y}, ${formatNumber(transform.d)} * ${y})`;
+        }
+      }
+      if (source.type === "displacementMap") {
+        const authoredScale = scaleX === 0 ? 0 : source.displacement.a / scaleX;
+        const expression = animatedFilterValue(source, "scale", formatNumber(authoredScale));
+        if (expression) {
+          const scale = `${context.rootName}.svgAnimationNumber(${expression})`;
+          overrides.a = `${formatNumber(transform.a * scaleX)} * ${scale}`;
+          overrides.b = `${formatNumber(transform.b * scaleX)} * ${scale}`;
+          overrides.c = `${formatNumber(transform.c * scaleY)} * ${scale}`;
+          overrides.d = `${formatNumber(transform.d * scaleY)} * ${scale}`;
+        }
+      }
+      if (source.type === "composite") {
+        const operator = discrete("operator", source.operator);
+        if (operator)
+          overrides.operator = enumExpression(
+            operator,
+            {
+              over: ".over",
+              in: ".inside",
+              out: ".outside",
+              atop: ".atop",
+              xor: ".xor",
+              lighter: ".lighter",
+              arithmetic: ".arithmetic",
+            },
+            ".over",
+          );
+        for (const name of ["k1", "k2", "k3", "k4"] as const) {
+          const expression = animatedFilterValue(source, name, formatNumber(source[name]));
+          if (expression) overrides[name] = `${context.rootName}.svgAnimationNumber(${expression})`;
+        }
+      }
+      if (source.type === "colorMatrix" && source.matrix.length === 20) {
+        const expression = animatedFilterValue(
+          source,
+          "values",
+          source.matrix.map((value) => formatNumber(value)).join(" "),
+        );
+        if (expression) overrides.values = `${expression}.components`;
+      }
+      if (source.type === "componentTransfer") {
+        const functions = source.functions.map((fn) => {
+          const functionOverrides: Record<string, string> = {};
+          if (fn.type === "table" || fn.type === "discrete") {
+            const expression = animatedFilterTargetValue(
+              fn.animationTargetKey,
+              "tableValues",
+              fn.values.map((value) => formatNumber(value)).join(" "),
+              fn.animationTargetTag,
+            );
+            if (expression) functionOverrides.tableValues = `${expression}.components`;
+          } else if (fn.type === "linear") {
+            for (const name of ["slope", "intercept"] as const) {
+              const expression = animatedFilterTargetValue(
+                fn.animationTargetKey,
+                name,
+                formatNumber(fn[name]),
+                fn.animationTargetTag,
+              );
+              if (expression) functionOverrides[name] = `${context.rootName}.svgAnimationNumber(${expression})`;
+            }
+          } else if (fn.type === "gamma") {
+            for (const name of ["amplitude", "exponent", "offset"] as const) {
+              const expression = animatedFilterTargetValue(
+                fn.animationTargetKey,
+                name,
+                formatNumber(fn[name]),
+                fn.animationTargetTag,
+              );
+              if (expression) functionOverrides[name] = `${context.rootName}.svgAnimationNumber(${expression})`;
+            }
+          }
+          return filterComponentFunctionLiteral(fn, functionOverrides);
+        });
+        if (
+          functions.some(
+            (literal, functionIndex) => literal !== filterComponentFunctionLiteral(source.functions[functionIndex]!),
+          )
+        )
+          overrides.functions = `[${functions.join(", ")}]`;
+      }
+      if (source.type === "convolveMatrix") {
+        const order = pair("order", source.orderX, source.orderY);
+        if (order) {
+          overrides.orderX = `Int(${component(order, 0)})`;
+          overrides.orderY = `Int(${component(order, 1)})`;
+        }
+        const kernel = animatedFilterValue(
+          source,
+          "kernelMatrix",
+          source.kernelMatrix.map((value) => formatNumber(value)).join(" "),
+        );
+        if (kernel) overrides.kernelMatrix = `${kernel}.components`;
+        for (const name of ["divisor", "bias"] as const) {
+          const expression = animatedFilterValue(source, name, formatNumber(source[name]));
+          if (expression) overrides[name] = `${context.rootName}.svgAnimationNumber(${expression})`;
+        }
+        for (const name of ["targetX", "targetY"] as const) {
+          const expression = animatedFilterValue(source, name, formatNumber(source[name]));
+          if (expression) overrides[name] = `Int(${context.rootName}.svgAnimationNumber(${expression}))`;
+        }
+        if (source.kernelUnitLengthX !== undefined) {
+          const expression = pair(
+            "kernelUnitLength",
+            source.kernelUnitLengthX / scaleX,
+            source.kernelUnitLengthY! / scaleY,
+          );
+          if (expression) {
+            const x = `(${component(expression, 0)} * ${formatNumber(scaleX)})`;
+            const y = `(${component(expression, 1)} * ${formatNumber(scaleY)})`;
+            overrides.kernelUnitLengthX = `hypot(${formatNumber(transform.a)} * ${x}, ${formatNumber(transform.b)} * ${x})`;
+            overrides.kernelUnitLengthY = `hypot(${formatNumber(transform.c)} * ${y}, ${formatNumber(transform.d)} * ${y})`;
+          }
+        }
+        const edge = discrete("edgeMode", source.edgeMode);
+        if (edge)
+          overrides.edgeMode = enumExpression(edge, { none: ".none", duplicate: ".duplicate", wrap: ".wrap" }, ".none");
+        const preserve = discrete("preserveAlpha", source.preserveAlpha ? "true" : "false");
+        if (preserve) overrides.preserveAlpha = `${preserve}.lowercased() == "true"`;
+      }
+      if (source.type === "gaussianBlur") {
+        const edge = discrete("edgeMode", source.edgeMode);
+        if (edge)
+          overrides.edgeMode = enumExpression(edge, { none: ".none", duplicate: ".duplicate", wrap: ".wrap" }, ".none");
+      }
+      if (source.type === "morphology") {
+        const operation = discrete("operator", source.operator);
+        if (operation) overrides.operator = `(${operation} == "dilate" ? .dilate : .erode)`;
+      }
+      if (source.type === "displacementMap") {
+        for (const [attributeName, baseValue] of [
+          ["xChannelSelector", source.xChannel],
+          ["yChannelSelector", source.yChannel],
+        ] as const) {
+          const channel = discrete(attributeName, baseValue);
+          if (channel)
+            overrides[attributeName] = enumExpression(
+              `${channel}.uppercased()`,
+              { R: ".r", G: ".g", B: ".b", A: ".a" },
+              ".a",
+            );
+        }
+      }
+      if (source.type === "diffuseLighting" || source.type === "specularLighting") {
+        const zScale = Math.sqrt(Math.abs(scaleX * scaleY));
+        const surfaceScale = animatedFilterValue(source, "surfaceScale", formatNumber(source.surfaceScale / zScale));
+        if (surfaceScale)
+          overrides.surfaceScale = `${formatNumber(zScale * Math.sqrt(Math.abs(transform.a * transform.d - transform.b * transform.c)))} * ${context.rootName}.svgAnimationNumber(${surfaceScale})`;
+        const constantName = source.type === "diffuseLighting" ? "diffuseConstant" : "specularConstant";
+        const constant = animatedFilterValue(source, constantName, formatNumber(source[constantName]));
+        if (constant) overrides[constantName] = `${context.rootName}.svgAnimationNumber(${constant})`;
+        if (source.type === "specularLighting") {
+          const exponent = animatedFilterValue(source, "specularExponent", formatNumber(source.specularExponent));
+          if (exponent) overrides.specularExponent = `${context.rootName}.svgAnimationNumber(${exponent})`;
+        }
+        const light = source.light;
+        if (light?.animationTargetKey && light.animationBaseValues) {
+          let animated = false;
+          const number = (name: string) => {
+            const base = light.animationBaseValues?.[name] ?? 0;
+            const expression = animatedFilterTargetValue(
+              light.animationTargetKey,
+              name,
+              formatNumber(base),
+              light.animationTargetTag,
+            );
+            if (expression) animated = true;
+            return expression ? `${context.rootName}.svgAnimationNumber(${expression})` : formatNumber(base);
+          };
+          const determinantScale = Math.sqrt(Math.abs(transform.a * transform.d - transform.b * transform.c));
+          if (light.type === "distant") {
+            const azimuth = `(${number("azimuth")} * .pi / 180)`;
+            const elevation = `(${number("elevation")} * .pi / 180)`;
+            const x = `(cos(${azimuth}) * cos(${elevation}) * ${formatNumber(scaleX)})`;
+            const y = `(sin(${azimuth}) * cos(${elevation}) * ${formatNumber(scaleY)})`;
+            const z = `(sin(${elevation}) * ${formatNumber(determinantScale)})`;
+            if (animated)
+              overrides.light = `.distant(x: ${formatNumber(transform.a)} * ${x} + ${formatNumber(transform.c)} * ${y}, y: ${formatNumber(transform.b)} * ${x} + ${formatNumber(transform.d)} * ${y}, z: ${z})`;
+          } else {
+            const adjusted = (name: "x" | "y" | "z" | "pointsAtX" | "pointsAtY" | "pointsAtZ") => {
+              const staticValue = light[name];
+              const base = light.animationBaseValues?.[name] ?? 0;
+              const axisScale =
+                name === "x" || name === "pointsAtX" ? scaleX : name === "y" || name === "pointsAtY" ? scaleY : 1;
+              return `(${formatNumber(staticValue)} + (${number(name)} - ${formatNumber(base)}) * ${formatNumber(axisScale)})`;
+            };
+            const x = adjusted("x");
+            const y = adjusted("y");
+            const z = adjusted("z");
+            const outputX = `${formatNumber(transform.a)} * ${x} + ${formatNumber(transform.c)} * ${y} + ${formatNumber(transform.e)}`;
+            const outputY = `${formatNumber(transform.b)} * ${x} + ${formatNumber(transform.d)} * ${y} + ${formatNumber(transform.f)}`;
+            const outputZ = `${formatNumber(determinantScale)} * ${z}`;
+            if (light.type === "point") {
+              if (animated) overrides.light = `.point(x: ${outputX}, y: ${outputY}, z: ${outputZ})`;
+            } else {
+              const pointX = adjusted("pointsAtX");
+              const pointY = adjusted("pointsAtY");
+              const pointZ = adjusted("pointsAtZ");
+              const exponent = number("specularExponent");
+              const cone = light.limitingConeAngle === undefined ? "nil" : number("limitingConeAngle");
+              if (animated)
+                overrides.light = `.spot(x: ${outputX}, y: ${outputY}, z: ${outputZ}, pointsAtX: ${formatNumber(transform.a)} * ${pointX} + ${formatNumber(transform.c)} * ${pointY} + ${formatNumber(transform.e)}, pointsAtY: ${formatNumber(transform.b)} * ${pointX} + ${formatNumber(transform.d)} * ${pointY} + ${formatNumber(transform.f)}, pointsAtZ: ${formatNumber(determinantScale)} * ${pointZ}, exponent: ${exponent}, coneAngle: ${cone})`;
+            }
+          }
+        }
+      }
+      if (
+        source.type === "flood" ||
+        source.type === "dropShadow" ||
+        source.type === "diffuseLighting" ||
+        source.type === "specularLighting"
+      ) {
+        const attributeName =
+          source.type === "diffuseLighting" || source.type === "specularLighting" ? "lighting-color" : "flood-color";
+        const baseColor = `rgba(${source.color.red * 255} ${source.color.green * 255} ${source.color.blue * 255} / 1)`;
+        const parsedColor = parseAnimationValue(
+          animationAttributeSpec(attributeName)!,
+          baseColor,
+          valueContext(targetNode),
+        );
+        const colorExpression = animatedFilterValue(source, attributeName, baseColor);
+        const opacityExpression =
+          attributeName === "flood-color"
+            ? animatedFilterValue(source, "flood-opacity", formatNumber(source.color.alpha))
+            : undefined;
+        if (parsedColor && (colorExpression || opacityExpression)) {
+          const colorValue =
+            colorExpression ?? swiftAnimationValueLiteral(parsedColor, context.precision, `${context.rootName}.`);
+          const opacity = opacityExpression
+            ? `${context.rootName}.svgAnimationNumber(${opacityExpression})`
+            : formatNumber(source.color.alpha);
+          overrides.color = `${context.rootName}.svgAnimationFilterColor(${colorValue}, opacity: ${opacity})`;
+        }
+      }
+      if (source.type === "turbulence") {
+        const frequency = pair("baseFrequency", source.baseFrequencyX, source.baseFrequencyY);
+        if (frequency) {
+          overrides.baseFrequencyX = component(frequency, 0);
+          overrides.baseFrequencyY = component(frequency, 1);
+        }
+        const octaves = animatedFilterValue(source, "numOctaves", formatNumber(source.numOctaves));
+        if (octaves) overrides.numOctaves = `Int(${context.rootName}.svgAnimationNumber(${octaves}))`;
+        const seed = animatedFilterValue(source, "seed", formatNumber(source.seed));
+        if (seed) overrides.seed = `Int(${context.rootName}.svgAnimationNumber(${seed}))`;
+        const stitch = discrete("stitchTiles", source.stitchTiles ? "stitch" : "noStitch");
+        if (stitch) overrides.stitchTiles = `${stitch} == "stitch"`;
+        const type = discrete("type", source.noiseType);
+        if (type) overrides.type = `${type} == "fractalNoise"`;
+      }
+      void output;
+      return overrides;
+    });
+    const imageHelpers: Array<{ key: string; name: string; animated?: boolean }> = [];
     for (const [index, primitive] of instance.primitives.entries()) {
       if (primitive.type !== "image" || !primitive.image.resource) continue;
       const key = `filter-image-${index}`;
       const name = `FilterImageLayer${context.filterImageHelpers.length}`;
       let subdocumentName: string | undefined;
+      let animatedSubdocument = false;
       if (primitive.image.resource.type === "svg") {
         subdocumentName = `${context.rootName}FilterImageDocument${context.subdocuments.length}`;
         const child = primitive.image.resource.document;
@@ -1128,6 +1839,9 @@ function buildViewNodes(
           usageCommentPrefix: false,
         });
         context.subdocuments.push(generatedChild.lines);
+        animatedSubdocument = child.animationProgram.animations.some(
+          (animation) => animation.runtimeSupport === "typed",
+        );
       }
       context.filterImageHelpers.push({
         key,
@@ -1135,12 +1849,15 @@ function buildViewNodes(
         primitive,
         canvas: context.coordinateSpace,
         ...(subdocumentName ? { subdocumentName } : {}),
+        ...(animatedSubdocument ? { animated: true } : {}),
       });
-      imageHelpers.push({ key, name });
+      imageHelpers.push({ key, name, ...(animatedSubdocument ? { animated: true } : {}) });
     }
     const configuredMaxPixels = context.config.filters?.maxOutputPixels ?? 16_000_000;
     return {
       instance,
+      ...(regionExpression ? { regionExpression } : {}),
+      primitiveOverrides,
       canvas: context.coordinateSpace,
       imageHelpers,
       maxOutputPixels:
@@ -1153,20 +1870,57 @@ function buildViewNodes(
   const buildMask = (
     mask: MaskInstance | undefined,
     targetTransforms: RenderNode["transform"][],
+    targetNode: RenderNode,
   ): GeneratedMask | undefined => {
     if (!mask) return undefined;
-    let clipLines = handleElement(
-      {
-        type: "element",
-        tagName: "rect",
-        properties: { ...mask.region, fill: "black", stroke: "none" },
-        children: [],
+    const resource = mask.resource;
+    const bounds = objectBoundingBox(targetNode);
+    const maskContext = {
+      ...valueContext(targetNode),
+      length: {
+        ...valueContext(targetNode).length,
+        ...(resource?.units === "objectBoundingBox"
+          ? { viewport: { width: 1, height: 1 }, rootViewport: { width: 1, height: 1 } }
+          : {}),
       },
-      context.options,
-    );
+    };
+    const coordinate = (name: "x" | "y" | "width" | "height") => {
+      if (!resource) return undefined;
+      const animations = animationsForResource(resource.animationTargetKeys[name], name);
+      if (animations.length === 0) return undefined;
+      const base = parseAnimationValue(animationAttributeSpec(name)!, resource.animationBaseValues[name]!, maskContext);
+      const expression = base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+      if (!expression) return undefined;
+      const number = `${context.rootName}.svgAnimationNumber(${expression})`;
+      if (resource.units !== "objectBoundingBox" || !bounds) return number;
+      const extent = name === "x" || name === "width" ? bounds.width : bounds.height;
+      if (name === "width" || name === "height") return `(${number} * ${formatNumber(extent)})`;
+      const origin = name === "x" ? bounds.x : bounds.y;
+      return `(${formatNumber(origin)} + ${number} * ${formatNumber(extent)})`;
+    };
+    const x = coordinate("x");
+    const y = coordinate("y");
+    const width = coordinate("width");
+    const height = coordinate("height");
+    const dynamicRegion = x || y || width || height;
+    let clipLines = dynamicRegion
+      ? [
+          `path.addRect(CGRect(x: ${normalizedX(x ?? formatNumber(mask.region.x))}, y: ${normalizedY(y ?? formatNumber(mask.region.y))}, width: ${normalizedWidth(width ?? formatNumber(mask.region.width))}, height: ${normalizedHeight(height ?? formatNumber(mask.region.height))}))`,
+        ]
+      : handleElement(
+          {
+            type: "element",
+            tagName: "rect",
+            properties: { ...mask.region, fill: "black", stroke: "none" },
+            children: [],
+          },
+          context.options,
+        );
     for (let index = targetTransforms.length - 1; index >= 0; index--)
       clipLines = wrapWithTransform(clipLines, targetTransforms[index]!, context.options);
-    const clip = addHelper(context, `MaskClip${context.nextClip++}`, clipLines);
+    const clip = dynamicRegion
+      ? addAnimatedHelper(context, `MaskClip${context.nextClip++}`, clipLines)
+      : addHelper(context, `MaskClip${context.nextClip++}`, clipLines);
     const children = mask.invalid
       ? []
       : buildViewNodes(mask.children, context, [...targetTransforms, mask.contentTransform]);
@@ -1195,6 +1949,19 @@ function buildViewNodes(
       const targetTransforms = [...coverageTransforms, clipNode.transform];
       if (clipNode.type === "group") {
         const children = buildClipCoverage(clipNode.children, targetTransforms);
+        const animationTransform = transformCorrectionExpression(clipNode, coverageTransforms);
+        const renderedChildren: GeneratedViewNode[] = animationTransform
+          ? [
+              {
+                type: "group",
+                children,
+                opacity: 1,
+                isolated: false,
+                blendMode: "normal",
+                animationTransform,
+              },
+            ]
+          : children;
         const nested = buildClipPath(clipNode.clipPath, targetTransforms);
         if (nested) {
           const helpers = simpleClipPathHelpers(nested);
@@ -1202,9 +1969,9 @@ function buildViewNodes(
           // Simple nested regions become GraphicsContext clips on each leaf;
           // SwiftUI otherwise ignores nested view masks inside mask content.
           if (helpers && helpers.length > 0) {
-            coverage.push(...children.map((child) => addCoverageClip(child, helpers)));
+            coverage.push(...renderedChildren.map((child) => addCoverageClip(child, helpers)));
           } else {
-            for (const child of children)
+            for (const child of renderedChildren)
               coverage.push({
                 type: "group",
                 children: [child],
@@ -1214,10 +1981,10 @@ function buildViewNodes(
                 clipPath: nested,
               });
           }
-        } else if (children.length > 0) {
+        } else if (renderedChildren.length > 0) {
           coverage.push({
             type: "group",
-            children,
+            children: renderedChildren,
             opacity: 1,
             isolated: false,
             blendMode: "normal",
@@ -1238,11 +2005,15 @@ function buildViewNodes(
         ...clipNode,
         style: { ...clipNode.style, fillRule: clipNode.style.clipRule },
       };
-      let lines = renderShape(coverageShape, context.options, { fill: "black", stroke: "none" });
-      for (let index = coverageTransforms.length - 1; index >= 0; index--)
-        lines = wrapWithTransform(lines, coverageTransforms[index]!, context.options);
+      const dynamicLines = dynamicShapeLines(coverageShape, "fill", coverageTransforms);
+      let lines = dynamicLines ?? renderShape(coverageShape, context.options, { fill: "black", stroke: "none" });
+      if (!dynamicLines)
+        for (let index = coverageTransforms.length - 1; index >= 0; index--)
+          lines = wrapWithTransform(lines, coverageTransforms[index]!, context.options);
       if (lines.length === 0) continue;
-      const helper = addHelper(context, `ClipCoverage${context.nextClip++}`, lines);
+      const helper = dynamicLines
+        ? addAnimatedHelper(context, `ClipCoverage${context.nextClip++}`, lines)
+        : addHelper(context, `ClipCoverage${context.nextClip++}`, lines);
       const path: GeneratedViewNode = {
         type: "paint",
         helper,
@@ -1268,7 +2039,11 @@ function buildViewNodes(
     if (!clipPath) return undefined;
     const content = clipPath.children.map((node) =>
       node.type === "group"
-        ? { ...node, transform: multiplyTransforms(node.transform, clipPath.contentTransform) }
+        ? {
+            ...node,
+            transform: multiplyTransforms(node.transform, clipPath.contentTransform),
+            transformAnimation: { base: node.transform, suffix: clipPath.contentTransform },
+          }
         : node,
     );
     // clipPath's transform operates outside the clipPathUnits mapping:
@@ -1301,7 +2076,12 @@ function buildViewNodes(
         viewBoxBase && viewportRect && (animatedViewBox || animatedPreserve)
           ? `${context.rootName}.svgMultiplyTransform(${swiftTransform(node.transformAnimation?.viewportPrefix ?? IDENTITY_TRANSFORM)}, ${context.rootName}.svgViewBoxMatrix(${animatedViewBox ?? swiftAnimationValueLiteral(viewBoxBase, context.precision, `${context.rootName}.`)}, rect: CGRect(x: ${formatNumber(viewportRect.x)}, y: ${formatNumber(viewportRect.y)}, width: ${formatNumber(viewportRect.width)}, height: ${formatNumber(viewportRect.height)}), preserveAspectRatio: ${animatedPreserve ?? swiftString(preserveSource)}))`
           : undefined;
-      const animationTransform = transformCorrectionExpression(node, ancestorTransforms, animatedViewportSuffix);
+      const animationTransform = transformCorrectionExpression(
+        node,
+        ancestorTransforms,
+        animatedViewportSuffix,
+        animatedMarkerBase(node),
+      );
       let viewportClip: string | undefined;
       if (node.viewport?.clip) {
         const { rect, clipTransform } = node.viewport;
@@ -1336,8 +2116,8 @@ function buildViewNodes(
       const children = buildViewNodes(node.children, context, targetTransforms, childAnimationOwners);
       if (children.length > 0) {
         const clipPath = buildClipPath(node.clipPath, targetTransforms);
-        const mask = buildMask(node.mask, targetTransforms);
-        const filter = buildFilter(node.filter, targetTransforms);
+        const mask = buildMask(node.mask, targetTransforms, node);
+        const filter = buildFilter(node.filter, targetTransforms, node);
         generated.push({
           type: "group",
           children,
@@ -1394,6 +2174,100 @@ function buildViewNodes(
         Number(node.style.presentation["letter-spacing"] ?? 0),
       );
       const wordSpacing = animatedNumber(node, "word-spacing", Number(node.style.presentation["word-spacing"] ?? 0));
+      const textTargetValue = (
+        key: string | undefined,
+        attributeName: string,
+        baseValue: string,
+        targetTag = "tspan",
+      ) => {
+        const animations = animationsForResource(key, attributeName).filter(
+          (animation) =>
+            animation.target?.binding === "resource" ||
+            (animation.target?.binding === "render-node" && attributeName === "textLength"),
+        );
+        const spec = resolveAnimationAttributeForTarget(attributeName, "auto", targetTag);
+        const base = spec ? parseAnimationValue(spec, baseValue, valueContext(node)) : undefined;
+        return base ? animatedValueExpressionFromAnimations(animations, base) : undefined;
+      };
+      const textTargetNumber = (key: string | undefined, attributeName: string, baseValue: number) => {
+        const expression = textTargetValue(key, attributeName, formatNumber(baseValue));
+        return expression ? `${context.rootName}.svgAnimationNumber(${expression})` : undefined;
+      };
+      const textChunks = node.chunks.map((chunk) => {
+        const x = chunk.x === undefined ? undefined : textTargetNumber(chunk.animationTargetKey, "x", chunk.x);
+        const y = chunk.y === undefined ? undefined : textTargetNumber(chunk.animationTargetKey, "y", chunk.y);
+        const startOffset = chunk.textPath
+          ? textTargetNumber(chunk.textPath.animationTargetKey, "startOffset", chunk.textPath.startOffset)
+          : undefined;
+        const adjustmentTargets = chunk.lengthAdjustments.map((adjustment) => {
+          const expression = textTargetNumber(
+            adjustment.animationTargetKey,
+            "textLength",
+            adjustment.target / adjustment.animationScale,
+          );
+          return expression ? `(${expression} * ${formatNumber(adjustment.animationScale)})` : undefined;
+        });
+        const runs = chunk.runs.map((run) => {
+          const key = run.animationTargetKey;
+          const runFill = textTargetValue(key, "fill", paintValue(run.style.fill));
+          const runStroke = textTargetValue(key, "stroke", paintValue(run.style.stroke));
+          const characterDX = textTargetValue(
+            key,
+            "dx",
+            run.characters.map((character) => formatNumber(character.dx)).join(" "),
+          );
+          const characterDY = textTargetValue(
+            key,
+            "dy",
+            run.characters.map((character) => formatNumber(character.dy)).join(" "),
+          );
+          const characterRotate = textTargetValue(
+            key,
+            "rotate",
+            run.characters.map((character) => formatNumber(character.rotate)).join(" "),
+          );
+          return {
+            ...(textTargetNumber(key, "font-size", run.font.size)
+              ? { fontSize: textTargetNumber(key, "font-size", run.font.size) }
+              : {}),
+            ...(textTargetNumber(key, "letter-spacing", run.letterSpacing)
+              ? { letterSpacing: textTargetNumber(key, "letter-spacing", run.letterSpacing) }
+              : {}),
+            ...(textTargetNumber(key, "word-spacing", run.wordSpacing)
+              ? { wordSpacing: textTargetNumber(key, "word-spacing", run.wordSpacing) }
+              : {}),
+            ...(runFill ? { fill: runFill } : {}),
+            ...(textTargetNumber(key, "fill-opacity", run.style.fillOpacity)
+              ? { fillOpacity: textTargetNumber(key, "fill-opacity", run.style.fillOpacity) }
+              : {}),
+            ...(runStroke ? { stroke: runStroke } : {}),
+            ...(characterDX ? { characterDX } : {}),
+            ...(characterDY ? { characterDY } : {}),
+            ...(characterRotate ? { characterRotate } : {}),
+            ...(textTargetNumber(key, "stroke-opacity", run.style.strokeOpacity)
+              ? { strokeOpacity: textTargetNumber(key, "stroke-opacity", run.style.strokeOpacity) }
+              : {}),
+            ...(textTargetNumber(key, "stroke-width", run.style.strokeStyle.width)
+              ? { strokeWidth: textTargetNumber(key, "stroke-width", run.style.strokeStyle.width) }
+              : {}),
+          };
+        });
+        return {
+          ...(x ? { x } : {}),
+          ...(y ? { y } : {}),
+          ...(startOffset ? { startOffset } : {}),
+          adjustmentTargets,
+          runs,
+        };
+      });
+      const textResourceAnimated = textChunks.some(
+        (chunk) =>
+          !!chunk.x ||
+          !!chunk.y ||
+          !!chunk.startOffset ||
+          chunk.adjustmentTargets.some(Boolean) ||
+          chunk.runs.some((run) => Object.keys(run).length > 0),
+      );
       const textAnimated = !!(
         effectiveFillAnimation ||
         fillOpacity ||
@@ -1402,7 +2276,8 @@ function buildViewNodes(
         strokeWidth ||
         fontSize ||
         letterSpacing ||
-        wordSpacing
+        wordSpacing ||
+        textResourceAnimated
       );
       context.textHelpers.push({
         name,
@@ -1416,13 +2291,14 @@ function buildViewNodes(
         ...(fontSize ? { fontSize } : {}),
         ...(letterSpacing ? { letterSpacing } : {}),
         ...(wordSpacing ? { wordSpacing } : {}),
+        chunks: textChunks,
         animated: textAnimated,
       });
       const targetTransforms = [...ancestorTransforms, node.transform];
       const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
-      const mask = buildMask(node.mask, targetTransforms);
-      const filter = buildFilter(node.filter, targetTransforms);
+      const mask = buildMask(node.mask, targetTransforms, node);
+      const filter = buildFilter(node.filter, targetTransforms, node);
       generated.push({
         type: "group",
         children: [{ type: "text", helper: textAnimated ? `${name}(documentTime: documentTime)` : name }],
@@ -1462,6 +2338,7 @@ function buildViewNodes(
       const completeTransform = [...ancestorTransforms, node.transform].reduce(multiplyTransforms);
       const name = `${node.type === "foreignObject" ? "ForeignObject" : "Image"}Layer${context.imageHelpers.length}`;
       let subdocumentName: string | undefined;
+      let animatedSubdocument = false;
       if (node.type === "image" && node.resource.type === "svg") {
         subdocumentName = `${context.rootName}ImageDocument${context.subdocuments.length}`;
         const child = node.resource.document;
@@ -1481,21 +2358,47 @@ function buildViewNodes(
           usageCommentPrefix: false,
         });
         context.subdocuments.push(generatedChild.lines);
+        if (child.animationProgram.animations.some((animation) => animation.runtimeSupport === "typed")) {
+          // Referenced SVG images share the parent's canonical document time.
+          // This also keeps exact frame rendering independent of traversal order.
+          animatedSubdocument = true;
+        }
+      }
+      const preserveSource =
+        node.type === "image"
+          ? `${node.preserveAspectRatio.defer ? "defer " : ""}${node.preserveAspectRatio.align} ${node.preserveAspectRatio.meetOrSlice}`
+          : "none meet";
+      const animatedPreserve =
+        node.type === "image" ? animatedDiscrete(node, "preserveAspectRatio", preserveSource) : undefined;
+      const imageAnimated = animatedSubdocument || !!animatedPreserve;
+      let transformExpression: string | undefined;
+      if (animatedPreserve && node.type === "image") {
+        const intrinsic =
+          node.resource.type === "raster"
+            ? (node.resource.intrinsicSize ?? { width: node.viewport.width, height: node.viewport.height })
+            : { width: node.resource.document.viewport.width, height: node.resource.document.viewport.height };
+        const value = `${context.rootName}.SVGAnimationRuntimeValue(kind: .viewBox, components: [0, 0, ${formatNumber(intrinsic.width)}, ${formatNumber(intrinsic.height)}], signature: "", source: "0 0 ${formatNumber(intrinsic.width)} ${formatNumber(intrinsic.height)}")`;
+        const rect = `CGRect(x: ${formatNumber(node.viewport.x)}, y: ${formatNumber(node.viewport.y)}, width: ${formatNumber(node.viewport.width)}, height: ${formatNumber(node.viewport.height)})`;
+        const coordinateSpace = `CGRect(x: ${formatNumber(context.coordinateSpace.x)}, y: ${formatNumber(context.coordinateSpace.y)}, width: ${formatNumber(context.coordinateSpace.width)}, height: ${formatNumber(context.coordinateSpace.height)})`;
+        transformExpression = `${context.rootName}.svgOutputTransform(${context.rootName}.svgMultiplyTransform(${swiftTransform(completeTransform)}, ${context.rootName}.svgViewBoxMatrix(${value}, rect: ${rect}, preserveAspectRatio: ${animatedPreserve})), size: size, coordinateSpace: ${coordinateSpace})`;
       }
       context.imageHelpers.push({
         name,
         node,
         transform: completeTransform,
         ...(subdocumentName ? { subdocumentName } : {}),
+        ...(animatedSubdocument ? { subdocumentAnimated: true } : {}),
+        ...(imageAnimated ? { animated: true } : {}),
+        ...(transformExpression ? { transformExpression } : {}),
       });
       const targetTransforms = [...ancestorTransforms, node.transform];
       const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
-      const mask = buildMask(node.mask, targetTransforms);
-      const filter = buildFilter(node.filter, targetTransforms);
+      const mask = buildMask(node.mask, targetTransforms, node);
+      const filter = buildFilter(node.filter, targetTransforms, node);
       generated.push({
         type: "group",
-        children: [{ type: "image", helper: name }],
+        children: [{ type: "image", helper: imageAnimated ? `${name}(documentTime: documentTime)` : name }],
         opacity: opacityExpression(node),
         isolated:
           opacityExpression(node) !== 1 ||
@@ -1620,6 +2523,7 @@ function buildViewNodes(
             ...(animatedGradientStopsExpression(gradient.stops, node, paintOpacity)
               ? { stopsExpression: animatedGradientStopsExpression(gradient.stops, node, paintOpacity) }
               : {}),
+            ...animatedGradientExpressions(server, gradient, node),
           });
           return;
         }
@@ -1670,6 +2574,7 @@ function buildViewNodes(
             paintOpacity,
             coordinateSpace: context.coordinateSpace,
             patternIndex,
+            ...animatedPatternExpressions(pattern, node),
             ...(tileClip ? { tileClip } : {}),
             contentNodes,
           });
@@ -1696,8 +2601,8 @@ function buildViewNodes(
       const targetTransforms = [...ancestorTransforms, node.transform];
       const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
       const clipPath = buildClipPath(node.clipPath, targetTransforms);
-      const mask = buildMask(node.mask, targetTransforms);
-      const filter = buildFilter(node.filter, targetTransforms);
+      const mask = buildMask(node.mask, targetTransforms, node);
+      const filter = buildFilter(node.filter, targetTransforms, node);
       generated.push({
         type: "group",
         children: paints,
@@ -1765,17 +2670,18 @@ function filterBlendModeLiteral(mode: Extract<FilterPrimitive, { type: "blend" }
 
 function filterComponentFunctionLiteral(
   fn: Extract<FilterPrimitive, { type: "componentTransfer" }>["functions"][number],
+  overrides: Readonly<Record<string, string>> = {},
 ): string {
   switch (fn.type) {
     case "identity":
       return ".identity";
     case "table":
     case "discrete":
-      return `.${fn.type}([${fn.values.map((value) => formatNumber(value)).join(", ")}])`;
+      return `.${fn.type}(${overrides.tableValues ?? `[${fn.values.map((value) => formatNumber(value)).join(", ")}]`})`;
     case "linear":
-      return `.linear(slope: ${formatNumber(fn.slope)}, intercept: ${formatNumber(fn.intercept)})`;
+      return `.linear(slope: ${overrides.slope ?? formatNumber(fn.slope)}, intercept: ${overrides.intercept ?? formatNumber(fn.intercept)})`;
     case "gamma":
-      return `.gamma(amplitude: ${formatNumber(fn.amplitude)}, exponent: ${formatNumber(fn.exponent)}, offset: ${formatNumber(fn.offset)})`;
+      return `.gamma(amplitude: ${overrides.amplitude ?? formatNumber(fn.amplitude)}, exponent: ${overrides.exponent ?? formatNumber(fn.exponent)}, offset: ${overrides.offset ?? formatNumber(fn.offset)})`;
   }
 }
 
@@ -1783,53 +2689,61 @@ function filterCompositeOperatorLiteral(operator: Extract<FilterPrimitive, { typ
   return `.${operator === "in" ? "inside" : operator === "out" ? "outside" : operator}`;
 }
 
-function filterPrimitiveLiteral(primitive: FilterPrimitive, index: number): string {
-  const region = filterRegionLiteral(primitive.subregion);
-  const linear = primitive.colorInterpolation === "linearRGB" ? "true" : "false";
+function filterPrimitiveLiteral(
+  primitive: FilterPrimitive,
+  index: number,
+  overrides: Readonly<Record<string, string>> = {},
+): string {
+  const value = (name: string, fallback: number) => overrides[name] ?? formatNumber(fallback);
+  const list = (name: string, fallback: number[]) =>
+    overrides[name] ?? `[${fallback.map((item) => formatNumber(item)).join(", ")}]`;
+  const input = (name: "input" | "input2", fallback: FilterInput) => overrides[name] ?? filterInputLiteral(fallback);
+  const region = overrides.region ?? filterRegionLiteral(primitive.subregion);
+  const linear = overrides.linearRGB ?? (primitive.colorInterpolation === "linearRGB" ? "true" : "false");
   const result = primitive.result ? swiftString(primitive.result) : "nil";
   switch (primitive.type) {
     case "blend":
-      return `.blend(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, mode: ${filterBlendModeLiteral(primitive.mode)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.blend(input: ${input("input", primitive.input)}, input2: ${input("input2", primitive.input2)}, mode: ${overrides.mode ?? filterBlendModeLiteral(primitive.mode)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "colorMatrix":
-      return `.colorMatrix(input: ${filterInputLiteral(primitive.input)}, matrix: [${primitive.matrix.map((value) => formatNumber(value)).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.colorMatrix(input: ${input("input", primitive.input)}, matrix: ${list("values", primitive.matrix)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "componentTransfer":
-      return `.componentTransfer(input: ${filterInputLiteral(primitive.input)}, functions: [${primitive.functions.map(filterComponentFunctionLiteral).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.componentTransfer(input: ${input("input", primitive.input)}, functions: ${overrides.functions ?? `[${primitive.functions.map((fn) => filterComponentFunctionLiteral(fn)).join(", ")}]`}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "composite":
-      return `.composite(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, operation: ${filterCompositeOperatorLiteral(primitive.operator)}, k1: ${formatNumber(primitive.k1)}, k2: ${formatNumber(primitive.k2)}, k3: ${formatNumber(primitive.k3)}, k4: ${formatNumber(primitive.k4)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.composite(input: ${input("input", primitive.input)}, input2: ${input("input2", primitive.input2)}, operation: ${overrides.operator ?? filterCompositeOperatorLiteral(primitive.operator)}, k1: ${value("k1", primitive.k1)}, k2: ${value("k2", primitive.k2)}, k3: ${value("k3", primitive.k3)}, k4: ${value("k4", primitive.k4)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "convolveMatrix":
-      return `.convolveMatrix(input: ${filterInputLiteral(primitive.input)}, orderX: ${primitive.orderX}, orderY: ${primitive.orderY}, kernel: [${primitive.kernelMatrix.map((value) => formatNumber(value)).join(", ")}], divisor: ${formatNumber(primitive.divisor)}, bias: ${formatNumber(primitive.bias)}, targetX: ${primitive.targetX}, targetY: ${primitive.targetY}, edge: .${primitive.edgeMode}, unitX: ${primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX)}, unitY: ${primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY)}, preserveAlpha: ${primitive.preserveAlpha}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.convolveMatrix(input: ${input("input", primitive.input)}, orderX: ${overrides.orderX ?? primitive.orderX}, orderY: ${overrides.orderY ?? primitive.orderY}, kernel: ${list("kernelMatrix", primitive.kernelMatrix)}, divisor: ${value("divisor", primitive.divisor)}, bias: ${value("bias", primitive.bias)}, targetX: ${overrides.targetX ?? primitive.targetX}, targetY: ${overrides.targetY ?? primitive.targetY}, edge: ${overrides.edgeMode ?? `.${primitive.edgeMode}`}, unitX: ${overrides.kernelUnitLengthX ?? (primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX))}, unitY: ${overrides.kernelUnitLengthY ?? (primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY))}, preserveAlpha: ${overrides.preserveAlpha ?? primitive.preserveAlpha}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "morphology":
-      return `.morphology(input: ${filterInputLiteral(primitive.input)}, operation: .${primitive.operator}, radiusX: ${formatNumber(primitive.radiusX)}, radiusY: ${formatNumber(primitive.radiusY)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.morphology(input: ${input("input", primitive.input)}, operation: ${overrides.operator ?? `.${primitive.operator}`}, radiusX: ${value("radiusX", primitive.radiusX)}, radiusY: ${value("radiusY", primitive.radiusY)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "displacementMap":
-      return `.displacementMap(input: ${filterInputLiteral(primitive.input)}, input2: ${filterInputLiteral(primitive.input2)}, a: ${formatNumber(primitive.displacement.a)}, b: ${formatNumber(primitive.displacement.b)}, c: ${formatNumber(primitive.displacement.c)}, d: ${formatNumber(primitive.displacement.d)}, xChannel: .${primitive.xChannel.toLowerCase()}, yChannel: .${primitive.yChannel.toLowerCase()}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.displacementMap(input: ${input("input", primitive.input)}, input2: ${input("input2", primitive.input2)}, a: ${value("a", primitive.displacement.a)}, b: ${value("b", primitive.displacement.b)}, c: ${value("c", primitive.displacement.c)}, d: ${value("d", primitive.displacement.d)}, xChannel: ${overrides.xChannelSelector ?? `.${primitive.xChannel.toLowerCase()}`}, yChannel: ${overrides.yChannelSelector ?? `.${primitive.yChannel.toLowerCase()}`}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "tile":
-      return `.tile(input: ${filterInputLiteral(primitive.input)}, tileRegion: ${filterRegionLiteral(primitive.tileRegion)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.tile(input: ${input("input", primitive.input)}, tileRegion: ${filterRegionLiteral(primitive.tileRegion)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "turbulence":
-      return `.turbulence(baseFrequencyX: ${formatNumber(primitive.baseFrequencyX)}, baseFrequencyY: ${formatNumber(primitive.baseFrequencyY)}, octaves: ${primitive.numOctaves}, seed: ${primitive.seed}, stitch: ${primitive.stitchTiles}, fractalNoise: ${primitive.noiseType === "fractalNoise"}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.turbulence(baseFrequencyX: ${value("baseFrequencyX", primitive.baseFrequencyX)}, baseFrequencyY: ${value("baseFrequencyY", primitive.baseFrequencyY)}, octaves: ${value("numOctaves", primitive.numOctaves)}, seed: ${value("seed", primitive.seed)}, stitch: ${overrides.stitchTiles ?? primitive.stitchTiles}, fractalNoise: ${overrides.type ?? primitive.noiseType === "fractalNoise"}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "image":
       return `.image(key: ${swiftString(`filter-image-${index}`)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "diffuseLighting":
-      return `.diffuseLighting(input: ${filterInputLiteral(primitive.input)}, surfaceScale: ${formatNumber(primitive.surfaceScale)}, diffuseConstant: ${formatNumber(primitive.diffuseConstant)}, unitX: ${primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX)}, unitY: ${primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY)}, color: ${filterColorLiteral(primitive.color)}, light: ${filterLightLiteral(primitive.light)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.diffuseLighting(input: ${input("input", primitive.input)}, surfaceScale: ${value("surfaceScale", primitive.surfaceScale)}, diffuseConstant: ${value("diffuseConstant", primitive.diffuseConstant)}, unitX: ${overrides.kernelUnitLengthX ?? (primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX))}, unitY: ${overrides.kernelUnitLengthY ?? (primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY))}, color: ${overrides.color ?? filterColorLiteral(primitive.color)}, light: ${overrides.light ?? filterLightLiteral(primitive.light)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "specularLighting":
-      return `.specularLighting(input: ${filterInputLiteral(primitive.input)}, surfaceScale: ${formatNumber(primitive.surfaceScale)}, specularConstant: ${formatNumber(primitive.specularConstant)}, specularExponent: ${formatNumber(primitive.specularExponent)}, unitX: ${primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX)}, unitY: ${primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY)}, color: ${filterColorLiteral(primitive.color)}, light: ${filterLightLiteral(primitive.light)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.specularLighting(input: ${input("input", primitive.input)}, surfaceScale: ${value("surfaceScale", primitive.surfaceScale)}, specularConstant: ${value("specularConstant", primitive.specularConstant)}, specularExponent: ${value("specularExponent", primitive.specularExponent)}, unitX: ${overrides.kernelUnitLengthX ?? (primitive.kernelUnitLengthX === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthX))}, unitY: ${overrides.kernelUnitLengthY ?? (primitive.kernelUnitLengthY === undefined ? "nil" : formatNumber(primitive.kernelUnitLengthY))}, color: ${overrides.color ?? filterColorLiteral(primitive.color)}, light: ${overrides.light ?? filterLightLiteral(primitive.light)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "gaussianBlur":
-      return `.gaussianBlur(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, edge: .${primitive.edgeMode}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.gaussianBlur(input: ${input("input", primitive.input)}, sigmaX: ${value("stdDeviationX", primitive.stdDeviationX)}, sigmaY: ${value("stdDeviationY", primitive.stdDeviationY)}, edge: ${overrides.edgeMode ?? `.${primitive.edgeMode}`}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "offset":
-      return `.offset(input: ${filterInputLiteral(primitive.input)}, dx: ${formatNumber(primitive.dx)}, dy: ${formatNumber(primitive.dy)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.offset(input: ${input("input", primitive.input)}, dx: ${value("dx", primitive.dx)}, dy: ${value("dy", primitive.dy)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "flood":
-      return `.flood(color: ${filterColorLiteral(primitive.color)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.flood(color: ${overrides.color ?? filterColorLiteral(primitive.color)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "merge":
       return `.merge(inputs: [${primitive.inputs.map(filterInputLiteral).join(", ")}], region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "dropShadow":
-      return `.dropShadow(input: ${filterInputLiteral(primitive.input)}, sigmaX: ${formatNumber(primitive.stdDeviationX)}, sigmaY: ${formatNumber(primitive.stdDeviationY)}, dx: ${formatNumber(primitive.dx)}, dy: ${formatNumber(primitive.dy)}, color: ${filterColorLiteral(primitive.color)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.dropShadow(input: ${input("input", primitive.input)}, sigmaX: ${value("stdDeviationX", primitive.stdDeviationX)}, sigmaY: ${value("stdDeviationY", primitive.stdDeviationY)}, dx: ${value("dx", primitive.dx)}, dy: ${value("dy", primitive.dy)}, color: ${overrides.color ?? filterColorLiteral(primitive.color)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
     case "passthrough":
-      return `.passthrough(input: ${filterInputLiteral(primitive.input)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
+      return `.passthrough(input: ${input("input", primitive.input)}, region: ${region}, linearRGB: ${linear}, result: ${result})`;
   }
 }
 
 function filterDefinitionLiteral(filter: GeneratedFilter): string {
   const instance = filter.instance;
-  return `SVGFilterDefinition(region: ${filterRegionLiteral(instance.region)}, primitives: [${instance.primitives.map((primitive, index) => filterPrimitiveLiteral(primitive, index)).join(", ")}], fillPaint: ${filterColorLiteral(instance.fillPaint)}, strokePaint: ${filterColorLiteral(instance.strokePaint)}, maxOutputPixels: ${filter.maxOutputPixels})`;
+  return `SVGFilterDefinition(region: ${filter.regionExpression ?? filterRegionLiteral(instance.region)}, primitives: [${instance.primitives.map((primitive, index) => filterPrimitiveLiteral(primitive, index, filter.primitiveOverrides[index])).join(", ")}], fillPaint: ${filterColorLiteral(instance.fillPaint)}, strokePaint: ${filterColorLiteral(instance.strokePaint)}, maxOutputPixels: ${filter.maxOutputPixels})`;
 }
 
 function textGradientLength(
@@ -1902,9 +2816,11 @@ function createTextHelper(
   const i4 = indentation.repeat(4);
   const i5 = indentation.repeat(5);
   const chunks = helper.node.chunks
-    .map((chunk) => {
+    .map((chunk, chunkIndex) => {
+      const chunkExpressions = helper.chunks[chunkIndex]!;
       const runs = chunk.runs
-        .map((run) => {
+        .map((run, runIndex) => {
+          const runExpressions = chunkExpressions.runs[runIndex]!;
           const transform = multiplyTransforms(helper.transform, run.transform);
           const localOpacity = run.source.element === "tspan" ? run.style.opacity : 1;
           const order = run.style.paintOrder
@@ -1917,25 +2833,33 @@ function createTextHelper(
             .join(", ");
           const characters = run.characters
             .map(
-              (character) =>
-                `SVGTextCharacter(text: ${swiftString(character.text)}, dx: ${formatNumber(character.dx)}, dy: ${formatNumber(character.dy)}, rotation: ${formatNumber(character.rotate)})`,
+              (character, characterIndex) =>
+                `SVGTextCharacter(text: ${swiftString(character.text)}, dx: ${runExpressions.characterDX ? `${ownerName}.svgAnimationComponent(${runExpressions.characterDX}, index: ${characterIndex})` : formatNumber(character.dx)}, dy: ${runExpressions.characterDY ? `${ownerName}.svgAnimationComponent(${runExpressions.characterDY}, index: ${characterIndex})` : formatNumber(character.dy)}, rotation: ${runExpressions.characterRotate ? `${ownerName}.svgAnimationComponent(${runExpressions.characterRotate}, index: ${characterIndex})` : formatNumber(character.rotate)})`,
             )
             .join(", ");
           const bidi = run.unicodeBidi.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
-          return `SVGTextRun(text: ${swiftString(run.text)}, characters: [${characters}], dx: ${formatNumber(run.dx)}, dy: ${formatNumber(run.dy)}, family: ${swiftString(run.font.family)}, size: ${helper.fontSize ?? formatNumber(run.font.size)}, weight: ${formatNumber(run.font.weight)}, width: ${formatNumber(run.font.width)}, italic: ${run.font.italic}, smallCaps: ${run.font.smallCaps}, sizeAdjust: ${run.font.sizeAdjust === undefined ? "nil" : formatNumber(run.font.sizeAdjust)}, letterSpacing: ${helper.letterSpacing ?? formatNumber(run.letterSpacing)}, wordSpacing: ${helper.wordSpacing ?? formatNumber(run.wordSpacing)}, kerning: ${run.kerning}, baseline: .${baseline}, baselineShift: ${formatNumber(run.baselineShift)}, decorations: [${decorations}], direction: .${run.direction}, unicodeBidi: .${bidi}, textOrientation: .${run.textOrientation}, fill: ${textPaintLiteral(run.style.fill, run.style.fillOpacity * localOpacity, helper.node, document, transform, helper.fillAnimation ? { value: helper.fillAnimation, opacity: helper.fillOpacity ?? formatNumber(run.style.fillOpacity * localOpacity) } : undefined)}, stroke: ${textPaintLiteral(run.style.stroke, run.style.strokeOpacity * localOpacity, helper.node, document, transform, helper.strokeAnimation ? { value: helper.strokeAnimation, opacity: helper.strokeOpacity ?? formatNumber(run.style.strokeOpacity * localOpacity) } : undefined)}, strokeWidth: ${helper.strokeWidth ?? formatNumber(run.style.strokeStyle.width)}, lineCap: .${run.style.strokeStyle.lineCap}, lineJoin: .${run.style.strokeStyle.lineJoin}, miterLimit: ${formatNumber(run.style.strokeStyle.miterLimit)}, paintOrder: [${order}], transform: ${swiftTransform(transform)})`;
+          const fillAnimation = runExpressions.fill ?? helper.fillAnimation;
+          const fillOpacity =
+            runExpressions.fillOpacity ?? helper.fillOpacity ?? formatNumber(run.style.fillOpacity * localOpacity);
+          const strokeAnimation = runExpressions.stroke ?? helper.strokeAnimation;
+          const strokeOpacity =
+            runExpressions.strokeOpacity ??
+            helper.strokeOpacity ??
+            formatNumber(run.style.strokeOpacity * localOpacity);
+          return `SVGTextRun(text: ${swiftString(run.text)}, characters: [${characters}], dx: ${formatNumber(run.dx)}, dy: ${formatNumber(run.dy)}, family: ${swiftString(run.font.family)}, size: ${runExpressions.fontSize ?? helper.fontSize ?? formatNumber(run.font.size)}, weight: ${formatNumber(run.font.weight)}, width: ${formatNumber(run.font.width)}, italic: ${run.font.italic}, smallCaps: ${run.font.smallCaps}, sizeAdjust: ${run.font.sizeAdjust === undefined ? "nil" : formatNumber(run.font.sizeAdjust)}, letterSpacing: ${runExpressions.letterSpacing ?? helper.letterSpacing ?? formatNumber(run.letterSpacing)}, wordSpacing: ${runExpressions.wordSpacing ?? helper.wordSpacing ?? formatNumber(run.wordSpacing)}, kerning: ${run.kerning}, baseline: .${baseline}, baselineShift: ${formatNumber(run.baselineShift)}, decorations: [${decorations}], direction: .${run.direction}, unicodeBidi: .${bidi}, textOrientation: .${run.textOrientation}, fill: ${textPaintLiteral(run.style.fill, run.style.fillOpacity * localOpacity, helper.node, document, transform, fillAnimation ? { value: fillAnimation, opacity: fillOpacity } : undefined)}, stroke: ${textPaintLiteral(run.style.stroke, run.style.strokeOpacity * localOpacity, helper.node, document, transform, strokeAnimation ? { value: strokeAnimation, opacity: strokeOpacity } : undefined)}, strokeWidth: ${runExpressions.strokeWidth ?? helper.strokeWidth ?? formatNumber(run.style.strokeStyle.width)}, lineCap: .${run.style.strokeStyle.lineCap}, lineJoin: .${run.style.strokeStyle.lineJoin}, miterLimit: ${formatNumber(run.style.strokeStyle.miterLimit)}, paintOrder: [${order}], transform: ${swiftTransform(transform)})`;
         })
         .join(", ");
       const adjustments = chunk.lengthAdjustments
         .map(
-          (adjustment) =>
-            `SVGTextLengthAdjustment(start: ${adjustment.start}, end: ${adjustment.end}, target: ${formatNumber(adjustment.target)}, mode: .${adjustment.mode})`,
+          (adjustment, adjustmentIndex) =>
+            `SVGTextLengthAdjustment(start: ${adjustment.start}, end: ${adjustment.end}, target: ${chunkExpressions.adjustmentTargets[adjustmentIndex] ?? formatNumber(adjustment.target)}, mode: .${adjustment.mode})`,
         )
         .join(", ");
       const path = chunk.textPath
-        ? `SVGTextPath(points: [${chunk.textPath.points.map((point) => `SVGTextPathPoint(x: ${formatNumber(point.x)}, y: ${formatNumber(point.y)}, distance: ${formatNumber(point.distance)}, move: ${point.move})`).join(", ")}], length: ${formatNumber(chunk.textPath.length)}, closed: ${chunk.textPath.closed}, distanceScale: ${formatNumber(chunk.textPath.distanceScale)}, startOffset: ${formatNumber(chunk.textPath.startOffset)}, method: .${chunk.textPath.method}, spacing: .${chunk.textPath.spacing}, side: .${chunk.textPath.side})`
+        ? `SVGTextPath(points: [${chunk.textPath.points.map((point) => `SVGTextPathPoint(x: ${formatNumber(point.x)}, y: ${formatNumber(point.y)}, distance: ${formatNumber(point.distance)}, move: ${point.move})`).join(", ")}], length: ${formatNumber(chunk.textPath.length)}, closed: ${chunk.textPath.closed}, distanceScale: ${formatNumber(chunk.textPath.distanceScale)}, startOffset: ${chunkExpressions.startOffset ?? formatNumber(chunk.textPath.startOffset)}, method: .${chunk.textPath.method}, spacing: .${chunk.textPath.spacing}, side: .${chunk.textPath.side})`
         : "nil";
       const writingMode = chunk.writingMode.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
-      return `SVGTextChunk(x: ${chunk.x === undefined ? "nil" : formatNumber(chunk.x)}, y: ${chunk.y === undefined ? "nil" : formatNumber(chunk.y)}, anchor: .${chunk.anchor}, direction: .${chunk.direction}, writingMode: .${writingMode}, lengthAdjustments: [${adjustments}], textPath: ${path}, runs: [${runs}])`;
+      return `SVGTextChunk(x: ${chunk.x === undefined ? "nil" : (chunkExpressions.x ?? formatNumber(chunk.x))}, y: ${chunk.y === undefined ? "nil" : (chunkExpressions.y ?? formatNumber(chunk.y))}, anchor: .${chunk.anchor}, direction: .${chunk.direction}, writingMode: .${writingMode}, lengthAdjustments: [${adjustments}], textPath: ${path}, runs: [${runs}])`;
     })
     .join(`,\n${i3}`);
 
@@ -2306,16 +3230,20 @@ function renderGradientNode(
   const nested = indentation.repeat(level + 2);
   const deep = indentation.repeat(level + 3);
   const gradient = node.gradient;
-  const matrix = gradient.matrix;
+  const coordinate = (name: string, value: number) =>
+    node.coordinateExpressions?.[name] ? `CGFloat(${node.coordinateExpressions[name]})` : formatNumber(value);
   const stops =
     node.stopsExpression ??
     `[${gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ")}]`;
-  const transform = runtimeTransform(matrix, node.coordinateSpace);
+  const transform = node.matrixExpression ?? runtimeTransform(gradient.matrix, node.coordinateSpace);
+  const spread =
+    node.spreadExpression ?? `.${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}`;
+  const linearRGB = node.linearRGBExpression ?? String(gradient.colorInterpolation === "linearRGB");
   const lines = [
     `${prefix}Canvas { context, size in`,
     `${inner}let clipPath = ${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size))`,
     `${inner}let stops = ${stops}`,
-    `${inner}if let gradient = svgGradient(stops: stops, spread: .${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${gradient.colorInterpolation === "linearRGB"}) {`,
+    `${inner}if let gradient = svgGradient(stops: stops, spread: ${spread}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${linearRGB}) {`,
     `${nested}context.withCGContext { graphics in`,
     `${deep}graphics.saveGState()`,
     `${deep}graphics.addPath(clipPath.cgPath)`,
@@ -2323,21 +3251,24 @@ function renderGradientNode(
     `${deep}graphics.concatenate(${transform})`,
   ];
   if (gradient.type === "linearGradient") {
-    const dx = gradient.x2 - gradient.x1;
-    const dy = gradient.y2 - gradient.y1;
-    const startX = gradient.x1 + dx * gradient.startT;
-    const startY = gradient.y1 + dy * gradient.startT;
-    const endX = gradient.x1 + dx * gradient.endT;
-    const endY = gradient.y1 + dy * gradient.endT;
+    const x1 = coordinate("x1", gradient.x1);
+    const y1 = coordinate("y1", gradient.y1);
+    const x2 = coordinate("x2", gradient.x2);
+    const y2 = coordinate("y2", gradient.y2);
     lines.push(
-      `${deep}graphics.drawLinearGradient(gradient, start: CGPoint(x: ${formatNumber(startX)}, y: ${formatNumber(startY)}), end: CGPoint(x: ${formatNumber(endX)}, y: ${formatNumber(endY)}), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+      `${deep}let gradientStart = CGPoint(x: ${x1} + (${x2} - ${x1}) * ${formatNumber(gradient.startT)}, y: ${y1} + (${y2} - ${y1}) * ${formatNumber(gradient.startT)})`,
+      `${deep}let gradientEnd = CGPoint(x: ${x1} + (${x2} - ${x1}) * ${formatNumber(gradient.endT)}, y: ${y1} + (${y2} - ${y1}) * ${formatNumber(gradient.endT)})`,
+      `${deep}graphics.drawLinearGradient(gradient, start: gradientStart, end: gradientEnd, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
     );
   } else {
-    const dx = gradient.cx - gradient.fx;
-    const dy = gradient.cy - gradient.fy;
-    const dr = gradient.r - gradient.fr;
+    const cx = coordinate("cx", gradient.cx);
+    const cy = coordinate("cy", gradient.cy);
+    const radius = coordinate("r", gradient.r);
+    const fx = coordinate("fx", gradient.fx);
+    const fy = coordinate("fy", gradient.fy);
+    const fr = coordinate("fr", gradient.fr);
     lines.push(
-      `${deep}graphics.drawRadialGradient(gradient, startCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.startT)}, y: ${formatNumber(gradient.fy + dy * gradient.startT)}), startRadius: ${formatNumber(gradient.fr + dr * gradient.startT)}, endCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.endT)}, y: ${formatNumber(gradient.fy + dy * gradient.endT)}), endRadius: ${formatNumber(gradient.fr + dr * gradient.endT)}, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+      `${deep}graphics.drawRadialGradient(gradient, startCenter: CGPoint(x: ${fx} + (${cx} - ${fx}) * ${formatNumber(gradient.startT)}, y: ${fy} + (${cy} - ${fy}) * ${formatNumber(gradient.startT)}), startRadius: ${fr} + (${radius} - ${fr}) * ${formatNumber(gradient.startT)}, endCenter: CGPoint(x: ${fx} + (${cx} - ${fx}) * ${formatNumber(gradient.endT)}, y: ${fy} + (${cy} - ${fy}) * ${formatNumber(gradient.endT)}), endRadius: ${fr} + (${radius} - ${fr}) * ${formatNumber(gradient.endT)}, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
     );
   }
   lines.push(`${deep}graphics.restoreGState()`, `${nested}}`, `${inner}}`, `${prefix}}`);
@@ -2371,7 +3302,12 @@ function renderGradientCommands(
   const inner = indentation.repeat(level + 1);
   const nested = indentation.repeat(level + 2);
   const gradient = node.gradient;
-  const transform = runtimeTransform(gradient.matrix, node.coordinateSpace);
+  const coordinate = (name: string, value: number) =>
+    node.coordinateExpressions?.[name] ? `CGFloat(${node.coordinateExpressions[name]})` : formatNumber(value);
+  const transform = node.matrixExpression ?? runtimeTransform(gradient.matrix, node.coordinateSpace);
+  const spread =
+    node.spreadExpression ?? `.${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}`;
+  const linearRGB = node.linearRGBExpression ?? String(gradient.colorInterpolation === "linearRGB");
   const stops =
     node.stopsExpression ??
     `[${gradient.stops.map((stop) => gradientStopLiteral(stop, node.paintOpacity)).join(", ")}]`;
@@ -2379,24 +3315,29 @@ function renderGradientCommands(
     `${prefix}do {`,
     `${inner}let clipPath = ${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size))`,
     `${inner}let stops = ${stops}`,
-    `${inner}if let gradient = svgGradient(stops: stops, spread: .${gradient.spreadMethod === "repeat" ? "repeating" : gradient.spreadMethod}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${gradient.colorInterpolation === "linearRGB"}) {`,
+    `${inner}if let gradient = svgGradient(stops: stops, spread: ${spread}, startT: ${formatNumber(gradient.startT)}, endT: ${formatNumber(gradient.endT)}, linearRGB: ${linearRGB}) {`,
     `${nested}${graphicsName}.saveGState()`,
     `${nested}${graphicsName}.addPath(clipPath.cgPath)`,
     `${nested}${graphicsName}.clip()`,
     `${nested}${graphicsName}.concatenate(${transform})`,
   ];
   if (gradient.type === "linearGradient") {
-    const dx = gradient.x2 - gradient.x1;
-    const dy = gradient.y2 - gradient.y1;
+    const x1 = coordinate("x1", gradient.x1);
+    const y1 = coordinate("y1", gradient.y1);
+    const x2 = coordinate("x2", gradient.x2);
+    const y2 = coordinate("y2", gradient.y2);
     lines.push(
-      `${nested}${graphicsName}.drawLinearGradient(gradient, start: CGPoint(x: ${formatNumber(gradient.x1 + dx * gradient.startT)}, y: ${formatNumber(gradient.y1 + dy * gradient.startT)}), end: CGPoint(x: ${formatNumber(gradient.x1 + dx * gradient.endT)}, y: ${formatNumber(gradient.y1 + dy * gradient.endT)}), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+      `${nested}${graphicsName}.drawLinearGradient(gradient, start: CGPoint(x: ${x1} + (${x2} - ${x1}) * ${formatNumber(gradient.startT)}, y: ${y1} + (${y2} - ${y1}) * ${formatNumber(gradient.startT)}), end: CGPoint(x: ${x1} + (${x2} - ${x1}) * ${formatNumber(gradient.endT)}, y: ${y1} + (${y2} - ${y1}) * ${formatNumber(gradient.endT)}), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
     );
   } else {
-    const dx = gradient.cx - gradient.fx;
-    const dy = gradient.cy - gradient.fy;
-    const dr = gradient.r - gradient.fr;
+    const cx = coordinate("cx", gradient.cx);
+    const cy = coordinate("cy", gradient.cy);
+    const radius = coordinate("r", gradient.r);
+    const fx = coordinate("fx", gradient.fx);
+    const fy = coordinate("fy", gradient.fy);
+    const fr = coordinate("fr", gradient.fr);
     lines.push(
-      `${nested}${graphicsName}.drawRadialGradient(gradient, startCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.startT)}, y: ${formatNumber(gradient.fy + dy * gradient.startT)}), startRadius: ${formatNumber(gradient.fr + dr * gradient.startT)}, endCenter: CGPoint(x: ${formatNumber(gradient.fx + dx * gradient.endT)}, y: ${formatNumber(gradient.fy + dy * gradient.endT)}), endRadius: ${formatNumber(gradient.fr + dr * gradient.endT)}, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
+      `${nested}${graphicsName}.drawRadialGradient(gradient, startCenter: CGPoint(x: ${fx} + (${cx} - ${fx}) * ${formatNumber(gradient.startT)}, y: ${fy} + (${cy} - ${fy}) * ${formatNumber(gradient.startT)}), startRadius: ${fr} + (${radius} - ${fr}) * ${formatNumber(gradient.startT)}, endCenter: CGPoint(x: ${fx} + (${cx} - ${fx}) * ${formatNumber(gradient.endT)}, y: ${fy} + (${cy} - ${fy}) * ${formatNumber(gradient.endT)}), endRadius: ${fr} + (${radius} - ${fr}) * ${formatNumber(gradient.endT)}, options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])`,
     );
   }
   lines.push(`${nested}${graphicsName}.restoreGState()`, `${inner}}`, `${prefix}}`);
@@ -2495,6 +3436,7 @@ function simpleClipPathHelpers(clipPath: GeneratedClipPath): string[] | undefine
         node.viewportClip ||
         node.clipPath ||
         node.mask ||
+        node.animationTransform ||
         !visit(node.children)
       )
         return false;
@@ -2611,17 +3553,25 @@ function renderPatternCommands(
   const inner = indentation.repeat(level + 1);
   const pattern = node.pattern;
   const matrix = pattern.matrix;
+  const coordinate = (name: string, fallback: number) =>
+    node.coordinateExpressions?.[name] ? `CGFloat(${node.coordinateExpressions[name]})` : formatNumber(fallback);
+  const tileX = coordinate("x", pattern.tile.x);
+  const tileY = coordinate("y", pattern.tile.y);
+  const tileWidth = coordinate("width", pattern.tile.width);
+  const tileHeight = coordinate("height", pattern.tile.height);
+  const factorX = node.rangeFactorX ?? 1;
+  const factorY = node.rangeFactorY ?? 1;
   const runtime: PatternRepeatRuntime = {
-    minRow: pattern.minRow,
-    maxRow: pattern.maxRow,
-    minColumn: pattern.minColumn,
-    maxColumn: pattern.maxColumn,
-    columnX: formatNumber(matrix.a * pattern.tile.width),
-    columnY: formatNumber(matrix.b * pattern.tile.width),
-    rowX: formatNumber(matrix.c * pattern.tile.height),
-    rowY: formatNumber(matrix.d * pattern.tile.height),
-    originX: formatNumber(matrix.a * pattern.tile.x + matrix.c * pattern.tile.y),
-    originY: formatNumber(matrix.b * pattern.tile.x + matrix.d * pattern.tile.y),
+    minRow: factorY === 1 ? pattern.minRow : pattern.minRow * factorY - factorY,
+    maxRow: factorY === 1 ? pattern.maxRow : (pattern.maxRow + 1) * factorY + factorY,
+    minColumn: factorX === 1 ? pattern.minColumn : pattern.minColumn * factorX - factorX,
+    maxColumn: factorX === 1 ? pattern.maxColumn : (pattern.maxColumn + 1) * factorX + factorX,
+    columnX: `${formatNumber(matrix.a)} * ${tileWidth}`,
+    columnY: `${formatNumber(matrix.b)} * ${tileWidth}`,
+    rowX: `${formatNumber(matrix.c)} * ${tileHeight}`,
+    rowY: `${formatNumber(matrix.d)} * ${tileHeight}`,
+    originX: `${formatNumber(matrix.a)} * ${tileX} + ${formatNumber(matrix.c)} * ${tileY}`,
+    originY: `${formatNumber(matrix.b)} * ${tileX} + ${formatNumber(matrix.d)} * ${tileY}`,
     scaleX: `size.width / ${formatNumber(node.coordinateSpace.width)}`,
     scaleY: `size.height / ${formatNumber(node.coordinateSpace.height)}`,
     suffix: node.patternIndex,
@@ -2633,6 +3583,7 @@ function renderPatternCommands(
     `${inner}${graphicsName}.addPath(${shapeHelperCall(node.helper)}.path(in: CGRect(origin: .zero, size: size)).cgPath)`,
     `${inner}${graphicsName}.clip()`,
   ];
+  if (node.transformCorrection) lines.push(`${inner}${graphicsName}.concatenate(${node.transformCorrection})`);
   if (node.paintOpacity !== 1) {
     lines.push(
       `${inner}${graphicsName}.setAlpha(${formatNumber(node.paintOpacity)})`,
@@ -2737,8 +3688,8 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
         ...renderGeneratedCommands(node.children, "graphics", level + 1, indentation),
         `${prefix}}, renderFilterImages: { size, scale in`,
         `${prefix}${indentation}var images: [String: CGImage] = [:]`,
-        ...node.filter.imageHelpers.flatMap(({ key, name }) => [
-          `${prefix}${indentation}let ${name}Renderer = ImageRenderer(content: ${name}().frame(width: size.width, height: size.height))`,
+        ...node.filter.imageHelpers.flatMap(({ key, name, animated }) => [
+          `${prefix}${indentation}let ${name}Renderer = ImageRenderer(content: ${name}${animated ? "(documentTime: documentTime)" : "()"}.frame(width: size.width, height: size.height))`,
           `${prefix}${indentation}${name}Renderer.scale = scale`,
           `${prefix}${indentation}if let image = ${name}Renderer.cgImage { images[${swiftString(key)}] = image }`,
         ]),
@@ -2895,6 +3846,20 @@ private struct SVGFilterRegion {
     let width: CGFloat
     let height: CGFloat
 
+}
+
+private static func svgTransformedFilterRegion(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, transform: CGAffineTransform) -> SVGFilterRegion {
+    let points = [
+        CGPoint(x: x, y: y).applying(transform),
+        CGPoint(x: x + width, y: y).applying(transform),
+        CGPoint(x: x, y: y + height).applying(transform),
+        CGPoint(x: x + width, y: y + height).applying(transform),
+    ]
+    let xs = points.map(\\.x)
+    let ys = points.map(\\.y)
+    let minimumX = xs.min() ?? 0
+    let minimumY = ys.min() ?? 0
+    return SVGFilterRegion(x: minimumX, y: minimumY, width: max(0, (xs.max() ?? minimumX) - minimumX), height: max(0, (ys.max() ?? minimumY) - minimumY))
 }
 
 private enum SVGFilterInput {
@@ -4104,10 +5069,11 @@ function createImageHelper(
       : "default";
   const body: string[] = [
     `private struct ${helper.name}: View {`,
+    ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
     `${indentation}var body: some View {`,
     `${i2}Canvas { context, size in`,
     `${i3}context.clip(to: Path(CGRect(x: ${formatNumber(node.viewport.x)}, y: ${formatNumber(node.viewport.y)}, width: ${formatNumber(node.viewport.width)}, height: ${formatNumber(node.viewport.height)})).applying(${runtimeTransform(helper.transform, coordinateSpace)}))`,
-    `${i3}context.transform = ${runtimeTransform(imageTransform, coordinateSpace)}`,
+    `${i3}context.transform = ${helper.transformExpression ?? runtimeTransform(imageTransform, coordinateSpace)}`,
   ];
   if (quality !== "default") body.push(`${i3}context.withCGContext { $0.interpolationQuality = .${quality} }`);
   if (resource.type === "svg") {
@@ -4116,7 +5082,7 @@ function createImageHelper(
       `${i4}context.draw(image, in: CGRect(x: 0, y: 0, width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)}))`,
       `${i3}}`,
       `${i2}} symbols: {`,
-      `${i3}${helper.subdocumentName!}()`,
+      `${i3}${helper.subdocumentName!}${helper.subdocumentAnimated ? "(documentTime: documentTime)" : "()"}`,
       `${i3}.frame(width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)})`,
       `${i3}.tag(0)`,
       `${i2}}`,
@@ -4182,6 +5148,7 @@ function createFilterImageHelper(helper: FilterImageHelper, indentationSize: num
       : { x: 0, y: 0, width: intrinsic.width, height: intrinsic.height };
   const body = [
     `private struct ${helper.name}: View {`,
+    ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
     `${indentation}var body: some View {`,
     `${i2}Canvas { context, size in`,
     `${i3}guard size.width > 0, size.height > 0 else { return }`,
@@ -4196,7 +5163,7 @@ function createFilterImageHelper(helper: FilterImageHelper, indentationSize: num
       `${i4}context.draw(image, in: CGRect(x: ${formatNumber(drawRect.x)}, y: ${formatNumber(drawRect.y)}, width: ${formatNumber(drawRect.width)}, height: ${formatNumber(drawRect.height)}))`,
       `${i3}}`,
       `${i2}} symbols: {`,
-      `${i3}${helper.subdocumentName!}()`,
+      `${i3}${helper.subdocumentName!}${helper.animated ? "(documentTime: documentTime)" : "()"}`,
       `${i3}.frame(width: ${formatNumber(intrinsic.width)}, height: ${formatNumber(intrinsic.height)})`,
       `${i3}.tag(0)`,
       `${i2}}`,
@@ -4344,7 +5311,10 @@ function createView(
   indentationSize: number,
 ): string[] {
   const indentation = " ".repeat(indentationSize);
-  const animated = document.animationProgram.animations.length > 0;
+  const animated =
+    document.animationProgram.animations.length > 0 ||
+    imageHelpers.some((helper) => helper.animated) ||
+    filterImageHelpers.some((helper) => helper.animated);
   const content = [
     `${indentation}ZStack {`,
     ...nodes.flatMap((node) => renderViewNode(node, 2, indentation)),
@@ -4552,6 +5522,22 @@ function createView(
         `${indentation}value.components.first ?? 0`,
         "}",
         "",
+        "private static func svgAnimationComponent(_ value: SVGAnimationRuntimeValue, index: Int) -> Double {",
+        `${indentation}guard !value.components.isEmpty else { return 0 }`,
+        `${indentation}return value.components[min(index, value.components.count - 1)]`,
+        "}",
+        "",
+        ...(containsFilterNode(nodes)
+          ? [
+              "private static func svgAnimationFilterColor(_ value: SVGAnimationRuntimeValue, opacity: Double) -> SVGFilterColor {",
+              `${indentation}func encoded(_ channel: Double) -> Double { channel <= 0.0031308 ? channel * 12.92 : 1.055 * pow(channel, 1 / 2.4) - 0.055 }`,
+              `${indentation}let components = value.components + [0, 0, 0, 1]`,
+              `${indentation}let linear = value.signature == "linearRGB"`,
+              `${indentation}return SVGFilterColor(red: min(1, max(0, linear ? encoded(components[0]) : components[0])), green: min(1, max(0, linear ? encoded(components[1]) : components[1])), blue: min(1, max(0, linear ? encoded(components[2]) : components[2])), alpha: min(1, max(0, components[3] * opacity)))`,
+              "}",
+              "",
+            ]
+          : []),
         "private static func svgAnimationSource(_ value: SVGAnimationRuntimeValue) -> String { value.source }",
         "",
         "private static func svgAnimationLengths(_ value: SVGAnimationRuntimeValue, scale: CGFloat) -> [CGFloat] {",
@@ -4969,7 +5955,11 @@ export function generateView(
   };
   const nodes = buildViewNodes(document.children, context);
   const imports = new Set<string>();
-  if (document.animationProgram.animations.length > 0) {
+  if (
+    document.animationProgram.animations.length > 0 ||
+    context.imageHelpers.some((helper) => helper.animated) ||
+    context.filterImageHelpers.some((helper) => helper.animated)
+  ) {
     imports.add("Foundation");
     imports.add("SwiftUI");
   }

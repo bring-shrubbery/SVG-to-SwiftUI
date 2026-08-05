@@ -47,6 +47,18 @@ function pixels(image: FilterBitmap): number[][] {
 }
 
 describe("spatial, noise, and image filter parsing", () => {
+  test("passes canonical document time into animated SVG feImage subdocuments", () => {
+    const nested = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4" viewBox="0 0 8 4"><rect width="2" height="4"><animate attributeName="width" values="2;8" dur="2s"/></rect></svg>`;
+    const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(nested)}`;
+    const swift = convert(
+      `<svg viewBox="0 0 20 10"><defs><filter id="f"><feImage href="${href}"/></filter></defs><rect width="20" height="10" filter="url(#f)"/></svg>`,
+      { structName: "AnimatedFilterImage", strict: true },
+    );
+    expect(swift).toContain("FilterImageLayer0(documentTime: documentTime)");
+    expect(swift).toContain("AnimatedFilterImageFilterImageDocument0(documentTime: documentTime)");
+    expect(swift).toContain("init(documentTime: Double? = nil");
+  });
+
   test("retains every primitive attribute, comma pairs, defaults, and graph inputs", () => {
     const graph = primitives(`<svg viewBox="0 0 100 50"><defs><filter id="f">
       <feConvolveMatrix order="3,2" kernelMatrix="1 2 3,4 5 6" divisor="7" bias=".25"

@@ -140,6 +140,7 @@ export function resolveMarkerResources(
   styleResolver: SVGStyleResolver,
   rootPresentation: Presentation,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
 ): Map<string, MarkerResource> {
   const resolutions = new Map<ElementNode, StyleResolution>();
   const walk = (element: ElementNode, inherited: Presentation): void => {
@@ -198,6 +199,33 @@ export function resolveMarkerResources(
       ...(viewBox ? { viewBox } : {}),
       preserveAspectRatio,
       overflow: String(authoredOverflow ?? "hidden").toLowerCase(),
+      animationTargetKeys: Object.fromEntries(
+        [
+          "markerWidth",
+          "markerHeight",
+          "refX",
+          "refY",
+          "markerUnits",
+          "orient",
+          "viewBox",
+          "preserveAspectRatio",
+          "overflow",
+        ].flatMap((name) => {
+          const key = animationTargetKey?.(element);
+          return key ? [[name, key]] : [];
+        }),
+      ),
+      animationBaseValues: {
+        markerWidth: String(element.properties?.markerWidth ?? "3"),
+        markerHeight: String(element.properties?.markerHeight ?? "3"),
+        refX: String(element.properties?.refX ?? "0"),
+        refY: String(element.properties?.refY ?? "0"),
+        markerUnits: String(element.properties?.markerUnits ?? "strokeWidth"),
+        orient: String(element.properties?.orient ?? "0"),
+        preserveAspectRatio: String(element.properties?.preserveAspectRatio ?? "xMidYMid meet"),
+        overflow: String(authoredOverflow ?? "hidden"),
+        ...(element.properties?.viewBox === undefined ? {} : { viewBox: String(element.properties.viewBox) }),
+      },
       source: sourceLocation(element),
       element,
       contentElements: children(element).filter((child) => !DESCRIPTIVE_ELEMENTS.has(child.tagName ?? "")),

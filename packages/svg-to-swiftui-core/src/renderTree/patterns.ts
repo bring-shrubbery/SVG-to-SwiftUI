@@ -18,6 +18,7 @@ import type {
 
 export interface ResolvedPattern {
   type: "pattern";
+  server: PatternPaint;
   matrix: AffineTransform;
   tile: RenderBounds;
   contentTransform: AffineTransform;
@@ -130,6 +131,7 @@ export function resolvePatternPaintServers(
   styleResolver: SVGStyleResolver,
   rootPresentation: Presentation,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string | undefined,
 ): Map<string, PaintServer> {
   const resolutions = new Map<ElementNode, StyleResolution>();
   const walk = (element: ElementNode, inherited: Presentation): void => {
@@ -288,6 +290,43 @@ export function resolvePatternPaintServers(
       diagnostic(diagnostics, element, "negative-pattern-height", "Pattern height cannot be negative.");
 
     const authoredOverflow = resolved?.provenance.overflow ? resolved.values.overflow : "hidden";
+    const animatedProperties = [
+      "x",
+      "y",
+      "width",
+      "height",
+      "patternUnits",
+      "patternContentUnits",
+      "patternTransform",
+      "viewBox",
+      "preserveAspectRatio",
+      "overflow",
+      "href",
+    ];
+    const animationTargetKeys = Object.fromEntries(
+      animatedProperties.flatMap((name) => {
+        const owner = chain.find((candidate) => candidate.properties?.[name] !== undefined) ?? element;
+        const key = animationTargetKey?.(owner);
+        return key ? [[name, key]] : [];
+      }),
+    );
+    const animationBaseValues = Object.fromEntries(
+      animatedProperties.flatMap((name) => {
+        const value = property(chain, name);
+        return value === undefined ? [] : [[name, String(value)]];
+      }),
+    );
+    Object.assign(animationBaseValues, {
+      x: String(property(chain, "x") ?? "0"),
+      y: String(property(chain, "y") ?? "0"),
+      width: String(property(chain, "width") ?? "0"),
+      height: String(property(chain, "height") ?? "0"),
+      patternUnits,
+      patternContentUnits: contentUnits,
+      patternTransform: String(property(chain, "patternTransform") ?? "matrix(1 0 0 1 0 0)"),
+      preserveAspectRatio: String(property(chain, "preserveAspectRatio") ?? "xMidYMid meet"),
+      overflow: String(authoredOverflow ?? "hidden"),
+    });
     const paint: PatternPaint = {
       type: "pattern",
       id,
@@ -298,6 +337,8 @@ export function resolvePatternPaintServers(
       units: patternUnits,
       contentUnits,
       transform,
+      animationTargetKeys,
+      animationBaseValues,
       ...(viewBox ? { viewBox } : {}),
       preserveAspectRatio,
       overflow: String(authoredOverflow ?? "hidden").toLowerCase(),
@@ -441,6 +482,7 @@ export function resolvePatternForShape(
 
   return {
     type: "pattern",
+    server: pattern,
     matrix: multiplyTransforms(localToRoot(shape, ancestors), patternToLocal),
     tile,
     contentTransform,
