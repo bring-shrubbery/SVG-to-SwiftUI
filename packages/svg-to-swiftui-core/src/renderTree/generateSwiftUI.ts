@@ -3407,8 +3407,36 @@ function renderGradientNode(
 interface ViewRenderContext {
   patternRenderers: string[][];
   nextPatternRenderer: number;
+  viewRenderers: string[][];
+  nextViewRenderer: number;
   animated: boolean;
   eventDriven: boolean;
+}
+
+const MAX_INLINE_ANIMATED_GROUP_CHILDREN = 4;
+
+function renderExtractedViewNode(
+  node: GeneratedViewNode,
+  indentation: string,
+  renderContext: ViewRenderContext,
+): string {
+  const rendererName = `renderView${renderContext.nextViewRenderer++}`;
+  const rendererParameters = [
+    "documentTime: Double",
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const rendererArguments = [
+    "documentTime: documentTime",
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
+  const rendererBody = renderViewNode(node, 1, indentation, renderContext);
+  renderContext.viewRenderers.push([
+    "@ViewBuilder",
+    `private func ${rendererName}(${rendererParameters}) -> some View {`,
+    ...rendererBody,
+    "}",
+  ]);
+  return `${rendererName}(${rendererArguments})`;
 }
 
 function renderPatternNode(
@@ -3875,7 +3903,12 @@ function renderViewNode(
       ]
     : [`${prefix}ZStack {`];
   if (!node.filter) {
-    for (const child of node.children) lines.push(...renderViewNode(child, level + 1, indentation, renderContext));
+    const extractChildren = renderContext.animated && node.children.length > MAX_INLINE_ANIMATED_GROUP_CHILDREN;
+    for (const child of node.children) {
+      if (extractChildren)
+        lines.push(`${prefix}${indentation}${renderExtractedViewNode(child, indentation, renderContext)}`);
+      else lines.push(...renderViewNode(child, level + 1, indentation, renderContext));
+    }
     lines.push(`${prefix}}`);
   }
   // Flatten the source subtree before applying SVG effects. SwiftUI otherwise
@@ -5680,6 +5713,8 @@ function createView(
   const renderContext: ViewRenderContext = {
     patternRenderers: [],
     nextPatternRenderer: 0,
+    viewRenderers: [],
+    nextViewRenderer: 0,
     animated,
     eventDriven,
   };
@@ -6290,6 +6325,7 @@ function createView(
       ]
     : ["var body: some View {", ...content, "}"];
   for (const renderer of renderContext.patternRenderers) body.push("", ...renderer);
+  for (const renderer of renderContext.viewRenderers) body.push("", ...renderer);
   for (const helper of helpers) {
     const pathFunction = createFunctionTemplate({
       name: "path",

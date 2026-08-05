@@ -265,6 +265,21 @@ describe("generated animation clock", () => {
     expect(swift.match(/TimelineView/g)).toHaveLength(1);
   });
 
+  test("extracts large animated groups into smaller ViewBuilder functions", () => {
+    const children = Array.from(
+      { length: 5 },
+      (_, index) =>
+        `<rect x="${index * 10}" width="8" height="8"><animate attributeName="y" from="0" to="20" dur="1s"/></rect>`,
+    ).join("");
+    const swift = convert(`<svg viewBox="0 0 50 30"><g>${children}</g></svg>`, {
+      structName: "ComplexAnimation",
+      strict: true,
+    });
+
+    expect(swift).toContain("renderView0(documentTime: documentTime)");
+    expect(swift).toContain("@ViewBuilder\n    private func renderView0(documentTime: Double) -> some View {");
+  });
+
   test("keeps static output on the Shape fast path without animation runtime code", () => {
     const source = `<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>`;
     const first = convert(source, { structName: "StaticBox" });
