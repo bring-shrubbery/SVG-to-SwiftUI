@@ -6,6 +6,7 @@ import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { IDENTITY_TRANSFORM, multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
 import { viewBoxTransform } from "../viewports";
+import type { AnimationDefinition } from "./animation";
 import {
   addAnimationValues,
   animationAttributeSpec,
@@ -427,6 +428,21 @@ function buildViewNodes(
         : ("sRGB" as const),
   });
 
+  const cssTimingLiteral = (
+    timing: NonNullable<AnimationDefinition["cssAnimation"]>["segmentTimingFunctions"][number],
+  ) => {
+    if (timing.type === "linear") return `${context.rootName}.SVGCSSTimingFunction(kind: .linear)`;
+    if (timing.type === "cubic")
+      return `${context.rootName}.SVGCSSTimingFunction(kind: .cubic, x1: ${formatNumber(timing.x1)}, y1: ${formatNumber(timing.y1)}, x2: ${formatNumber(timing.x2)}, y2: ${formatNumber(timing.y2)})`;
+    const position = {
+      "jump-start": "jumpStart",
+      "jump-end": "jumpEnd",
+      "jump-none": "jumpNone",
+      "jump-both": "jumpBoth",
+    }[timing.position];
+    return `${context.rootName}.SVGCSSTimingFunction(kind: .steps, count: ${timing.count}, position: .${position})`;
+  };
+
   const animatedValueExpressionFromAnimations = (
     animations: ReturnType<typeof directAnimationsFor>,
     base: TypedAnimationValue,
@@ -455,6 +471,21 @@ function buildViewNodes(
         authoredValues = authoredValues.map((value) =>
           value.family === "color" ? { family: "paint", value: { type: "color", color: value.value } } : value,
         );
+      const clampMode =
+        set.family === "integer"
+          ? "integer"
+          : set.attribute.clamp === "unit"
+            ? "unit"
+            : set.attribute.clamp === "nonnegative"
+              ? "nonnegative"
+              : "none";
+      if (animation.kind === "cssAnimation" && animation.cssAnimation) {
+        const css = animation.cssAnimation;
+        const keyTimes = animation.composition.keyTimes?.map((value) => formatNumber(value)).join(", ") ?? "";
+        const iterationCount = Number.isFinite(css.iterationCount) ? formatNumber(css.iterationCount) : ".infinity";
+        expression = `${context.rootName}.svgCSSAnimatedValue(documentTime: documentTime, duration: ${swiftDuration(css.duration)}, delay: ${swiftDuration(css.delay)}, iterationCount: ${iterationCount}, direction: .${css.direction.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())}, fillMode: .${css.fillMode}, playState: .${css.playState}, values: [${authoredValues.map((value) => swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`)).join(", ")}], keyTimes: [${keyTimes}], timingFunctions: [${css.segmentTimingFunctions.map(cssTimingLiteral).join(", ")}], clamp: .${clampMode}, underlying: ${expression})`;
+        continue;
+      }
       const intervals = context.animationIntervals.get(animation.stableId) ?? [];
       const intervalLiteral = intervals
         .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
@@ -470,14 +501,6 @@ function buildViewNodes(
               `(x1: ${formatNumber(spline.x1)}, y1: ${formatNumber(spline.y1)}, x2: ${formatNumber(spline.x2)}, y2: ${formatNumber(spline.y2)})`,
           )
           .join(", ") ?? "";
-      const clampMode =
-        set.family === "integer"
-          ? "integer"
-          : set.attribute.clamp === "unit"
-            ? "unit"
-            : set.attribute.clamp === "nonnegative"
-              ? "nonnegative"
-              : "none";
       expression = `${context.rootName}.svgAnimatedValue(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, values: [${authoredValues.map((value) => swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`)).join(", ")}], form: .${form.replace(/-/g, "")}, calcMode: .${animation.kind === "set" ? "discrete" : animation.composition.calcMode}, keyTimes: [${keyTimes}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" || set.form === "by" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, clamp: .${clampMode}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
     }
     return expression;
@@ -4422,6 +4445,12 @@ function createView(
         "enum SVGAnimationForm { case values, fromto, fromby, by, to }",
         "enum SVGAnimationCalcMode { case discrete, linear, paced, spline }",
         "enum SVGAnimationClamp { case none, unit, nonnegative, integer }",
+        "enum SVGCSSAnimationDirection { case normal, reverse, alternate, alternateReverse }",
+        "enum SVGCSSAnimationFillMode { case none, forwards, backwards, both }",
+        "enum SVGCSSAnimationPlayState { case running, paused }",
+        "enum SVGCSSTimingKind { case linear, cubic, steps }",
+        "enum SVGSStepPosition { case jumpStart, jumpEnd, jumpNone, jumpBoth }",
+        "struct SVGCSSTimingFunction { let kind: SVGCSSTimingKind; var x1 = 0.0; var y1 = 0.0; var x2 = 1.0; var y2 = 1.0; var count = 1; var position = SVGSStepPosition.jumpEnd }",
         "enum SVGAnimationMotionRotate { case auto, autoReverse, angle }",
         "struct SVGAnimationMotionPoint { let x: Double; let y: Double; let distance: Double; let move: Bool }",
         "enum SVGAnimationRuntimeValueKind { case number, integer, opacity, length, angle, color, numberList, lengthList, points, paintColor, path, viewBox, transform, discrete }",
@@ -4764,6 +4793,65 @@ function createView(
         `${indentation}if sample.state == .inactive || sample.state == .completed { return underlying }`,
         `${indentation}guard let progress = sample.simpleProgress else { return underlying }`,
         `${indentation}return svgAnimationTypedValueSample(progress: progress, values: authoredValues, form: form, calcMode: calcMode, keyTimes: keyTimes, keySplines: keySplines, additive: additive, accumulate: accumulate, repeatIteration: sample.repeatIteration, clamp: clamp, underlying: underlying)`,
+        "}",
+        "",
+        "private static func svgCSSTimingProgress(_ progress: Double, _ timing: SVGCSSTimingFunction) -> Double {",
+        `${indentation}let value = min(1, max(0, progress))`,
+        `${indentation}switch timing.kind {`,
+        `${indentation}case .linear: return value`,
+        `${indentation}case .cubic: return svgSplineProgress(value, (timing.x1, timing.y1, timing.x2, timing.y2))`,
+        `${indentation}case .steps:`,
+        `${indentation}${indentation}let count = max(1, timing.count)`,
+        `${indentation}${indentation}switch timing.position {`,
+        `${indentation}${indentation}case .jumpStart: return min(1, Double(Int(floor(value * Double(count))) + 1) / Double(count))`,
+        `${indentation}${indentation}case .jumpEnd: return value >= 1 ? 1 : Double(Int(floor(value * Double(count)))) / Double(count)`,
+        `${indentation}${indentation}case .jumpNone: return min(1, max(0, Double(Int(floor(value * Double(count)))) / Double(max(1, count - 1))))`,
+        `${indentation}${indentation}case .jumpBoth: return min(1, Double(Int(floor(value * Double(count))) + 1) / Double(count + 1))`,
+        `${indentation}${indentation}}`,
+        `${indentation}}`,
+        "}",
+        "",
+        "private static func svgCSSAnimatedValue(documentTime: Double, duration: Double, delay: Double, iterationCount: Double, direction: SVGCSSAnimationDirection, fillMode: SVGCSSAnimationFillMode, playState: SVGCSSAnimationPlayState, values: [SVGAnimationRuntimeValue], keyTimes: [Double], timingFunctions: [SVGCSSTimingFunction], clamp: SVGAnimationClamp, underlying: SVGAnimationRuntimeValue) -> SVGAnimationRuntimeValue {",
+        `${indentation}guard values.count >= 2 else { return values.first.map { svgClampValue($0, clamp) } ?? underlying }`,
+        `${indentation}let localTime = (playState == .paused ? 0 : documentTime) - delay`,
+        `${indentation}let activeDuration = iterationCount.isFinite ? max(0, duration * iterationCount) : Double.infinity`,
+        `${indentation}var progress: Double`,
+        `${indentation}var iteration = 0`,
+        `${indentation}var preserveEndpoint = false`,
+        `${indentation}if localTime < 0 {`,
+        `${indentation}${indentation}guard fillMode == .backwards || fillMode == .both else { return underlying }`,
+        `${indentation}${indentation}progress = 0`,
+        `${indentation}} else if duration <= 0 || iterationCount <= 0 || localTime >= activeDuration {`,
+        `${indentation}${indentation}guard fillMode == .forwards || fillMode == .both else { return underlying }`,
+        `${indentation}${indentation}preserveEndpoint = true`,
+        `${indentation}${indentation}let whole = floor(iterationCount)`,
+        `${indentation}${indentation}let fraction = iterationCount.isFinite ? iterationCount - whole : 0`,
+        `${indentation}${indentation}if fraction > 0.000000000001 { iteration = max(0, Int(whole)); progress = fraction }`,
+        `${indentation}${indentation}else { iteration = max(0, Int(max(0, whole - 1))); progress = 1 }`,
+        `${indentation}} else {`,
+        `${indentation}${indentation}let quotient = localTime / duration`,
+        `${indentation}${indentation}iteration = max(0, Int(floor(quotient)))`,
+        `${indentation}${indentation}progress = min(1, max(0, quotient - Double(iteration)))`,
+        `${indentation}}`,
+        `${indentation}let reversed: Bool`,
+        `${indentation}switch direction {`,
+        `${indentation}case .normal: reversed = false`,
+        `${indentation}case .reverse: reversed = true`,
+        `${indentation}case .alternate: reversed = iteration % 2 == 1`,
+        `${indentation}case .alternateReverse: reversed = iteration % 2 == 0`,
+        `${indentation}}`,
+        `${indentation}if reversed { progress = 1 - progress }`,
+        `${indentation}let times = keyTimes.count == values.count ? keyTimes : values.indices.map { Double($0) / Double(values.count - 1) }`,
+        `${indentation}if values[0].kind == .discrete {`,
+        `${indentation}${indentation}let index = times.indices.last { progress + 0.000000000001 >= times[$0] } ?? 0`,
+        `${indentation}${indentation}return svgClampValue(values[min(index, values.count - 1)], clamp)`,
+        `${indentation}}`,
+        `${indentation}var segment = progress >= 1 ? values.count - 2 : 0`,
+        `${indentation}while segment + 1 < times.count - 1 && progress >= times[segment + 1] - 0.000000000001 { segment += 1 }`,
+        `${indentation}let start = times[segment]; let end = times[segment + 1]`,
+        `${indentation}var segmentProgress = progress >= 1 ? 1 : (end <= start ? 1 : min(1, max(0, (progress - start) / (end - start))))`,
+        `${indentation}if !preserveEndpoint && segment < timingFunctions.count { segmentProgress = svgCSSTimingProgress(segmentProgress, timingFunctions[segment]) }`,
+        `${indentation}return svgClampValue(svgInterpolateValue(values[segment], values[segment + 1], segmentProgress), clamp)`,
         "}",
         "",
         "private static func svgAnimatedNumber(documentTime: Double, intervals: [(begin: Double, end: Double)], duration: Double, repeatingDuration: Double, values authoredValues: [Double], form: SVGAnimationForm, calcMode: SVGAnimationCalcMode, keyTimes: [Double], keySplines: [(x1: Double, y1: Double, x2: Double, y2: Double)], additive: Bool, accumulate: Bool, clamp: SVGAnimationClamp, underlying: Double, freeze: Bool) -> Double {",

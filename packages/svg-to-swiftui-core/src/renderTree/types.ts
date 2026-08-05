@@ -665,6 +665,8 @@ export interface ComputedStyle {
   inheritedProperties: Readonly<Record<string, true>>;
   /** Paint properties whose winning authored value uses currentColor. */
   currentColorProperties: Readonly<Record<string, true>>;
+  /** Properties whose winning declaration is author !important. */
+  importantProperties: Readonly<Record<string, true>>;
 }
 
 export type Geometry =

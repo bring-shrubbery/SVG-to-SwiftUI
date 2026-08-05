@@ -10,6 +10,14 @@ export interface StylePropertyDefinition {
  */
 export const STYLE_PROPERTY_DEFINITIONS = {
   "alignment-baseline": { initial: "auto", inherited: false },
+  "animation-delay": { initial: "0s", inherited: false },
+  "animation-direction": { initial: "normal", inherited: false },
+  "animation-duration": { initial: "0s", inherited: false },
+  "animation-fill-mode": { initial: "none", inherited: false },
+  "animation-iteration-count": { initial: "1", inherited: false },
+  "animation-name": { initial: "none", inherited: false },
+  "animation-play-state": { initial: "running", inherited: false },
+  "animation-timing-function": { initial: "ease", inherited: false },
   "baseline-shift": { initial: "baseline", inherited: false },
   clip: { initial: "auto", inherited: false },
   "clip-path": { initial: "none", inherited: false },
