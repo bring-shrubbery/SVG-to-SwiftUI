@@ -15,6 +15,12 @@ export interface DeterministicTimingEvent {
   repeatIteration?: number;
   /** Stable order for events with the same timestamp. Input order is used by default. */
   order?: number;
+  payload?: {
+    x?: number;
+    y?: number;
+    button?: number;
+    key?: string;
+  };
 }
 
 export type SMILTimingState = "inactive" | "active" | "frozen" | "completed";
@@ -102,6 +108,26 @@ function sortedUnique(values: readonly number[]): number[] {
     .filter((value) => Number.isFinite(value))
     .sort((left, right) => left - right)
     .filter((value, index, array) => index === 0 || !equal(value, array[index - 1]!));
+}
+
+/** Canonical immutable trace order used by every evaluator and test frontend. */
+export function normalizeDeterministicTimingEvents(
+  events: readonly DeterministicTimingEvent[],
+): readonly DeterministicTimingEvent[] {
+  return events
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => Number.isFinite(event.time) && event.name.trim().length > 0)
+    .sort(
+      (left, right) =>
+        left.event.time - right.event.time ||
+        (left.event.order ?? left.index) - (right.event.order ?? right.index) ||
+        left.index - right.index,
+    )
+    .map(({ event }) => ({
+      ...event,
+      name: event.name.trim().toLowerCase(),
+      ...(event.targetId === undefined ? {} : { targetId: event.targetId.trim() }),
+    }));
 }
 
 /** Build all deterministic intervals from already-resolved begin/end instance lists. */
@@ -249,11 +275,18 @@ export function sampleSMILTiming(
   };
 }
 
-function eventTimes(time: Extract<AnimationTime, { type: "event" }>, events: readonly DeterministicTimingEvent[]) {
+function eventTimes(
+  time: Extract<AnimationTime, { type: "event" }>,
+  definition: AnimationDefinition,
+  events: readonly DeterministicTimingEvent[],
+) {
+  const targetId = time.targetId ?? definition.target?.source.id ?? definition.target?.key;
   return events
     .map((event, index) => ({ event, index }))
     .filter(
-      ({ event }) => event.name === time.event && (time.targetId === undefined || event.targetId === time.targetId),
+      ({ event }) =>
+        event.name.toLowerCase() === time.event.toLowerCase() &&
+        (event.targetId === targetId || (time.targetId === undefined && event.targetId === undefined)),
     )
     .sort(
       (left, right) =>
@@ -267,6 +300,7 @@ function resolveTimes(
   intervals: ReadonlyMap<string, readonly SMILTimingInterval[]>,
   definitions: ReadonlyMap<string, AnimationDefinition>,
   events: readonly DeterministicTimingEvent[],
+  definition: AnimationDefinition,
 ): { times: number[]; unresolved: boolean } {
   const times: number[] = [];
   let unresolved = false;
@@ -292,8 +326,17 @@ function resolveTimes(
             times.push(repeatTime + value.offsetSeconds);
         }
       }
+    } else if (value.type === "repeatEvent") {
+      const referenced = intervals.get(value.animationId);
+      const referencedDefinition = definitions.get(value.animationId);
+      const duration = referencedDefinition ? simpleDuration(referencedDefinition.timing) : Number.POSITIVE_INFINITY;
+      if (!referenced || !Number.isFinite(duration) || duration <= 0) unresolved = true;
+      else
+        for (const interval of referenced)
+          for (let iteration = 1; interval.begin + duration * iteration < interval.end - EPSILON; iteration++)
+            times.push(interval.begin + duration * iteration + value.offsetSeconds);
     } else if (value.type === "event") {
-      const resolved = eventTimes(value, events);
+      const resolved = eventTimes(value, definition, events);
       if (resolved.length === 0) unresolved = true;
       times.push(...resolved);
     } else if (value.type !== "indefinite") unresolved = true;
@@ -307,6 +350,7 @@ export function sampleSMILProgram(
   documentTime: number,
   events: readonly DeterministicTimingEvent[] = [],
 ): SMILProgramSample {
+  const normalizedEvents = normalizeDeterministicTimingEvents(events);
   const definitions = new Map(program.animations.map((animation) => [animation.stableId, animation]));
   const intervals = new Map<string, readonly SMILTimingInterval[]>();
   const samples = new Map<string, SMILTimingSample>();
@@ -320,8 +364,8 @@ export function sampleSMILProgram(
       samples.set(id, sampleSMILTiming(animation.timing, documentTime, [], [], true));
       continue;
     }
-    const begins = resolveTimes(animation.timing.begin, intervals, definitions, events);
-    const ends = resolveTimes(animation.timing.end, intervals, definitions, events);
+    const begins = resolveTimes(animation.timing.begin, intervals, definitions, normalizedEvents, animation);
+    const ends = resolveTimes(animation.timing.end, intervals, definitions, normalizedEvents, animation);
     const resolved = resolveSMILIntervals(animation.timing, begins.times, ends.times);
     intervals.set(id, resolved);
     samples.set(
@@ -330,4 +374,20 @@ export function sampleSMILProgram(
     );
   }
   return { samples, intervals };
+}
+
+/** Pure timed-removal result used by generators and non-Swift frontends. */
+export function sampleDiscardedTargets(
+  program: AnimationProgram,
+  documentTime: number,
+  events: readonly DeterministicTimingEvent[] = [],
+): ReadonlySet<string> {
+  const sampled = sampleSMILProgram(program, documentTime, events);
+  const targets = new Set<string>();
+  for (const animation of program.animations) {
+    if (animation.kind !== "discard" || animation.runtimeSupport !== "typed" || !animation.target) continue;
+    const intervals = sampled.intervals.get(animation.stableId) ?? [];
+    if (intervals.some((interval) => documentTime >= interval.begin)) targets.add(animation.target.key);
+  }
+  return targets;
 }

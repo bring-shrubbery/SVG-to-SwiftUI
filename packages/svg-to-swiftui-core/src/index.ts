@@ -75,7 +75,9 @@ export type {
 export {
   computeSMILActiveDuration,
   computeSMILRepeatingDuration,
+  normalizeDeterministicTimingEvents,
   resolveSMILIntervals,
+  sampleDiscardedTargets,
   sampleSMILProgram,
   sampleSMILTiming,
 } from "./renderTree/smilTiming";

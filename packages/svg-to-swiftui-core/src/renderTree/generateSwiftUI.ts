@@ -6,7 +6,7 @@ import { createFunctionTemplate, createStructTemplate } from "../templates";
 import { IDENTITY_TRANSFORM, multiplyTransforms, wrapWithTransform } from "../transformUtils";
 import type { SVGElementProperties, SwiftUIGeneratorConfig, TranspilerOptions, ViewBoxData } from "../types";
 import { viewBoxTransform } from "../viewports";
-import type { AnimationDefinition } from "./animation";
+import type { AnimationDefinition, AnimationTime } from "./animation";
 import {
   addAnimationValues,
   animationAttributeSpec,
@@ -18,7 +18,12 @@ import {
 import { objectBoundingBox, renderNodeBounds } from "./bounds";
 import { type ResolvedGradient, resolveGradientForShape } from "./gradients";
 import { type ResolvedPattern, resolvePatternForShape } from "./patterns";
-import { computeSMILRepeatingDuration, type SMILTimingInterval, sampleSMILProgram } from "./smilTiming";
+import {
+  computeSMILActiveDuration,
+  computeSMILRepeatingDuration,
+  type SMILTimingInterval,
+  sampleSMILProgram,
+} from "./smilTiming";
 import type {
   AccessibilityMetadata,
   ClipPathInstance,
@@ -110,6 +115,7 @@ type GeneratedViewNode =
       animationOffsetY?: string;
       presentationCondition?: string;
       animationTransform?: string;
+      interaction?: { targetId: string; events: readonly string[]; pointerEvents: string };
     };
 
 interface GeneratedMask {
@@ -182,6 +188,7 @@ interface ViewBuildContext {
       }>;
     }>;
     animated: boolean;
+    eventDriven?: boolean;
   }>;
   imageHelpers: Array<{
     name: string;
@@ -191,12 +198,54 @@ interface ViewBuildContext {
     subdocumentAnimated?: boolean;
     animated?: boolean;
     transformExpression?: string;
+    eventDriven?: boolean;
   }>;
   filterImageHelpers: FilterImageHelper[];
   subdocuments: string[][];
   rootName: string;
   config: SwiftUIGeneratorConfig;
   animationIntervals: ReadonlyMap<string, readonly SMILTimingInterval[]>;
+  dynamicTimingIds: ReadonlySet<string>;
+  eventTargets: ReadonlyMap<string, readonly string[]>;
+}
+
+function dynamicTimingIds(document: RenderDocument): ReadonlySet<string> {
+  const dynamic = new Set(
+    document.animationProgram.animations
+      .filter(
+        (animation) =>
+          animation.runtimeSupport === "typed" &&
+          [...animation.timing.begin, ...animation.timing.end].some((time) => time.type === "event"),
+      )
+      .map((animation) => animation.stableId),
+  );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const animation of document.animationProgram.animations) {
+      if (dynamic.has(animation.stableId) || !animation.dependencies.some((dependency) => dynamic.has(dependency)))
+        continue;
+      dynamic.add(animation.stableId);
+      changed = true;
+    }
+  }
+  return dynamic;
+}
+
+function animationEventTargets(document: RenderDocument): ReadonlyMap<string, readonly string[]> {
+  const targets = new Map<string, Set<string>>();
+  for (const animation of document.animationProgram.animations) {
+    if (animation.runtimeSupport !== "typed") continue;
+    for (const time of [...animation.timing.begin, ...animation.timing.end]) {
+      if (time.type !== "event") continue;
+      const targetId = time.targetId ?? animation.target?.source.id ?? animation.target?.key;
+      if (!targetId) continue;
+      const events = targets.get(targetId) ?? new Set<string>();
+      events.add(time.event.toLowerCase());
+      targets.set(targetId, events);
+    }
+  }
+  return new Map([...targets].map(([target, events]) => [target, [...events].sort()]));
 }
 
 function createOptions(
@@ -365,7 +414,7 @@ function addHelper(context: ViewBuildContext, name: string, lines: string[]): st
 
 function addAnimatedHelper(context: ViewBuildContext, name: string, lines: string[]): string {
   context.helpers.push({ name, lines, animated: true });
-  return `${name}(documentTime: documentTime)`;
+  return `${name}(documentTime: documentTime${context.dynamicTimingIds.size > 0 ? ", animationIntervals: animationIntervals" : ""})`;
 }
 
 function shapeHelperCall(helper: string): string {
@@ -415,6 +464,15 @@ function buildViewNodes(
             candidate.attributeName === attributeName,
         )
       : [];
+
+  const intervalLiteral = (animation: AnimationDefinition): string => {
+    if (context.dynamicTimingIds.has(animation.stableId))
+      return `animationIntervals[${swiftString(animation.stableId)}] ?? []`;
+    const intervals = context.animationIntervals.get(animation.stableId) ?? [];
+    return `[${intervals
+      .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
+      .join(", ")}]`;
+  };
 
   const ownedAnimationsFor = (node: RenderNode, attributeName: string) => {
     const direct = directAnimationsFor(node, attributeName);
@@ -521,10 +579,6 @@ function buildViewNodes(
         expression = `${context.rootName}.svgCSSAnimatedValue(documentTime: documentTime, duration: ${swiftDuration(css.duration)}, delay: ${swiftDuration(css.delay)}, iterationCount: ${iterationCount}, direction: .${css.direction.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())}, fillMode: .${css.fillMode}, playState: .${css.playState}, values: [${authoredValues.map((value) => swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`)).join(", ")}], keyTimes: [${keyTimes}], timingFunctions: [${css.segmentTimingFunctions.map(cssTimingLiteral).join(", ")}], clamp: .${clampMode}, underlying: ${expression})`;
         continue;
       }
-      const intervals = context.animationIntervals.get(animation.stableId) ?? [];
-      const intervalLiteral = intervals
-        .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
-        .join(", ");
       const duration =
         animation.timing.duration.type === "seconds" ? animation.timing.duration.seconds : Number.POSITIVE_INFINITY;
       const repeatingDuration = computeSMILRepeatingDuration(animation.timing);
@@ -536,7 +590,7 @@ function buildViewNodes(
               `(x1: ${formatNumber(spline.x1)}, y1: ${formatNumber(spline.y1)}, x2: ${formatNumber(spline.x2)}, y2: ${formatNumber(spline.y2)})`,
           )
           .join(", ") ?? "";
-      expression = `${context.rootName}.svgAnimatedValue(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, values: [${authoredValues.map((value) => swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`)).join(", ")}], form: .${form.replace(/-/g, "")}, calcMode: .${animation.kind === "set" ? "discrete" : animation.composition.calcMode}, keyTimes: [${keyTimes}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" || set.form === "by" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, clamp: .${clampMode}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
+      expression = `${context.rootName}.svgAnimatedValue(documentTime: documentTime, intervals: ${intervalLiteral(animation)}, duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, values: [${authoredValues.map((value) => swiftAnimationValueLiteral(value, context.precision, `${context.rootName}.`)).join(", ")}], form: .${form.replace(/-/g, "")}, calcMode: .${animation.kind === "set" ? "discrete" : animation.composition.calcMode}, keyTimes: [${keyTimes}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" || set.form === "by" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, clamp: .${clampMode}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
     }
     return expression;
   };
@@ -554,10 +608,6 @@ function buildViewNodes(
     for (const animation of animations) {
       const motion = animation.motion;
       if (!motion) continue;
-      const intervals = context.animationIntervals.get(animation.stableId) ?? [];
-      const intervalLiteral = intervals
-        .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
-        .join(", ");
       const duration =
         animation.timing.duration.type === "seconds" ? animation.timing.duration.seconds : Number.POSITIVE_INFINITY;
       const repeatingDuration = computeSMILRepeatingDuration(animation.timing);
@@ -581,7 +631,7 @@ function buildViewNodes(
           .join(", ") ?? "";
       const rotateMode = motion.rotate.type === "auto" ? (motion.rotate.reverse ? "autoReverse" : "auto") : "angle";
       const angle = motion.rotate.type === "angle" ? motion.rotate.degrees : 0;
-      expression = `${context.rootName}.svgAnimatedMotion(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, points: [${points}], length: ${formatNumber(motion.length)}, pathPoints: [${pathPoints}], rotate: .${rotateMode}, angle: ${formatNumber(angle)}, calcMode: .${animation.composition.calcMode}, keyTimes: [${keyTimes}], keyPoints: [${keyPoints}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
+      expression = `${context.rootName}.svgAnimatedMotion(documentTime: documentTime, intervals: ${intervalLiteral(animation)}, duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, points: [${points}], length: ${formatNumber(motion.length)}, pathPoints: [${pathPoints}], rotate: .${rotateMode}, angle: ${formatNumber(angle)}, calcMode: .${animation.composition.calcMode}, keyTimes: [${keyTimes}], keyPoints: [${keyPoints}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
     }
     return expression === "CGAffineTransform.identity" ? undefined : expression;
   };
@@ -916,8 +966,35 @@ function buildViewNodes(
     const conditions = [
       ...(display ? [`${display} != "none"`] : []),
       ...(visibility ? [`${visibility} != "hidden" && ${visibility} != "collapse"`] : []),
+      ...context.document.animationProgram.animations
+        .filter(
+          (animation) =>
+            animation.kind === "discard" &&
+            animation.runtimeSupport === "typed" &&
+            animation.target?.key === node.animationTargetKey,
+        )
+        .map(
+          (animation) =>
+            `!${context.rootName}.svgIsDiscarded(documentTime: documentTime, intervals: ${intervalLiteral(animation)})`,
+        ),
     ];
     return conditions.length > 0 ? conditions.join(" && ") : undefined;
+  };
+
+  const interaction = (
+    node: RenderNode,
+  ): { targetId: string; events: readonly string[]; pointerEvents: string } | undefined => {
+    const identifiers = [node.source.id, node.animationTargetKey].filter((value): value is string => !!value);
+    for (const targetId of identifiers) {
+      const events = context.eventTargets.get(targetId);
+      if (events?.length)
+        return {
+          targetId,
+          events,
+          pointerEvents: String(node.style.presentation["pointer-events"] ?? "visiblePainted"),
+        };
+    }
+    return undefined;
   };
 
   const opacityExpression = (node: RenderNode): number | string =>
@@ -2135,6 +2212,7 @@ function buildViewNodes(
           ...(mask ? { mask } : {}),
           ...(filter ? { filter } : {}),
           ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+          ...(interaction(node) ? { interaction: interaction(node) } : {}),
           ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
           ...(animationTransform ? { animationTransform } : {}),
         });
@@ -2293,6 +2371,7 @@ function buildViewNodes(
         ...(wordSpacing ? { wordSpacing } : {}),
         chunks: textChunks,
         animated: textAnimated,
+        ...(context.dynamicTimingIds.size > 0 ? { eventDriven: true } : {}),
       });
       const targetTransforms = [...ancestorTransforms, node.transform];
       const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
@@ -2301,7 +2380,14 @@ function buildViewNodes(
       const filter = buildFilter(node.filter, targetTransforms, node);
       generated.push({
         type: "group",
-        children: [{ type: "text", helper: textAnimated ? `${name}(documentTime: documentTime)` : name }],
+        children: [
+          {
+            type: "text",
+            helper: textAnimated
+              ? `${name}(documentTime: documentTime${context.dynamicTimingIds.size > 0 ? ", animationIntervals: animationIntervals" : ""})`
+              : name,
+          },
+        ],
         opacity: opacityExpression(node),
         isolated:
           opacityExpression(node) !== 1 ||
@@ -2315,6 +2401,7 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+        ...(interaction(node) ? { interaction: interaction(node) } : {}),
         ...(animationOffset(node, ["x", "dx"], [node.attributes.x ?? 0, node.attributes.dx ?? 0])
           ? { animationOffsetX: animationOffset(node, ["x", "dx"], [node.attributes.x ?? 0, node.attributes.dx ?? 0]) }
           : {}),
@@ -2390,6 +2477,7 @@ function buildViewNodes(
         ...(animatedSubdocument ? { subdocumentAnimated: true } : {}),
         ...(imageAnimated ? { animated: true } : {}),
         ...(transformExpression ? { transformExpression } : {}),
+        ...(context.dynamicTimingIds.size > 0 ? { eventDriven: true } : {}),
       });
       const targetTransforms = [...ancestorTransforms, node.transform];
       const animationTransform = transformCorrectionExpression(node, ancestorTransforms);
@@ -2398,7 +2486,14 @@ function buildViewNodes(
       const filter = buildFilter(node.filter, targetTransforms, node);
       generated.push({
         type: "group",
-        children: [{ type: "image", helper: imageAnimated ? `${name}(documentTime: documentTime)` : name }],
+        children: [
+          {
+            type: "image",
+            helper: imageAnimated
+              ? `${name}(documentTime: documentTime${context.dynamicTimingIds.size > 0 ? ", animationIntervals: animationIntervals" : ""})`
+              : name,
+          },
+        ],
         opacity: opacityExpression(node),
         isolated:
           opacityExpression(node) !== 1 ||
@@ -2412,6 +2507,7 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+        ...(interaction(node) ? { interaction: interaction(node) } : {}),
         ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
         ...(animationTransform ? { animationTransform } : {}),
       });
@@ -2619,6 +2715,7 @@ function buildViewNodes(
         ...(mask ? { mask } : {}),
         ...(filter ? { filter } : {}),
         ...(node.accessibility ? { accessibility: node.accessibility } : {}),
+        ...(interaction(node) ? { interaction: interaction(node) } : {}),
         ...(presentationCondition(node) ? { presentationCondition: presentationCondition(node) } : {}),
         ...(animationTransform ? { animationTransform } : {}),
       });
@@ -2867,6 +2964,9 @@ function createTextHelper(
     "// CoreText glyph paths preserve SVG metrics; accessibility text is retained, but selection is unavailable.",
     `private struct ${helper.name}: View {`,
     ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
+    ...(helper.animated && helper.eventDriven
+      ? [`${indentation}let animationIntervals: [String: [(begin: Double, end: Double)]]`, ""]
+      : []),
     `${indentation}var body: some View {`,
     `${i2}Canvas { context, size in`,
     `${i3}context.withCGContext { graphics in`,
@@ -3787,6 +3887,55 @@ function renderViewNode(node: GeneratedViewNode, level: number, indentation: str
   if (node.animationOffsetX) lines.push(`${prefix}.offset(x: ${node.animationOffsetX})`);
   if (node.animationOffsetY) lines.push(`${prefix}.offset(y: ${node.animationOffsetY})`);
   if (node.animationTransform) lines.push(`${prefix}.transformEffect(${node.animationTransform})`);
+  if (node.interaction) {
+    const { targetId, events, pointerEvents } = node.interaction;
+    const tap = events.filter((event) => event === "click" || event === "activate");
+    const hoverIn = events.filter((event) => event === "mouseover" || event === "mouseenter");
+    const hoverOut = events.filter((event) => event === "mouseout" || event === "mouseleave");
+    const focusIn = events.filter((event) => event === "focus" || event === "focusin");
+    const focusOut = events.filter((event) => event === "blur" || event === "focusout");
+    const pointerDown = events.filter((event) => event === "mousedown" || event === "pointerdown");
+    const pointerUp = events.filter((event) => event === "mouseup" || event === "pointerup");
+    const record = (event: string, depth: number) =>
+      `${prefix}${indentation.repeat(depth)}recordAnimationEvent(name: ${swiftString(event)}, targetID: ${swiftString(targetId)}, documentTime: documentTime)`;
+    if (tap.length > 0) {
+      lines.push(`${prefix}.onTapGesture {`);
+      for (const event of tap) lines.push(record(event, 1));
+      lines.push(`${prefix}}`);
+    }
+    if (hoverIn.length + hoverOut.length > 0) {
+      lines.push(`${prefix}.onHover { hovering in`, `${prefix}${indentation}if hovering {`);
+      for (const event of hoverIn) lines.push(record(event, 2));
+      lines.push(`${prefix}${indentation}} else {`);
+      for (const event of hoverOut) lines.push(record(event, 2));
+      lines.push(`${prefix}${indentation}}`, `${prefix}}`);
+    }
+    if (focusIn.length + focusOut.length > 0) {
+      lines.push(`${prefix}.modifier(SVGFocusEventModifier { focused in`, `${prefix}${indentation}if focused {`);
+      for (const event of focusIn) lines.push(record(event, 2));
+      lines.push(`${prefix}${indentation}} else {`);
+      for (const event of focusOut) lines.push(record(event, 2));
+      lines.push(`${prefix}${indentation}}`, `${prefix}})`);
+    }
+    if (pointerDown.length + pointerUp.length > 0) {
+      const down = `[${pointerDown.map(swiftString).join(", ")}]`;
+      const up = `[${pointerUp.map(swiftString).join(", ")}]`;
+      lines.push(
+        `${prefix}.simultaneousGesture(`,
+        `${prefix}${indentation}DragGesture(minimumDistance: 0)`,
+        `${prefix}${indentation}${indentation}.onChanged { _ in recordPointerTransition(targetID: ${swiftString(targetId)}, names: ${down}, active: true, documentTime: documentTime) }`,
+        `${prefix}${indentation}${indentation}.onEnded { _ in recordPointerTransition(targetID: ${swiftString(targetId)}, names: ${up}, active: false, documentTime: documentTime) }`,
+        `${prefix})`,
+      );
+    }
+    if (events.includes("activate")) {
+      lines.push(
+        `${prefix}.accessibilityAddTraits(.isButton)`,
+        `${prefix}.accessibilityAction(.default) { recordAnimationEvent(name: "activate", targetID: ${swiftString(targetId)}, documentTime: documentTime) }`,
+      );
+    }
+    if (pointerEvents.toLowerCase() === "none") lines.push(`${prefix}.allowsHitTesting(false)`);
+  }
   appendAccessibilityModifiers(lines, node.accessibility, prefix);
   return lines;
 }
@@ -5034,6 +5183,130 @@ function base64(bytes: Uint8Array): string {
   return result;
 }
 
+function eventTimingSupport(document: RenderDocument, indentationSize: number): string[] {
+  const dynamic = dynamicTimingIds(document);
+  if (dynamic.size === 0) return [];
+  const indentation = " ".repeat(indentationSize);
+  const staticIntervals = sampleSMILProgram(document.animationProgram, 0).intervals;
+  const definitions = new Map(document.animationProgram.animations.map((animation) => [animation.stableId, animation]));
+  const referencedDuration = (id: string): number => {
+    const duration = definitions.get(id)?.timing.duration;
+    return duration?.type === "seconds" ? duration.seconds : Number.POSITIVE_INFINITY;
+  };
+  const source = (time: AnimationTime, animation: AnimationDefinition): string => {
+    if (time.type === "offset") return `[${swiftDuration(time.seconds)}]`;
+    if (time.type === "syncbase")
+      return `svgSyncbaseTimes(animationIntervals[${swiftString(time.animationId)}] ?? [], useEnd: ${time.phase === "end"}, offset: ${swiftDuration(time.offsetSeconds)})`;
+    if (time.type === "repeat")
+      return `svgRepeatTimes(animationIntervals[${swiftString(time.animationId)}] ?? [], duration: ${swiftDuration(referencedDuration(time.animationId))}, iteration: ${time.iteration}, offset: ${swiftDuration(time.offsetSeconds)})`;
+    if (time.type === "repeatEvent")
+      return `svgRepeatEventTimes(animationIntervals[${swiftString(time.animationId)}] ?? [], duration: ${swiftDuration(referencedDuration(time.animationId))}, offset: ${swiftDuration(time.offsetSeconds)})`;
+    if (time.type === "event") {
+      const targetId = time.targetId ?? animation.target?.source.id ?? animation.target?.key;
+      return `svgEventTimes(events, name: ${swiftString(time.event.toLowerCase())}, targetID: ${targetId ? swiftString(targetId) : "nil"}, allowUntargeted: ${time.targetId === undefined}, offset: ${swiftDuration(time.offsetSeconds)})`;
+    }
+    return "[]";
+  };
+  const list = (times: readonly AnimationTime[], animation: AnimationDefinition) =>
+    times.length === 0 ? "[]" : times.map((time) => source(time, animation)).join(" + ");
+  const initial = document.animationProgram.animations
+    .filter((animation) => !dynamic.has(animation.stableId))
+    .map((animation) => {
+      const intervals = staticIntervals.get(animation.stableId) ?? [];
+      return `${indentation}${swiftString(animation.stableId)}: [${intervals
+        .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
+        .join(", ")}]`;
+    })
+    .join(`,\n`);
+  const assignments = document.animationProgram.evaluationOrder.flatMap((id) => {
+    if (!dynamic.has(id)) return [];
+    const animation = definitions.get(id);
+    if (!animation) return [];
+    return [
+      `${indentation}animationIntervals[${swiftString(id)}] = svgResolveIntervals(beginInstances: ${list(animation.timing.begin, animation)}, endInstances: ${list(animation.timing.end, animation)}, activeDuration: ${swiftDuration(computeSMILActiveDuration(animation.timing))}, restart: .${animation.timing.restart})`,
+    ];
+  });
+  return [
+    "struct SVGAnimationEvent: Hashable, Codable, Sendable {",
+    `${indentation}struct Payload: Hashable, Codable, Sendable {`,
+    `${indentation}${indentation}var x: Double?`,
+    `${indentation}${indentation}var y: Double?`,
+    `${indentation}${indentation}var button: Int?`,
+    `${indentation}${indentation}var key: String?`,
+    `${indentation}${indentation}init(x: Double? = nil, y: Double? = nil, button: Int? = nil, key: String? = nil) { self.x = x; self.y = y; self.button = button; self.key = key }`,
+    `${indentation}}`,
+    `${indentation}var time: Double`,
+    `${indentation}var name: String`,
+    `${indentation}var targetID: String?`,
+    `${indentation}var repeatIteration: Int?`,
+    `${indentation}var order: Int?`,
+    `${indentation}var payload: Payload?`,
+    `${indentation}init(time: Double, name: String, targetID: String? = nil, repeatIteration: Int? = nil, order: Int? = nil, payload: Payload? = nil) { self.time = time; self.name = name; self.targetID = targetID; self.repeatIteration = repeatIteration; self.order = order; self.payload = payload }`,
+    "}",
+    "",
+    "private struct SVGFocusEventModifier: ViewModifier {",
+    `${indentation}@FocusState private var focused: Bool`,
+    `${indentation}let changed: (Bool) -> Void`,
+    `${indentation}init(changed: @escaping (Bool) -> Void) { self.changed = changed }`,
+    `${indentation}func body(content: Content) -> some View {`,
+    `${indentation}${indentation}content.focusable().focused($focused).onChange(of: focused) { changed($0) }`,
+    `${indentation}}`,
+    "}",
+    "",
+    "private enum SVGAnimationRestart: Equatable { case always, whenNotActive, never }",
+    "",
+    "private static func svgAnimationIntervals(events: [SVGAnimationEvent]) -> [String: [(begin: Double, end: Double)]] {",
+    `${indentation}var animationIntervals: [String: [(begin: Double, end: Double)]] = ${initial ? `[\n${initial}\n]` : "[:]"}`,
+    ...assignments,
+    `${indentation}return animationIntervals`,
+    "}",
+    "",
+    "private static func svgEventTimes(_ events: [SVGAnimationEvent], name: String, targetID: String?, allowUntargeted: Bool, offset: Double) -> [Double] {",
+    `${indentation}events.enumerated()`,
+    `${indentation}${indentation}.filter { $0.element.time.isFinite && $0.element.name.lowercased() == name && ($0.element.targetID == targetID || (allowUntargeted && $0.element.targetID == nil)) }`,
+    `${indentation}${indentation}.sorted { left, right in left.element.time != right.element.time ? left.element.time < right.element.time : (left.element.order ?? left.offset) != (right.element.order ?? right.offset) ? (left.element.order ?? left.offset) < (right.element.order ?? right.offset) : left.offset < right.offset }`,
+    `${indentation}${indentation}.map { $0.element.time + offset }`,
+    "}",
+    "",
+    "private static func svgSyncbaseTimes(_ intervals: [(begin: Double, end: Double)], useEnd: Bool, offset: Double) -> [Double] {",
+    `${indentation}intervals.compactMap { let value = (useEnd ? $0.end : $0.begin) + offset; return value.isFinite ? value : nil }`,
+    "}",
+    "",
+    "private static func svgRepeatTimes(_ intervals: [(begin: Double, end: Double)], duration: Double, iteration: Int, offset: Double) -> [Double] {",
+    `${indentation}guard duration.isFinite && duration > 0 && iteration > 0 else { return [] }`,
+    `${indentation}return intervals.compactMap { let value = $0.begin + duration * Double(iteration); return value < $0.end - 0.000000000001 ? value + offset : nil }`,
+    "}",
+    "",
+    "private static func svgRepeatEventTimes(_ intervals: [(begin: Double, end: Double)], duration: Double, offset: Double) -> [Double] {",
+    `${indentation}guard duration.isFinite && duration > 0 else { return [] }`,
+    `${indentation}return intervals.flatMap { interval in`,
+    `${indentation}${indentation}var values: [Double] = []`,
+    `${indentation}${indentation}var iteration = 1`,
+    `${indentation}${indentation}while interval.begin + duration * Double(iteration) < interval.end - 0.000000000001 { values.append(interval.begin + duration * Double(iteration) + offset); iteration += 1 }`,
+    `${indentation}${indentation}return values`,
+    `${indentation}}`,
+    "}",
+    "",
+    "private static func svgResolveIntervals(beginInstances: [Double], endInstances: [Double], activeDuration: Double, restart: SVGAnimationRestart) -> [(begin: Double, end: Double)] {",
+    `${indentation}let begins = Array(Set(beginInstances.filter { $0.isFinite })).sorted()`,
+    `${indentation}let ends = Array(Set(endInstances.filter { $0.isFinite })).sorted()`,
+    `${indentation}var intervals: [(begin: Double, end: Double)] = []`,
+    `${indentation}for begin in begins {`,
+    `${indentation}${indentation}if let previous = intervals.last {`,
+    `${indentation}${indentation}${indentation}if restart == .never { continue }`,
+    `${indentation}${indentation}${indentation}let active = begin < previous.end - 0.000000000001`,
+    `${indentation}${indentation}${indentation}if active && restart == .whenNotActive { continue }`,
+    `${indentation}${indentation}${indentation}if active && restart == .always { intervals[intervals.count - 1].end = begin }`,
+    `${indentation}${indentation}}`,
+    `${indentation}${indentation}let naturalEnd = activeDuration.isFinite ? begin + activeDuration : .infinity`,
+    `${indentation}${indentation}let explicitEnd = ends.first { $0 >= begin - 0.000000000001 } ?? .infinity`,
+    `${indentation}${indentation}intervals.append((begin: begin, end: min(naturalEnd, explicitEnd)))`,
+    `${indentation}}`,
+    `${indentation}return intervals`,
+    "}",
+  ];
+}
+
 function createImageHelper(
   helper: ViewBuildContext["imageHelpers"][number],
   coordinateSpace: ViewBoxData,
@@ -5070,6 +5343,9 @@ function createImageHelper(
   const body: string[] = [
     `private struct ${helper.name}: View {`,
     ...(helper.animated ? [`${indentation}let documentTime: Double`, ""] : []),
+    ...(helper.animated && helper.eventDriven
+      ? [`${indentation}let animationIntervals: [String: [(begin: Double, end: Double)]]`, ""]
+      : []),
     `${indentation}var body: some View {`,
     `${i2}Canvas { context, size in`,
     `${i3}context.clip(to: Path(CGRect(x: ${formatNumber(node.viewport.x)}, y: ${formatNumber(node.viewport.y)}, width: ${formatNumber(node.viewport.width)}, height: ${formatNumber(node.viewport.height)})).applying(${runtimeTransform(helper.transform, coordinateSpace)}))`,
@@ -5311,11 +5587,15 @@ function createView(
   indentationSize: number,
 ): string[] {
   const indentation = " ".repeat(indentationSize);
+  const eventDriven = dynamicTimingIds(document).size > 0;
   const animated =
     document.animationProgram.animations.length > 0 ||
     imageHelpers.some((helper) => helper.animated) ||
     filterImageHelpers.some((helper) => helper.animated);
   const content = [
+    ...(eventDriven
+      ? [`${indentation}let animationIntervals = Self.svgAnimationIntervals(events: animationEvents)`]
+      : []),
     `${indentation}ZStack {`,
     ...nodes.flatMap((node) => renderViewNode(node, 2, indentation)),
     `${indentation}}`,
@@ -5324,28 +5604,41 @@ function createView(
     ? [
         "private let documentTime: Double?",
         "private let respectsReducedMotion: Bool",
+        ...(eventDriven ? ["private let suppliedAnimationEvents: [SVGAnimationEvent]"] : []),
         "@StateObject private var animationClock = AnimationClockState()",
+        ...(eventDriven
+          ? [
+              "@State private var interactionAnimationEvents: [SVGAnimationEvent] = []",
+              "@State private var nextAnimationEventOrder = 0",
+              "@State private var activePointerTargets: Set<String> = []",
+            ]
+          : []),
         "@Environment(\\.scenePhase) private var scenePhase",
         "@Environment(\\.accessibilityReduceMotion) private var reduceMotion",
         "",
-        "init(documentTime: Double? = nil, respectsReducedMotion: Bool = false) {",
+        eventDriven
+          ? "init(documentTime: Double? = nil, animationEvents: [SVGAnimationEvent] = [], respectsReducedMotion: Bool = false) {"
+          : "init(documentTime: Double? = nil, respectsReducedMotion: Bool = false) {",
         `${indentation}self.documentTime = documentTime`,
         `${indentation}self.respectsReducedMotion = respectsReducedMotion`,
+        ...(eventDriven ? [`${indentation}self.suppliedAnimationEvents = animationEvents`] : []),
         "}",
         "",
         "@ViewBuilder",
-        "private func content(at documentTime: Double) -> some View {",
+        eventDriven
+          ? "private func content(at documentTime: Double, animationEvents: [SVGAnimationEvent]) -> some View {"
+          : "private func content(at documentTime: Double) -> some View {",
         ...content,
         "}",
         "",
         "var body: some View {",
         `${indentation}if let documentTime {`,
-        `${indentation}${indentation}content(at: Self.sanitizedDocumentTime(documentTime))`,
+        `${indentation}${indentation}content(at: Self.sanitizedDocumentTime(documentTime)${eventDriven ? ", animationEvents: suppliedAnimationEvents + interactionAnimationEvents" : ""})`,
         `${indentation}} else if respectsReducedMotion && reduceMotion {`,
-        `${indentation}${indentation}content(at: 0)`,
+        `${indentation}${indentation}content(at: 0${eventDriven ? ", animationEvents: suppliedAnimationEvents + interactionAnimationEvents" : ""})`,
         `${indentation}} else {`,
         `${indentation}${indentation}TimelineView(.animation(paused: scenePhase != .active)) { timeline in`,
-        `${indentation}${indentation}${indentation}content(at: animationClock.sample(date: timeline.date, isActive: scenePhase == .active))`,
+        `${indentation}${indentation}${indentation}content(at: animationClock.sample(date: timeline.date, isActive: scenePhase == .active)${eventDriven ? ", animationEvents: suppliedAnimationEvents + interactionAnimationEvents" : ""})`,
         `${indentation}${indentation}}`,
         `${indentation}}`,
         "}",
@@ -5354,6 +5647,37 @@ function createView(
         `${indentation}value.isFinite ? value : 0`,
         "}",
         "",
+        ...(document.animationProgram.animations.some((animation) => animation.kind === "discard")
+          ? [
+              "private static func svgIsDiscarded(documentTime: Double, intervals: [(begin: Double, end: Double)]) -> Bool {",
+              `${indentation}let time = sanitizedDocumentTime(documentTime)`,
+              `${indentation}return intervals.contains { time >= $0.begin }`,
+              "}",
+              "",
+            ]
+          : []),
+        ...(eventDriven
+          ? [
+              "private func recordAnimationEvent(name: String, targetID: String, documentTime: Double) {",
+              `${indentation}let event = SVGAnimationEvent(time: Self.sanitizedDocumentTime(documentTime), name: name.lowercased(), targetID: targetID, order: nextAnimationEventOrder)`,
+              `${indentation}nextAnimationEventOrder += 1`,
+              `${indentation}interactionAnimationEvents.append(event)`,
+              `${indentation}if interactionAnimationEvents.count > 4096 { interactionAnimationEvents.removeFirst(interactionAnimationEvents.count - 4096) }`,
+              "}",
+              "",
+              "private func recordPointerTransition(targetID: String, names: [String], active: Bool, documentTime: Double) {",
+              `${indentation}if active {`,
+              `${indentation}${indentation}guard activePointerTargets.insert(targetID).inserted else { return }`,
+              `${indentation}} else {`,
+              `${indentation}${indentation}guard activePointerTargets.remove(targetID) != nil else { return }`,
+              `${indentation}}`,
+              `${indentation}for name in names { recordAnimationEvent(name: name, targetID: targetID, documentTime: documentTime) }`,
+              "}",
+              "",
+              ...eventTimingSupport(document, indentationSize),
+              "",
+            ]
+          : []),
         "private enum SVGTimingState: Equatable { case inactive, active, frozen, completed }",
         "",
         "private struct SVGTimingSample {",
@@ -5884,7 +6208,18 @@ function createView(
       name: helper.name,
       indent: indentationSize,
       returnType: "Shape",
-      body: helper.animated ? ["let documentTime: Double", "", ...pathFunction] : pathFunction,
+      body: helper.animated
+        ? [
+            "let documentTime: Double",
+            ...(document.animationProgram.animations.some((animation) =>
+              [...animation.timing.begin, ...animation.timing.end].some((time) => time.type === "event"),
+            )
+              ? ["let animationIntervals: [String: [(begin: Double, end: Double)]]"]
+              : []),
+            "",
+            ...pathFunction,
+          ]
+        : pathFunction,
     });
     layerStruct[0] = `private ${layerStruct[0]}`;
     body.push("", ...layerStruct);
@@ -5952,6 +6287,8 @@ export function generateView(
     rootName: config.structName ?? "SVGView",
     config,
     animationIntervals: sampleSMILProgram(document.animationProgram, 0).intervals,
+    dynamicTimingIds: dynamicTimingIds(document),
+    eventTargets: animationEventTargets(document),
   };
   const nodes = buildViewNodes(document.children, context);
   const imports = new Set<string>();

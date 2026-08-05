@@ -10,13 +10,16 @@ The implementation follows the W3C [SMIL timing model](https://www.w3.org/TR/SMI
 - semicolon-separated `begin` and `end` lists
 - syncbase `id.begin` and `id.end` references with offsets
 - `id.repeat(n)` references
-- deterministic eventbase references supplied as `{ time, targetId, name, order }`
+- deterministic eventbase references supplied as `{ time, targetId, name, order, payload }`
+- lifecycle aliases `id.beginEvent`, `id.endEvent`, and `id.repeatEvent`
 - finite or indefinite `dur`, `repeatCount`, and `repeatDur`
 - `min`, `max`, `restart="always|whenNotActive|never"`, and `fill="remove|freeze"`
 
 The sample reports inactive, active, frozen, or completed state; simple time and progress; active/simple duration; repeat iteration; exact begin/end/repeat boundaries; selected begin; and the effective interval. Equal timestamps use dependency order, document order, then event input order.
 
 Dependency cycles and missing references remain unresolved and produce source-located diagnostics. They never recurse at runtime.
+
+Supported native events, production adapters, ordering, and `<discard>` removal are specified in the [event timing and discard contract](event-timing-discard.md).
 
 ## Deterministic fallbacks
 

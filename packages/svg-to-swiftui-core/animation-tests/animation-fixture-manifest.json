@@ -93,6 +93,20 @@
         "sampleTimesMicroseconds": [0, 299999, 300000, 399999, 400000, 799999, 800000]
       }
     },
+    "event-discard-interactions": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 96,
+      "height": 48,
+      "expectedMode": "view",
+      "tags": ["accessibility", "clip", "deterministic-events", "discard", "eventbase", "transform", "use"],
+      "events": [{ "timeMicroseconds": 300000, "targetId": "trigger", "name": "click", "order": 0 }],
+      "timeline": {
+        "durationMicroseconds": 1000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 299999, 300000, 499999, 500000, 699999, 700000, 899999, 900001, 1000000]
+      }
+    },
     "reference-smil-edge-cases": {
       "mode": "reference-probe",
       "referenceBackend": "webkit",
