@@ -3411,36 +3411,27 @@ interface ViewRenderContext {
   nextPatternRenderer: number;
   transformRenderers: string[][];
   nextTransformRenderer: number;
-  viewRenderers: string[][];
-  nextViewRenderer: number;
+  nextViewBinding: number;
   animated: boolean;
   eventDriven: boolean;
 }
 
 const MAX_INLINE_ANIMATED_GROUP_CHILDREN = 4;
 
-function renderExtractedViewNode(
+function renderBoundViewNode(
   node: GeneratedViewNode,
+  level: number,
   indentation: string,
   renderContext: ViewRenderContext,
-): string {
-  const rendererName = `renderView${renderContext.nextViewRenderer++}`;
-  const rendererParameters = [
-    "documentTime: Double",
-    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
-  ].join(", ");
-  const rendererArguments = [
-    "documentTime: documentTime",
-    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
-  ].join(", ");
-  const rendererBody = renderViewNode(node, 1, indentation, renderContext);
-  renderContext.viewRenderers.push([
-    "@ViewBuilder",
-    `private func ${rendererName}(${rendererParameters}) -> some View {`,
-    ...rendererBody,
-    "}",
-  ]);
-  return `${rendererName}(${rendererArguments})`;
+): string[] {
+  const prefix = indentation.repeat(level);
+  const bindingName = `renderedView${renderContext.nextViewBinding++}`;
+  const rendered = renderViewNode(node, level, indentation, renderContext);
+  return [
+    `${prefix}let ${bindingName} = ${rendered[0]!.slice(prefix.length)}`,
+    ...rendered.slice(1),
+    `${prefix}${bindingName}`,
+  ];
 }
 
 function renderAnimatedTransform(expression: string, indentation: string, renderContext: ViewRenderContext): string {
@@ -3960,8 +3951,8 @@ function renderViewNode(
   if (!node.filter) {
     const extractChildren = renderContext.animated && node.children.length > MAX_INLINE_ANIMATED_GROUP_CHILDREN;
     for (const child of node.children) {
-      if (extractChildren)
-        lines.push(`${prefix}${indentation}${renderExtractedViewNode(child, indentation, renderContext)}`);
+      if (extractChildren && !(child.type === "group" && child.presentationCondition))
+        lines.push(...renderBoundViewNode(child, level + 1, indentation, renderContext));
       else lines.push(...renderViewNode(child, level + 1, indentation, renderContext));
     }
     lines.push(`${prefix}}`);
@@ -5772,8 +5763,7 @@ function createView(
     nextPatternRenderer: 0,
     transformRenderers: [],
     nextTransformRenderer: 0,
-    viewRenderers: [],
-    nextViewRenderer: 0,
+    nextViewBinding: 0,
     animated,
     eventDriven,
   };
@@ -6386,7 +6376,6 @@ function createView(
   for (const renderer of renderContext.patternRenderers) body.push("", ...renderer);
   for (const renderer of renderContext.filterRenderers) body.push("", ...renderer);
   for (const renderer of renderContext.transformRenderers) body.push("", ...renderer);
-  for (const renderer of renderContext.viewRenderers) body.push("", ...renderer);
   for (const helper of helpers) {
     const pathFunction = createFunctionTemplate({
       name: "path",

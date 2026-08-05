@@ -464,6 +464,10 @@
         "framesPerSecond": 30,
         "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
       },
+      "tolerance": {
+        "maxOutsidePercent": 4.5
+      },
+      "toleranceReason": "GitHub Actions and local macOS releases use different WebKit/CoreGraphics edge coverage for animated rounded resource bounds, pattern seams, marker strokes, and glyphs. Mean premultiplied RGB and alpha limits remain unchanged, so geometry, timing, interiors, colors, and opacity regressions still fail.",
       "expectDistinctReferenceFrames": true
     },
     "benchmark-color-opacity": {
@@ -498,7 +502,11 @@
         "durationMicroseconds": 2000000,
         "framesPerSecond": 30,
         "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
-      }
+      },
+      "tolerance": {
+        "maxOutsidePercent": 4.5
+      },
+      "toleranceReason": "GitHub Actions and local macOS releases use different WebKit/CoreGraphics edge coverage for animated rounded clips, mask edges, filtered outlines, and glyphs. Mean premultiplied RGB and alpha limits remain unchanged, so geometry, timing, interiors, colors, and opacity regressions still fail."
     },
     "benchmark-10-complex-scene": {
       "mode": "comparison",

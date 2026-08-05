@@ -276,8 +276,8 @@ describe("generated animation clock", () => {
       strict: true,
     });
 
-    expect(swift).toContain("renderView0(documentTime: documentTime)");
-    expect(swift).toContain("@ViewBuilder\n    private func renderView0(documentTime: Double) -> some View {");
+    expect(swift).toContain("let renderedView0 =");
+    expect(swift.match(/\brenderedView0\b/g)).toHaveLength(2);
   });
 
   test("keeps static output on the Shape fast path without animation runtime code", () => {
