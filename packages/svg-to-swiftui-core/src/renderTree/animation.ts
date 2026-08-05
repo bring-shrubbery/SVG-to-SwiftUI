@@ -1,5 +1,12 @@
 import type { ElementNode } from "svg-parser";
+import {
+  type CSSAnimationInstance,
+  type CSSTimingFunction,
+  parseCSSAnimationInstances,
+  parseCSSTimingFunction,
+} from "../cssAnimations";
 import { defaultFontMetrics } from "../lengths";
+import { type CSSKeyframesRule, substituteVariables } from "../styleCascade";
 import { parseViewBox } from "../viewports";
 import {
   type AnimateTransformType,
@@ -8,6 +15,7 @@ import {
   type AnimationValueSet,
   animationAttributeSpec,
   parseAnimateTransformValueSet,
+  parseAnimationValue,
   parseAnimationValueSet,
   parseKeySplines,
   parseKeyTimes,
@@ -19,7 +27,7 @@ import { type MotionDefinition, parseMotionDefinition } from "./motion";
 import { type DeterministicTimingEvent, sampleSMILProgram, sampleSMILTiming } from "./smilTiming";
 import type { RenderDiagnostic, SourceLocation } from "./types";
 
-export type AnimationKind = "animate" | "set" | "animateTransform" | "animateMotion" | "discard";
+export type AnimationKind = "animate" | "set" | "animateTransform" | "animateMotion" | "discard" | "cssAnimation";
 
 export type AnimationTime =
   | { type: "offset"; seconds: number }
@@ -77,6 +85,18 @@ export interface AnimationTargetSnapshot {
   context: AnimationValueContext;
   /** Computed static presentation/geometry values, after cascade and inheritance. */
   baseValues: Readonly<Record<string, string>>;
+  importantProperties?: Readonly<Record<string, true>>;
+}
+
+export interface CSSAnimationRuntime {
+  name: string;
+  duration: number;
+  delay: number;
+  iterationCount: number;
+  direction: CSSAnimationInstance["direction"];
+  fillMode: CSSAnimationInstance["fillMode"];
+  playState: CSSAnimationInstance["playState"];
+  segmentTimingFunctions: readonly CSSTimingFunction[];
 }
 
 export interface AnimationDefinition {
@@ -87,6 +107,7 @@ export interface AnimationDefinition {
   kind: AnimationKind;
   transformType?: AnimateTransformType;
   motion?: MotionDefinition;
+  cssAnimation?: CSSAnimationRuntime;
   authoredAttributeName?: string;
   attributeName?: string;
   attributeType: "auto" | "XML" | "CSS";
@@ -313,7 +334,11 @@ function parseValue(
 }
 
 function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSupport">): boolean {
-  if (!(["animate", "set", "animateTransform", "animateMotion"] as AnimationKind[]).includes(definition.kind))
+  if (
+    !(["animate", "set", "animateTransform", "animateMotion", "cssAnimation"] as AnimationKind[]).includes(
+      definition.kind,
+    )
+  )
     return false;
   const attribute = definition.attributeName ? resolveAnimationAttribute(definition.attributeName) : undefined;
   const resourceSupported =
@@ -329,7 +354,7 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
     !definition.target?.renderable ||
     (!renderNodeSupported && !resourceSupported) ||
     !definition.attributeName ||
-    (definition.attributeName === "transform" && definition.kind !== "animateTransform") ||
+    (definition.attributeName === "transform" && !["animateTransform", "cssAnimation"].includes(definition.kind)) ||
     !propertyAppliesToTarget(definition.attributeName, definition.target.tagName)
   )
     return false;
@@ -373,6 +398,7 @@ export function buildAnimationProgram(
   root: ElementNode,
   diagnostics: RenderDiagnostic[],
   targetSnapshots: ReadonlyMap<string, AnimationTargetSnapshot> = new Map(),
+  cssKeyframes: ReadonlyMap<string, CSSKeyframesRule> = new Map(),
 ): AnimationProgram {
   let parsedRootViewBox: ReturnType<typeof parseViewBox>;
   try {
@@ -944,6 +970,155 @@ export function buildAnimationProgram(
         "unsupported-animation-semantics",
         `Animation <${element.tagName}> is parsed by the value engine but target wiring is delivered by a later ticket.`,
       );
+  }
+
+  for (const targetElement of order.keys()) {
+    const targetKey = property(targetElement, "id")
+      ? `id:${property(targetElement, "id")}`
+      : `source:${order.get(targetElement)}`;
+    const targetSnapshot = targetSnapshots.get(targetKey);
+    if (!targetSnapshot) continue;
+    const parsed = parseCSSAnimationInstances(targetSnapshot.baseValues);
+    for (const message of parsed.errors)
+      diagnostic(diagnostics, targetElement, "invalid-css-animation", message, "animation");
+    for (const instance of parsed.instances) {
+      const rule = cssKeyframes.get(instance.name);
+      if (!rule) {
+        diagnostic(
+          diagnostics,
+          targetElement,
+          "missing-css-keyframes",
+          `animation-name '${instance.name}' does not match an @keyframes rule.`,
+          "animation-name",
+        );
+        continue;
+      }
+      const properties = new Set(rule.blocks.flatMap((block) => block.declarations.map((item) => item.property)));
+      for (const attributeName of properties) {
+        if (attributeName.startsWith("--")) continue;
+        if (targetSnapshot.importantProperties?.[attributeName]) continue;
+        const attribute = resolveAnimationAttribute(attributeName, "CSS");
+        if (!attribute || !attribute.animatable || !propertyAppliesToTarget(attributeName, targetSnapshot.tagName)) {
+          diagnostic(
+            diagnostics,
+            targetElement,
+            "non-animatable-css-property",
+            `CSS keyframes cannot animate '${attributeName}' on <${targetSnapshot.tagName}>.`,
+            attributeName,
+          );
+          continue;
+        }
+        const baseRaw = targetSnapshot.baseValues[attributeName];
+        if (baseRaw === undefined) continue;
+        const base = parseAnimationValue(attribute, baseRaw, targetSnapshot.context);
+        if (!base) {
+          diagnostic(
+            diagnostics,
+            targetElement,
+            "invalid-css-animation-base-value",
+            `The computed '${attributeName}' value '${baseRaw}' cannot be animated.`,
+            attributeName,
+          );
+          continue;
+        }
+        const entries: Array<{ offset: number; value: typeof base; timingFunction: CSSTimingFunction }> = [];
+        for (const block of rule.blocks) {
+          const declaration = [...block.declarations].reverse().find((item) => item.property === attributeName);
+          if (!declaration) continue;
+          const resolved = substituteVariables(declaration.value, (name) => {
+            const value = targetSnapshot.baseValues[name];
+            return value === undefined ? undefined : String(value);
+          });
+          const value = resolved ? parseAnimationValue(attribute, resolved, targetSnapshot.context) : undefined;
+          const timingFunction = block.timingFunction
+            ? parseCSSTimingFunction(block.timingFunction)
+            : instance.timingFunction;
+          if (!value || !timingFunction) {
+            diagnostic(
+              diagnostics,
+              targetElement,
+              "invalid-css-keyframe-value",
+              `The ${Math.round(block.offset * 100)}% '${attributeName}' keyframe is invalid and is ignored.`,
+              attributeName,
+            );
+            continue;
+          }
+          entries.push({ offset: block.offset, value, timingFunction });
+        }
+        if (!entries.some((entry) => entry.offset === 0))
+          entries.unshift({ offset: 0, value: base, timingFunction: instance.timingFunction });
+        if (!entries.some((entry) => entry.offset === 1))
+          entries.push({ offset: 1, value: base, timingFunction: instance.timingFunction });
+        entries.sort((left, right) => left.offset - right.offset);
+        if (entries.length < 2) continue;
+        const sourceLocation = source(targetElement);
+        const target: AnimationTarget = {
+          key: targetKey,
+          source: sourceLocation,
+          reference: { type: "parent" },
+          renderable: true,
+          tagName: targetSnapshot.tagName,
+          binding: targetSnapshot.binding ?? "render-node",
+          referenceChain: (() => {
+            const chain: SourceLocation[] = [];
+            let current: ElementNode | undefined = targetElement;
+            while (current) {
+              chain.push(source(current));
+              current = parents.get(current);
+            }
+            return chain;
+          })(),
+        };
+        const documentOrder = nextOrder++;
+        const value: AnimationValueSet = {
+          family: attribute.family,
+          attribute,
+          base,
+          values: entries.map((entry) => entry.value),
+          form: "values",
+        };
+        const definition: AnimationDefinition = {
+          stableId: `css-animation-${String(documentOrder).padStart(6, "0")}`,
+          source: sourceLocation,
+          target,
+          kind: "cssAnimation",
+          cssAnimation: {
+            name: instance.name,
+            duration: instance.duration,
+            delay: instance.delay,
+            iterationCount: instance.iterationCount,
+            direction: instance.direction,
+            fillMode: instance.fillMode,
+            playState: instance.playState,
+            segmentTimingFunctions: entries.slice(0, -1).map((entry) => entry.timingFunction),
+          },
+          authoredAttributeName: attributeName,
+          attributeName,
+          attributeType: "CSS",
+          timing: {
+            begin: [{ type: "offset", seconds: instance.delay }],
+            duration: { type: "seconds", seconds: instance.duration },
+            end: [],
+            repeatCount: Number.isFinite(instance.iterationCount)
+              ? { type: "count", value: instance.iterationCount }
+              : { type: "indefinite" },
+            restart: "always",
+            fill: instance.fillMode === "forwards" || instance.fillMode === "both" ? "freeze" : "remove",
+          },
+          value,
+          composition: {
+            calcMode: attribute.family === "discrete" ? "discrete" : "linear",
+            keyTimes: entries.map((entry) => entry.offset),
+            additive: "replace",
+            accumulate: "none",
+          },
+          documentOrder,
+          dependencies: [],
+          runtimeSupport: "typed",
+        };
+        animations.push(definition);
+      }
+    }
   }
 
   const compositions = new Map<string, AnimationDefinition[]>();

@@ -1,9 +1,10 @@
 import { compile, type Options as SelectorOptions } from "css-select";
-import postcss, { type Container, type Declaration, type Rule } from "postcss";
+import postcss, { type AtRule, type Container, type Declaration, type Rule } from "postcss";
 import safeParse from "postcss-safe-parser";
 import selectorParser, { type Selector, type Node as SelectorNode } from "postcss-selector-parser";
 import valueParser, { type Node as ValueNode } from "postcss-value-parser";
 import type { ElementNode, TextNode } from "svg-parser";
+import { CSS_ANIMATION_LONGHANDS, type CSSAnimationLonghand, parseAnimationShorthand } from "./cssAnimations";
 import type { CSSDiagnosticContext, RenderDiagnostic, SourceLocation } from "./renderTree/types";
 import {
   canonicalPropertyName,
@@ -21,6 +22,25 @@ export interface StyleResolution {
   inheritedProperties: Readonly<Record<string, true>>;
   /** Paint properties whose winning authored value depends on `color`. */
   currentColorProperties: Readonly<Record<string, true>>;
+  /** Properties protected from animation by an author !important declaration. */
+  importantProperties: Readonly<Record<string, true>>;
+}
+
+export interface CSSKeyframeDeclaration {
+  property: string;
+  value: string;
+  css: CSSDiagnosticContext;
+}
+
+export interface CSSKeyframeBlock {
+  offset: number;
+  declarations: readonly CSSKeyframeDeclaration[];
+  timingFunction?: string;
+}
+
+export interface CSSKeyframesRule {
+  name: string;
+  blocks: readonly CSSKeyframeBlock[];
 }
 
 type StyleNode = ElementNode | TextNode | string;
@@ -32,6 +52,7 @@ interface CascadedDeclaration {
   specificity: Specificity;
   order: number;
   css: CSSDiagnosticContext;
+  animationShorthand?: true;
 }
 
 interface Specificity {
@@ -141,7 +162,10 @@ function replaceNodeWithWord(node: ValueNode, value: string): void {
   if ("nodes" in node) delete (node as ValueNode & { nodes?: ValueNode[] }).nodes;
 }
 
-function substituteVariables(raw: string, resolveCustom: (name: string) => string | undefined): string | undefined {
+export function substituteVariables(
+  raw: string,
+  resolveCustom: (name: string) => string | undefined,
+): string | undefined {
   const parsed = valueParser(raw);
   let valid = true;
 
@@ -193,6 +217,7 @@ function declarationNodes(container: Container): Declaration[] {
  */
 export class SVGStyleResolver {
   private readonly rules: CompiledRule[] = [];
+  private readonly keyframes = new Map<string, CSSKeyframesRule>();
   private readonly elements: ElementNode[] = [];
   private readonly parent = new WeakMap<object, ElementNode | null>();
   private readonly ownDeclarations = new WeakMap<
@@ -344,6 +369,10 @@ export class SVGStyleResolver {
   private collectContainerRules(container: Container, styleElement: ElementNode): void {
     for (const node of container.nodes ?? []) {
       if (node.type === "atrule") {
+        if (["keyframes", "-webkit-keyframes"].includes(node.name.toLowerCase())) {
+          this.collectKeyframes(node, styleElement);
+          continue;
+        }
         const code = node.name.toLowerCase() === "media" ? "unsupported-dynamic-media" : "unsupported-css-at-rule";
         this.diagnostic(styleElement, code, `Static style resolution does not support @${node.name} ${node.params}.`, {
           source: "embedded-style",
@@ -355,6 +384,92 @@ export class SVGStyleResolver {
       }
       if (node.type === "rule") this.compileRule(node, styleElement);
     }
+  }
+
+  private collectKeyframes(rule: AtRule, styleElement: ElementNode): void {
+    const name = rule.params.trim().replace(/^(?:"([\s\S]*)"|'([\s\S]*)')$/, "$1$2");
+    if (!name || name.toLowerCase() === "none") {
+      this.diagnostic(styleElement, "invalid-css-keyframes-name", `@${rule.name} requires a valid name.`, {
+        source: "embedded-style",
+        selector: `@${rule.name} ${rule.params}`.trim(),
+      });
+      return;
+    }
+    const byOffset = new Map<number, CSSKeyframeDeclaration[]>();
+    const timingByOffset = new Map<number, string>();
+    for (const node of rule.nodes ?? []) {
+      if (node.type !== "rule") continue;
+      const offsets: number[] = [];
+      let valid = true;
+      for (const selector of node.selector.split(",")) {
+        const value = selector.trim().toLowerCase();
+        const offset =
+          value === "from"
+            ? 0
+            : value === "to"
+              ? 1
+              : /^\d+(?:\.\d+)?%$/.test(value)
+                ? Number(value.slice(0, -1)) / 100
+                : Number.NaN;
+        if (!Number.isFinite(offset) || offset < 0 || offset > 1) {
+          valid = false;
+          this.diagnostic(
+            styleElement,
+            "invalid-css-keyframe-selector",
+            `Invalid keyframe selector '${selector.trim()}'.`,
+            {
+              source: "embedded-style",
+              selector: node.selector,
+            },
+          );
+        } else offsets.push(offset);
+      }
+      if (!valid) continue;
+      for (const offset of offsets) if (!byOffset.has(offset)) byOffset.set(offset, []);
+      for (const declaration of declarationNodes(node)) {
+        const property = canonicalPropertyName(declaration.prop);
+        const css: CSSDiagnosticContext = {
+          source: "embedded-style",
+          selector: node.selector,
+          property,
+          ...(declaration.source?.start?.line === undefined ? {} : { line: declaration.source.start.line }),
+          ...(declaration.source?.start?.column === undefined ? {} : { column: declaration.source.start.column }),
+        };
+        if (declaration.important) {
+          this.diagnostic(
+            styleElement,
+            "ignored-keyframe-important",
+            `!important is ignored inside @keyframes for '${property}'.`,
+            css,
+          );
+          continue;
+        }
+        if (property === "animation-timing-function") {
+          for (const offset of offsets) timingByOffset.set(offset, declaration.value.trim());
+          continue;
+        }
+        if (property === "animation" || CSS_ANIMATION_LONGHANDS.includes(property as CSSAnimationLonghand)) continue;
+        for (const offset of offsets) {
+          const declarations = byOffset.get(offset) ?? [];
+          declarations.push({ property, value: declaration.value.trim(), css });
+          byOffset.set(offset, declarations);
+        }
+      }
+    }
+    this.keyframes.set(name, {
+      name,
+      blocks: [...byOffset.entries()]
+        .sort(([left], [right]) => left - right)
+        .map(([offset, declarations]) => ({
+          offset,
+          declarations,
+          ...(timingByOffset.get(offset) ? { timingFunction: timingByOffset.get(offset) } : {}),
+        })),
+    });
+  }
+
+  animationKeyframes(): ReadonlyMap<string, CSSKeyframesRule> {
+    return this.keyframes;
   }
 
   private compileRule(rule: Rule, styleElement: ElementNode): void {
@@ -427,7 +542,12 @@ export class SVGStyleResolver {
         ...(declaration.source?.start?.line === undefined ? {} : { line: declaration.source.start.line }),
         ...(declaration.source?.start?.column === undefined ? {} : { column: declaration.source.start.column }),
       };
-      if (!property.startsWith("--") && !isStyleProperty(property) && property !== "marker") {
+      if (
+        !property.startsWith("--") &&
+        !isStyleProperty(property) &&
+        property !== "marker" &&
+        property !== "animation"
+      ) {
         if (allowForeignObjectCSS) continue;
         this.diagnostic(
           sourceElement,
@@ -441,7 +561,12 @@ export class SVGStyleResolver {
         this.diagnostic(sourceElement, "invalid-css-declaration", `Property '${property}' has an empty value.`, css);
         continue;
       }
-      const targets = property === "marker" ? ["marker-start", "marker-mid", "marker-end"] : [property];
+      const targets =
+        property === "marker"
+          ? ["marker-start", "marker-mid", "marker-end"]
+          : property === "animation"
+            ? [...CSS_ANIMATION_LONGHANDS]
+            : [property];
       for (const target of targets) {
         result.push({
           property: target,
@@ -449,6 +574,7 @@ export class SVGStyleResolver {
           important: Boolean(declaration.important),
           order: this.order++,
           css: { ...css, property: target },
+          ...(property === "animation" ? { animationShorthand: true as const } : {}),
         });
       }
     }
@@ -480,6 +606,7 @@ export class SVGStyleResolver {
     for (const [rawName, rawValue] of Object.entries(element.properties ?? {})) {
       const property = canonicalPropertyName(rawName);
       if (!StylePropertiesSet.has(property) && property !== "marker") continue;
+      if (CSS_ANIMATION_LONGHANDS.includes(property as CSSAnimationLonghand)) continue;
       const value = String(rawValue).trim();
       const css: CSSDiagnosticContext = { source: "presentation-attribute", property };
       if (/!\s*important\s*$/i.test(value)) {
@@ -586,6 +713,7 @@ export class SVGStyleResolver {
     const values: Presentation = {};
     const provenance: Record<string, CSSDiagnosticContext> = {};
     const inheritedProperties: Record<string, true> = {};
+    const importantProperties: Record<string, true> = {};
     for (const name of new Set([
       ...Object.keys(inheritedCustom),
       ...[...winners.keys()].filter((property) => property.startsWith("--")),
@@ -609,12 +737,18 @@ export class SVGStyleResolver {
               ? "hidden"
               : definition.initial;
       } else {
-        const substituted = substituteVariables(winner.value, resolveCustom);
+        const substitutedRaw = substituteVariables(winner.value, resolveCustom);
+        const substituted =
+          winner.animationShorthand && substitutedRaw !== undefined
+            ? parseAnimationShorthand(substitutedRaw)?.[property as CSSAnimationLonghand]
+            : substitutedRaw;
         if (substituted === undefined) {
           this.diagnostic(
             element,
-            "invalid-css-variable",
-            `Property '${property}' is invalid after var() substitution.`,
+            substitutedRaw === undefined ? "invalid-css-variable" : "invalid-css-animation-shorthand",
+            substitutedRaw === undefined
+              ? `Property '${property}' is invalid after var() substitution.`
+              : `The animation shorthand '${substitutedRaw}' is invalid.`,
             winner.css,
           );
           value = definition.inherited && inherited[property] !== undefined ? inherited[property]! : definition.initial;
@@ -632,6 +766,7 @@ export class SVGStyleResolver {
           } else value = substituted;
         }
         provenance[property] = winner.css;
+        if (winner.important) importantProperties[property] = true;
       }
       values[property] = value;
     }
@@ -649,6 +784,6 @@ export class SVGStyleResolver {
     for (const property of ["fill", "stroke", "stop-color", "flood-color", "lighting-color", "solid-color"] as const) {
       values[property] = resolveCurrentColor(values[property]!, color);
     }
-    return { values, provenance, inheritedProperties, currentColorProperties };
+    return { values, provenance, inheritedProperties, currentColorProperties, importantProperties };
   }
 }

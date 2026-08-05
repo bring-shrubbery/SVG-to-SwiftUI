@@ -350,6 +350,39 @@
         ]
       },
       "expectDistinctReferenceFrames": true
+    },
+    "benchmark-08-css-keyframes": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 160,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "alternate",
+        "benchmark-08",
+        "css-keyframes",
+        "custom-properties",
+        "fill-mode",
+        "important",
+        "implicit-endpoints",
+        "keyframe-easing",
+        "list-matching",
+        "mixed-css-smil",
+        "multiple-names",
+        "negative-delay",
+        "reverse",
+        "steps",
+        "transform"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [
+          0, 249999, 250000, 499999, 500000, 749999, 750000, 999999, 1000000, 1000001, 1249999, 1250000, 1499999,
+          1500000, 1749999, 1750000, 1999999, 2000000
+        ]
+      },
+      "expectDistinctReferenceFrames": true
     }
   }
 }

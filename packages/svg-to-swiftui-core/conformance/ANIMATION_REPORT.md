@@ -2,7 +2,7 @@
 
 Generated from `ANIMATION_ATTRIBUTE_REGISTRY`. Do not edit by hand.
 
-This report describes declarative animation wiring. Attribute rows cover `<animate>` and `<set>`; specialized animation elements are listed separately.
+This report describes declarative animation wiring. Attribute rows cover `<animate>`, `<set>`, and CSS `@keyframes`; specialized animation systems are listed separately.
 
 ## Summary
 
@@ -126,3 +126,4 @@ This report describes declarative animation wiring. Attribute rows cover `<anima
 | --- | --- | --- |
 | `<animateTransform>` | implemented | typed parser/sampler/composition tests; 18-frame `benchmark-06-animate-transform` |
 | `<animateMotion>` / `<mpath>` | implemented | metric/parser/composition tests; 18-frame `benchmark-07-animate-motion` |
+| CSS `@keyframes` | implemented | cascade/timing/value tests; 18-frame `benchmark-08-css-keyframes` |

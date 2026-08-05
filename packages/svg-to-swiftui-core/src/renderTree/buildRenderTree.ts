@@ -488,6 +488,7 @@ function computeStyle(
   isLine = false,
   inheritedProperties: StyleResolution["inheritedProperties"] = {},
   currentColorProperties: StyleResolution["currentColorProperties"] = {},
+  importantProperties: StyleResolution["importantProperties"] = {},
 ): ComputedStyle {
   effective["font-size"] = fontMetrics.fontSize;
   const styleCoordinate = { ...coordinate, fontMetrics };
@@ -627,6 +628,7 @@ function computeStyle(
     provenance,
     inheritedProperties,
     currentColorProperties,
+    importantProperties,
   };
 }
 
@@ -667,6 +669,7 @@ function resolvedPresentation(
       element.tagName === "line",
       resolution.inheritedProperties,
       resolution.currentColorProperties,
+      resolution.importantProperties,
     ),
     provenance: resolution.provenance,
   };
@@ -3268,6 +3271,7 @@ export function buildRenderDocument(
                 : "sRGB",
           },
           baseValues: animationBaseValues(node),
+          importantProperties: node.style.importantProperties,
         });
       if (node.type === "group") collectAnimationTargetSnapshots(node.children);
     }
@@ -3292,10 +3296,16 @@ export function buildRenderDocument(
           colorSpace: paint.colorInterpolation,
         },
         baseValues: stop.animationBaseValues ?? {},
+        importantProperties: {},
       });
     }
   }
-  const animationProgram = buildAnimationProgram(svg, diagnostics, animationTargetSnapshots);
+  const animationProgram = buildAnimationProgram(
+    svg,
+    diagnostics,
+    animationTargetSnapshots,
+    styleResolver.animationKeyframes(),
+  );
 
   return {
     viewport: {

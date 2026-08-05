@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#0f172a"/>
+  <style>
+    :root { --travel: 68px; --hot: #fb7185; }
+    @keyframes slide {
+      from { x: 10px; }
+      45% { x: var(--travel); animation-timing-function: cubic-bezier(.2, .8, .4, 1); }
+      to { x: 126px; }
+    }
+    @keyframes tint {
+      from { fill: #38bdf8; }
+      50% { fill: var(--hot); }
+      to { fill: #fbbf24; }
+    }
+    @keyframes hop {
+      from { transform: translate(0px, 0px); }
+      50% { transform: translate(42px, -8px); }
+      to { transform: translate(84px, 0px); }
+    }
+    @keyframes blink { from { opacity: .2; } to { opacity: 1; } }
+    @keyframes middle-only { 50% { opacity: 1; } }
+    @keyframes first-paint { from { fill: #ef4444; } to { fill: #ef4444; } }
+    @keyframes final-paint { from { fill: #a78bfa; } to { fill: #34d399; } }
+
+    #slider { animation: slide 2s linear both; }
+    #tint { animation: tint 1s ease-in-out -250ms 2 alternate both; }
+    #hop { animation: hop 2s cubic-bezier(.42, 0, .58, 1) both; }
+    #steps { animation: blink 1s steps(4, jump-both) 2 reverse both; }
+    #implicit { animation: middle-only 2s linear both; }
+    #ordered { animation-name: first-paint, final-paint; animation-duration: 2s; animation-fill-mode: both; }
+    #protected { opacity: .65 !important; animation: blink 1s linear infinite; }
+    #mixed { animation: blink 2s linear both; }
+  </style>
+
+  <rect id="slider" x="10" y="12" width="24" height="12" rx="4" fill="#22d3ee"/>
+  <circle id="tint" cx="30" cy="43" r="10" fill="#38bdf8"/>
+  <g id="hop"><path d="M12 72 L24 64 L36 72 L24 80 Z" fill="#f97316"/></g>
+  <rect id="steps" x="105" y="36" width="34" height="14" rx="3" fill="#e2e8f0" opacity=".2"/>
+  <circle id="implicit" cx="117" cy="71" r="10" fill="#60a5fa" opacity=".2"/>
+  <rect id="ordered" x="10" y="92" width="34" height="14" rx="3" fill="#a78bfa"/>
+  <rect id="protected" x="55" y="92" width="34" height="14" rx="3" fill="#f8fafc"/>
+  <circle id="mixed" cx="118" cy="99" r="9" fill="#facc15" opacity=".2">
+    <animate attributeName="opacity" from="1" to=".2" dur="2s" fill="freeze"/>
+  </circle>
+</svg>

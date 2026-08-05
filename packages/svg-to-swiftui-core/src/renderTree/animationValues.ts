@@ -516,20 +516,70 @@ function parsePath(source: string): AnimationPathCommand[] | undefined {
   }
 }
 
-function parseTransforms(source: string): AnimationTransformComponent[] | undefined {
+function parseTransforms(source: string, context?: AnimationValueContext): AnimationTransformComponent[] | undefined {
+  if (source.trim().toLowerCase() === "none") return [];
   const pattern = /([a-zA-Z]+)\s*\(([^)]*)\)/g;
   const components: AnimationTransformComponent[] = [];
   let last = 0;
+  let svgSyntax = true;
   try {
     parseSVGTransform(source);
   } catch {
-    return undefined;
+    svgSyntax = false;
   }
   for (const match of source.matchAll(pattern)) {
     if (!/^[\s,]*$/.test(source.slice(last, match.index))) return undefined;
     const rawKind = match[1]!.toLowerCase();
-    const kind = rawKind === "skewx" ? "skewX" : rawKind === "skewy" ? "skewY" : rawKind;
-    components.push({ kind: kind as AnimationTransformComponent["kind"], values: numbers(match[2]!) ?? [] });
+    if (svgSyntax) {
+      const kind = rawKind === "skewx" ? "skewX" : rawKind === "skewy" ? "skewY" : rawKind;
+      components.push({ kind: kind as AnimationTransformComponent["kind"], values: numbers(match[2]!) ?? [] });
+    } else {
+      if (!context) return undefined;
+      const tokens = match[2]!
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean);
+      const lengths = (axes: LengthAxis[]) =>
+        tokens.map((token, index) => parseLength(token, context, axes[Math.min(index, axes.length - 1)]));
+      const plain = tokens.map((token) => {
+        try {
+          return parsePlainNumber(token, "CSS transform number");
+        } catch {
+          return undefined;
+        }
+      });
+      if (rawKind === "translate" || rawKind === "translatex" || rawKind === "translatey") {
+        const parsed = lengths(rawKind === "translatey" ? ["vertical"] : ["horizontal", "vertical"]);
+        if (parsed.some((value) => value === undefined) || parsed.length < 1 || parsed.length > 2) return undefined;
+        components.push({
+          kind: "translate",
+          values:
+            rawKind === "translatex"
+              ? [parsed[0]!, 0]
+              : rawKind === "translatey"
+                ? [0, parsed[0]!]
+                : (parsed as number[]),
+        });
+      } else if (["scale", "scalex", "scaley"].includes(rawKind)) {
+        if (plain.some((value) => value === undefined) || plain.length < 1 || plain.length > 2) return undefined;
+        const first = plain[0]!;
+        components.push({
+          kind: "scale",
+          values: rawKind === "scalex" ? [first, 1] : rawKind === "scaley" ? [1, first] : [first, plain[1] ?? first],
+        });
+      } else if (rawKind === "rotate") {
+        const angle = tokens.length === 1 ? parseAngle(tokens[0]!) : undefined;
+        if (angle === undefined) return undefined;
+        components.push({ kind: "rotate", values: [angle] });
+      } else if (rawKind === "skewx" || rawKind === "skewy") {
+        const angle = tokens.length === 1 ? parseAngle(tokens[0]!) : undefined;
+        if (angle === undefined) return undefined;
+        components.push({ kind: rawKind === "skewx" ? "skewX" : "skewY", values: [angle] });
+      } else if (rawKind === "matrix") {
+        if (plain.length !== 6 || plain.some((value) => value === undefined)) return undefined;
+        components.push({ kind: "matrix", values: plain as number[] });
+      } else return undefined;
+    }
     last = (match.index ?? 0) + match[0].length;
   }
   return components.length > 0 && /^[\s,]*$/.test(source.slice(last)) ? components : undefined;
@@ -723,7 +773,7 @@ export function parseAnimationValue(
       }
     }
     case "transform": {
-      const components = parseTransforms(raw);
+      const components = parseTransforms(raw, context);
       return components ? { family: "transform", components } : undefined;
     }
     case "discrete":
