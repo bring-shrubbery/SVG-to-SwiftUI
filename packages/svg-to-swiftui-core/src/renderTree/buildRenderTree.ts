@@ -1035,11 +1035,13 @@ function buildText(
   }
   interface LengthScope {
     owner: ElementNode;
+    animationTargetKey: string;
     target: number;
     mode: RenderTextLengthAdjustment["mode"];
     characters: number[];
   }
   interface RawSegment {
+    animationTargetKey: string;
     text: string;
     preserveSpace: boolean;
     scopes: PositionScope[];
@@ -1239,6 +1241,7 @@ function buildText(
       if (sideValue !== "left" && sideValue !== "right")
         addDiagnostic(context, owner, "invalid-text-path-side", `Invalid textPath side '${sideValue}'.`);
       return {
+        animationTargetKey: animationTargetKey(owner, context),
         points: metrics.points,
         length: metrics.length,
         closed: metrics.closed,
@@ -1318,6 +1321,7 @@ function buildText(
           addDiagnostic(context, owner, "invalid-length-adjust", `Invalid lengthAdjust '${lengthAdjust}'.`);
         ownLengthScope = {
           owner,
+          animationTargetKey: animationTargetKey(owner, context),
           target: ownLength,
           mode: lengthAdjust === "spacingAndGlyphs" ? "spacingAndGlyphs" : "spacing",
           characters: [],
@@ -1365,6 +1369,7 @@ function buildText(
       .trim()
       .toLowerCase();
     const run: RawSegment["run"] = {
+      animationTargetKey: animationTargetKey(owner, context),
       font: {
         family: resolveTextFamily(owner, effective["font-family"], context),
         size,
@@ -1412,6 +1417,7 @@ function buildText(
       const decoded = textContent({ ...owner, children: [child] });
       if (!value && !decoded) continue;
       rawSegments.push({
+        animationTargetKey: animationTargetKey(owner, context),
         text: decoded,
         preserveSpace,
         scopes,
@@ -1493,6 +1499,7 @@ function buildText(
       previous.segment.writingMode !== character.segment.writingMode;
     if (startsChunk) {
       chunks.push({
+        animationTargetKey: character.segment.animationTargetKey,
         ...(character.x === undefined ? {} : { x: character.x }),
         ...(character.y === undefined ? {} : { y: character.y }),
         anchor: character.segment.anchor,
@@ -1533,9 +1540,11 @@ function buildText(
         .filter((index) => index >= 0);
       if (local.length === 0) continue;
       chunks[chunkIndex]!.lengthAdjustments.push({
+        animationTargetKey: scope.animationTargetKey,
         start: Math.min(...local),
         end: Math.max(...local) + 1,
         target: scope.target * (local.length / total),
+        animationScale: local.length / total,
         mode: scope.mode,
       });
     }
@@ -2251,10 +2260,18 @@ export function buildRenderDocument(
     styleResolver,
     resolved.effective,
     diagnostics,
+    (element) => animationTargetKeys.get(element),
   )) {
     resources.paints.set(id, paint);
   }
-  resources.masks = resolveMaskResources(svg, resources.maskElements, styleResolver, resolved.effective, diagnostics);
+  resources.masks = resolveMaskResources(
+    svg,
+    resources.maskElements,
+    styleResolver,
+    resolved.effective,
+    diagnostics,
+    (element) => animationTargetKey(element, context),
+  );
   resources.clips = resolveClipPathResources(
     svg,
     resources.clipElements,
@@ -2268,6 +2285,7 @@ export function buildRenderDocument(
     styleResolver,
     resolved.effective,
     diagnostics,
+    (element) => animationTargetKey(element, context),
   );
   resources.filters = resolveFilterResources(
     svg,
@@ -2277,6 +2295,7 @@ export function buildRenderDocument(
     resolved.effective,
     config,
     diagnostics,
+    (element) => animationTargetKey(element, context),
   );
 
   const filterPrimitiveElements = (filter: ElementNode) =>
@@ -2692,6 +2711,9 @@ export function buildRenderDocument(
         refX: ref.x,
         refY: ref.y,
         viewBoxTransform: boxTransform,
+        resource,
+        hostAngle: vertex.angle,
+        strokeWidth: shape.style.strokeStyle.width,
       },
       viewport: {
         rect: markerViewport,
@@ -3013,7 +3035,6 @@ export function buildRenderDocument(
     if (paint.type !== "pattern") continue;
     for (const instance of paint.instances.values()) materializeClipPaths(instance.children);
   }
-
   function diagnoseMaskOnce(node: RenderNode, code: string, message: string): void {
     if (diagnostics.some((item) => item.code === code && item.source === node.source && item.message === message))
       return;
@@ -3278,6 +3299,24 @@ export function buildRenderDocument(
   };
   collectAnimationTargetSnapshots(children);
   for (const paint of resources.paints.values()) {
+    if (paint.type !== "pattern") continue;
+    for (const instance of paint.instances.values()) collectAnimationTargetSnapshots(instance.children);
+    collectAnimationTargetSnapshots(paint.children);
+  }
+  for (const resource of resources.clips.values()) {
+    collectAnimationTargetSnapshots(resource.children);
+    for (const instance of resource.instances.values()) collectAnimationTargetSnapshots(instance.children);
+  }
+  for (const resource of resources.masks.values()) {
+    collectAnimationTargetSnapshots(resource.children);
+    for (const instance of resource.instances.values()) collectAnimationTargetSnapshots(instance.children);
+  }
+  for (const resource of resources.markers.values()) {
+    collectAnimationTargetSnapshots(resource.children);
+    for (const instances of resource.instances.values())
+      for (const instance of instances) collectAnimationTargetSnapshots([instance]);
+  }
+  for (const paint of resources.paints.values()) {
     if (paint.type !== "linearGradient" && paint.type !== "radialGradient") continue;
     for (const stop of paint.stops) {
       if (!stop.animationTargetKey || animationTargetSnapshots.has(stop.animationTargetKey)) continue;
@@ -3297,6 +3336,173 @@ export function buildRenderDocument(
         },
         baseValues: stop.animationBaseValues ?? {},
         importantProperties: {},
+      });
+    }
+  }
+  const resourceTags = new Set([
+    "linearGradient",
+    "radialGradient",
+    "pattern",
+    "clipPath",
+    "mask",
+    "marker",
+    "filter",
+    "feBlend",
+    "feColorMatrix",
+    "feComponentTransfer",
+    "feFuncA",
+    "feFuncB",
+    "feFuncG",
+    "feFuncR",
+    "feComposite",
+    "feConvolveMatrix",
+    "feDiffuseLighting",
+    "feDisplacementMap",
+    "feDistantLight",
+    "feDropShadow",
+    "feFlood",
+    "feGaussianBlur",
+    "feImage",
+    "feMerge",
+    "feMergeNode",
+    "feMorphology",
+    "feOffset",
+    "fePointLight",
+    "feSpecularLighting",
+    "feSpotLight",
+    "feTile",
+    "feTurbulence",
+    "textPath",
+    "tspan",
+  ]);
+  const collectedResourceElements = new Set<ElementNode>();
+  const collectResourceSnapshots = (element: ElementNode, inherited: Presentation): void => {
+    if (collectedResourceElements.has(element)) return;
+    collectedResourceElements.add(element);
+    const isResource = resourceTags.has(element.tagName ?? "");
+    const resolution = isResource ? styleResolver.resolve(element, inherited) : undefined;
+    if (resolution) {
+      const key = animationTargetKey(element, context);
+      if (!animationTargetSnapshots.has(key)) {
+        const baseValues: Record<string, string> = {};
+        for (const [name, value] of Object.entries(resolution.values)) baseValues[name] = String(value);
+        for (const [name, value] of Object.entries(element.properties ?? {}))
+          if (value !== undefined && value !== null && name !== "style") baseValues[name] = String(value);
+        animationTargetSnapshots.set(key, {
+          key,
+          tagName: element.tagName ?? "unknown",
+          binding: "resource",
+          context: {
+            length: {
+              viewport: properties.userViewport,
+              rootViewport: { width: properties.width, height: properties.height },
+              fontMetrics: defaultFontMetrics(),
+              percentageBasis: "viewport-diagonal",
+              axis: "other",
+            },
+            colorSpace:
+              String(
+                resolution.values["color-interpolation-filters"] ?? resolution.values["color-interpolation"] ?? "sRGB",
+              ).toLowerCase() === "linearrgb"
+                ? "linearRGB"
+                : "sRGB",
+          },
+          baseValues,
+          importantProperties: resolution.importantProperties,
+        });
+      }
+    }
+    for (const child of childElements(element)) collectResourceSnapshots(child, resolution?.values ?? inherited);
+  };
+  const resourceRoots = new Set<ElementNode>([
+    ...resources.paintElements.values(),
+    ...resources.maskElements.values(),
+    ...resources.clipElements.values(),
+    ...resources.markerElements.values(),
+    ...resources.filterElements.values(),
+  ]);
+  for (const root of resourceRoots) collectResourceSnapshots(root, resolved.effective);
+  const collectNestedTextResources = (element: ElementNode): void => {
+    for (const child of childElements(element)) {
+      if (child.tagName === "tspan" || child.tagName === "textPath")
+        collectResourceSnapshots(child, resolved.effective);
+      else collectNestedTextResources(child);
+    }
+  };
+  collectNestedTextResources(svg);
+  for (const paint of resources.paints.values()) {
+    if (paint.type !== "linearGradient" && paint.type !== "radialGradient" && paint.type !== "pattern") continue;
+    for (const [name, key] of Object.entries(paint.animationTargetKeys)) {
+      if (!key || paint.animationBaseValues[name] === undefined) continue;
+      const snapshot = animationTargetSnapshots.get(key);
+      if (!snapshot) continue;
+      animationTargetSnapshots.set(key, {
+        ...snapshot,
+        context:
+          paint.units === "objectBoundingBox"
+            ? {
+                ...snapshot.context,
+                length: {
+                  ...snapshot.context.length,
+                  viewport: { width: 1, height: 1 },
+                  percentageBasis: "viewport-diagonal",
+                },
+              }
+            : snapshot.context,
+        baseValues: { ...snapshot.baseValues, [name]: paint.animationBaseValues[name]! },
+      });
+    }
+  }
+  for (const marker of resources.markers.values()) {
+    for (const [name, key] of Object.entries(marker.animationTargetKeys)) {
+      const snapshot = animationTargetSnapshots.get(key);
+      if (!snapshot || marker.animationBaseValues[name] === undefined) continue;
+      animationTargetSnapshots.set(key, {
+        ...snapshot,
+        baseValues: { ...snapshot.baseValues, [name]: marker.animationBaseValues[name]! },
+      });
+    }
+  }
+  for (const mask of resources.masks.values()) {
+    for (const [name, key] of Object.entries(mask.animationTargetKeys)) {
+      const snapshot = animationTargetSnapshots.get(key);
+      if (!snapshot || mask.animationBaseValues[name] === undefined) continue;
+      animationTargetSnapshots.set(key, {
+        ...snapshot,
+        context:
+          mask.units === "objectBoundingBox"
+            ? {
+                ...snapshot.context,
+                length: {
+                  ...snapshot.context.length,
+                  viewport: { width: 1, height: 1 },
+                  percentageBasis: "viewport-diagonal",
+                },
+              }
+            : snapshot.context,
+        baseValues: { ...snapshot.baseValues, [name]: mask.animationBaseValues[name]! },
+      });
+    }
+  }
+  for (const filter of resources.filters.values()) {
+    for (const [name, key] of Object.entries(filter.animationTargetKeys)) {
+      if (!key || filter.animationBaseValues[name] === undefined) continue;
+      const snapshot = animationTargetSnapshots.get(key);
+      if (!snapshot) continue;
+      animationTargetSnapshots.set(key, {
+        ...snapshot,
+        context:
+          filter.units === "objectBoundingBox"
+            ? {
+                ...snapshot.context,
+                length: {
+                  ...snapshot.context.length,
+                  viewport: { width: 1, height: 1 },
+                  percentageBasis: "viewport-diagonal",
+                },
+              }
+            : snapshot.context,
+        baseValues: { ...snapshot.baseValues, [name]: filter.animationBaseValues[name]! },
       });
     }
   }

@@ -19,7 +19,7 @@ import {
   parseAnimationValueSet,
   parseKeySplines,
   parseKeyTimes,
-  resolveAnimationAttribute,
+  resolveAnimationAttributeForTarget,
   sampleAnimationValue,
   validateAnimationCalculation,
 } from "./animationValues";
@@ -285,12 +285,69 @@ const GEOMETRY_TARGETS: Readonly<Record<string, readonly string[]>> = {
   y: ["rect", "svg", "image", "foreignObject", "text", "tspan", "use", "pattern", "mask", "filter"],
 };
 
+const FILTER_REGION_ATTRIBUTES = ["x", "y", "width", "height", "result", "color-interpolation-filters"];
+const FILTER_INPUT_ATTRIBUTES = [...FILTER_REGION_ATTRIBUTES, "in"];
+const FILTER_TARGET_ATTRIBUTES: Readonly<Record<string, readonly string[]>> = {
+  feblend: [...FILTER_INPUT_ATTRIBUTES, "in2", "mode"],
+  fecolormatrix: [...FILTER_INPUT_ATTRIBUTES, "type", "values"],
+  fecomponenttransfer: FILTER_INPUT_ATTRIBUTES,
+  fecomposite: [...FILTER_INPUT_ATTRIBUTES, "in2", "operator", "k1", "k2", "k3", "k4"],
+  feconvolvematrix: [
+    ...FILTER_INPUT_ATTRIBUTES,
+    "order",
+    "kernelMatrix",
+    "divisor",
+    "bias",
+    "targetX",
+    "targetY",
+    "edgeMode",
+    "kernelUnitLength",
+    "preserveAlpha",
+  ],
+  fediffuselighting: [
+    ...FILTER_INPUT_ATTRIBUTES,
+    "surfaceScale",
+    "diffuseConstant",
+    "kernelUnitLength",
+    "lighting-color",
+  ],
+  fedisplacementmap: [...FILTER_INPUT_ATTRIBUTES, "in2", "scale", "xChannelSelector", "yChannelSelector"],
+  fedistantlight: ["azimuth", "elevation"],
+  fedropshadow: [...FILTER_INPUT_ATTRIBUTES, "stdDeviation", "dx", "dy", "flood-color", "flood-opacity"],
+  feflood: [...FILTER_REGION_ATTRIBUTES, "flood-color", "flood-opacity"],
+  fefunca: ["type", "tableValues", "slope", "intercept", "amplitude", "exponent", "offset"],
+  fefuncb: ["type", "tableValues", "slope", "intercept", "amplitude", "exponent", "offset"],
+  fefuncg: ["type", "tableValues", "slope", "intercept", "amplitude", "exponent", "offset"],
+  fefuncr: ["type", "tableValues", "slope", "intercept", "amplitude", "exponent", "offset"],
+  fegaussianblur: [...FILTER_INPUT_ATTRIBUTES, "stdDeviation", "edgeMode"],
+  feimage: [...FILTER_REGION_ATTRIBUTES, "href", "preserveAspectRatio"],
+  femerge: FILTER_REGION_ATTRIBUTES,
+  femergenode: ["in"],
+  femorphology: [...FILTER_INPUT_ATTRIBUTES, "operator", "radius"],
+  feoffset: [...FILTER_INPUT_ATTRIBUTES, "dx", "dy"],
+  fepointlight: ["x", "y", "z"],
+  fespecularlighting: [
+    ...FILTER_INPUT_ATTRIBUTES,
+    "surfaceScale",
+    "specularConstant",
+    "specularExponent",
+    "kernelUnitLength",
+    "lighting-color",
+  ],
+  fespotlight: ["x", "y", "z", "pointsAtX", "pointsAtY", "pointsAtZ", "specularExponent", "limitingConeAngle"],
+  fetile: FILTER_INPUT_ATTRIBUTES,
+  feturbulence: [...FILTER_REGION_ATTRIBUTES, "baseFrequency", "numOctaves", "seed", "stitchTiles", "type"],
+};
+
 function propertyAppliesToTarget(attributeName: string | undefined, tagName: string | undefined): boolean {
   if (!attributeName || !tagName) return false;
+  const filterAttributes = FILTER_TARGET_ATTRIBUTES[tagName.toLowerCase()];
+  if (filterAttributes) return filterAttributes.includes(attributeName);
   const allowed = GEOMETRY_TARGETS[attributeName];
   if (allowed) return allowed.includes(tagName);
-  if (attributeName === "viewBox" || attributeName === "preserveAspectRatio")
-    return ["svg", "symbol", "view", "marker", "pattern"].includes(tagName);
+  if (attributeName === "viewBox") return ["svg", "symbol", "view", "marker", "pattern"].includes(tagName);
+  if (attributeName === "preserveAspectRatio")
+    return ["svg", "symbol", "view", "marker", "pattern", "image"].includes(tagName);
   if (["dx", "dy", "rotate", "textLength", "startOffset"].includes(attributeName))
     return ["text", "tspan", "textPath"].includes(tagName);
   if (attributeName === "offset") return tagName === "stop";
@@ -302,6 +359,7 @@ function parseValue(
   attributeName: string | undefined,
   context: AnimationValueContext,
   baseRaw?: string,
+  attributeSpec?: ReturnType<typeof resolveAnimationAttributeForTarget>,
 ): AnimationValue {
   const fromRaw = property(animation, "from");
   const toRaw = property(animation, "to");
@@ -320,6 +378,7 @@ function parseValue(
         ...(valuesRaw ? { values: valuesRaw } : {}),
       },
       context,
+      attributeSpec,
     );
     if (parsed) return parsed;
   }
@@ -340,14 +399,16 @@ function isRuntimeSupported(definition: Omit<AnimationDefinition, "runtimeSuppor
     )
   )
     return false;
-  const attribute = definition.attributeName ? resolveAnimationAttribute(definition.attributeName) : undefined;
+  const attribute = definition.attributeName
+    ? resolveAnimationAttributeForTarget(definition.attributeName, definition.attributeType, definition.target?.tagName)
+    : undefined;
   const resourceSupported =
     definition.target?.binding === "resource" &&
-    definition.target.tagName.toLowerCase() === "stop" &&
-    attribute?.runtimeBinding === "gradient-stop";
+    (attribute?.runtimeBinding === "gradient-stop" || attribute?.runtimeBinding === "resource");
   const renderNodeSupported =
     definition.target?.binding === "render-node" &&
     (attribute?.runtimeBinding === "render-node" ||
+      attribute?.runtimeBinding === "resource" ||
       (definition.kind === "animateTransform" && definition.attributeName === "transform") ||
       (definition.kind === "animateMotion" && definition.attributeName === "motion"));
   if (
@@ -568,7 +629,7 @@ export function buildAnimationProgram(
           ? "motion"
           : authoredAttributeName;
     const attributeSpec = effectiveAttributeName
-      ? resolveAnimationAttribute(effectiveAttributeName, attributeType)
+      ? resolveAnimationAttributeForTarget(effectiveAttributeName, attributeType, targetTag)
       : undefined;
     const attributeName = kind === "animateMotion" ? "motion" : attributeSpec?.canonicalName;
     if ((kind === "animate" || kind === "set" || kind === "animateTransform") && !authoredAttributeName)
@@ -662,7 +723,7 @@ export function buildAnimationProgram(
             },
             targetSnapshot?.context ?? animationValueContext,
           ) ?? { family: "unsupported" as const })
-        : parseValue(element, attributeName, targetSnapshot?.context ?? animationValueContext, baseRaw);
+        : parseValue(element, attributeName, targetSnapshot?.context ?? animationValueContext, baseRaw, attributeSpec);
     const calcModeSource = property(element, "calcMode");
     const defaultCalcMode = kind === "set" ? "discrete" : kind === "animateMotion" ? "paced" : "linear";
     const calcMode = ["discrete", "linear", "paced", "spline"].includes(calcModeSource ?? "")
@@ -997,7 +1058,7 @@ export function buildAnimationProgram(
       for (const attributeName of properties) {
         if (attributeName.startsWith("--")) continue;
         if (targetSnapshot.importantProperties?.[attributeName]) continue;
-        const attribute = resolveAnimationAttribute(attributeName, "CSS");
+        const attribute = resolveAnimationAttributeForTarget(attributeName, "CSS", targetSnapshot.tagName);
         if (!attribute || !attribute.animatable || !propertyAppliesToTarget(attributeName, targetSnapshot.tagName)) {
           diagnostic(
             diagnostics,

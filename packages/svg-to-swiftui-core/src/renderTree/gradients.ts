@@ -311,6 +311,26 @@ export function resolvePaintServers(
 
     const stopOwner = chain.find((candidate) => children(candidate).some((child) => child.tagName === "stop"));
     const stops = stopOwner ? stopsFor(stopOwner, presentations, diagnostics, animationTargetKey) : [];
+    const animationOwner = (name: string) =>
+      chain.find((candidate) => candidate.properties?.[name] !== undefined) ?? element;
+    const animationTargetKeys = Object.fromEntries(
+      [
+        "gradientUnits",
+        "gradientTransform",
+        "spreadMethod",
+        "color-interpolation",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "cx",
+        "cy",
+        "r",
+        "fx",
+        "fy",
+        "fr",
+      ].map((name) => [name, animationTargetKey?.(animationOwner(name)) ?? ""]),
+    );
     const base = {
       id,
       units,
@@ -320,6 +340,13 @@ export function resolvePaintServers(
       colorInterpolation,
       ...(href(element)?.startsWith("#") ? { href: href(element)!.slice(1) } : {}),
       source: sourceLocation(element),
+      animationTargetKeys,
+      animationBaseValues: {
+        gradientUnits: units,
+        gradientTransform: String(transformSource ?? "matrix(1 0 0 1 0 0)"),
+        spreadMethod,
+        "color-interpolation": colorInterpolation,
+      },
     };
 
     let paint: GradientPaint;
@@ -331,6 +358,13 @@ export function resolvePaintServers(
         y1: parsedLength(property(chain, "y1"), "0%", "linear gradient y1", element, diagnostics),
         x2: parsedLength(property(chain, "x2"), "100%", "linear gradient x2", element, diagnostics),
         y2: parsedLength(property(chain, "y2"), "0%", "linear gradient y2", element, diagnostics),
+        animationBaseValues: {
+          ...base.animationBaseValues,
+          x1: String(property(chain, "x1") ?? "0%"),
+          y1: String(property(chain, "y1") ?? "0%"),
+          x2: String(property(chain, "x2") ?? "100%"),
+          y2: String(property(chain, "y2") ?? "0%"),
+        },
       };
     } else {
       const cx = parsedLength(property(chain, "cx"), "50%", "radial gradient cx", element, diagnostics);
@@ -352,6 +386,15 @@ export function resolvePaintServers(
         fx: fxSource === undefined ? cx : parsedLength(fxSource, "50%", "radial gradient fx", element, diagnostics),
         fy: fySource === undefined ? cy : parsedLength(fySource, "50%", "radial gradient fy", element, diagnostics),
         fr: fr.value < 0 ? { ...fr, value: 0 } : fr,
+        animationBaseValues: {
+          ...base.animationBaseValues,
+          cx: String(property(chain, "cx") ?? "50%"),
+          cy: String(property(chain, "cy") ?? "50%"),
+          r: String(property(chain, "r") ?? "50%"),
+          fx: String(fxSource ?? property(chain, "cx") ?? "50%"),
+          fy: String(fySource ?? property(chain, "cy") ?? "50%"),
+          fr: String(property(chain, "fr") ?? "0%"),
+        },
       };
     }
     result.set(id, paint);

@@ -136,6 +136,27 @@ const REQUIRED_CSS_KEYFRAMES_BENCHMARK_TAGS = [
   "transform",
 ] as const;
 
+const REQUIRED_ANIMATED_RESOURCES_BENCHMARK_TAGS = [
+  "animated-bounds",
+  "clip-content",
+  "clip-transform",
+  "filter-parameters",
+  "filter-regions",
+  "gradient-coordinates",
+  "image",
+  "marker-content",
+  "marker-orientation",
+  "marker-units",
+  "mask-content",
+  "mask-region",
+  "pattern-content",
+  "pattern-transform",
+  "preserve-aspect-ratio",
+  "resource-consumers",
+  "text",
+  "text-character-position",
+] as const;
+
 function validateBackground(value: string | null): void {
   if (value !== null && !/^#([\da-f]{6}|[\da-f]{8})$/i.test(value))
     throw new Error(`Background must be null, #RRGGBB, or #RRGGBBAA: ${value}`);
@@ -398,6 +419,14 @@ export function validateAnimationManifest(): string[] {
   for (const tag of REQUIRED_CSS_KEYFRAMES_BENCHMARK_TAGS)
     if (!cssKeyframesBenchmarkTags.has(tag))
       errors.push(`CSS keyframes comparison benchmark does not cover required tag: ${tag}`);
+  const animatedResourcesBenchmarkTags = new Set(
+    fixtures
+      .filter((fixture) => fixture.mode === "comparison" && fixture.tags.includes("benchmark-09"))
+      .flatMap((fixture) => fixture.tags),
+  );
+  for (const tag of REQUIRED_ANIMATED_RESOURCES_BENCHMARK_TAGS)
+    if (!animatedResourcesBenchmarkTags.has(tag))
+      errors.push(`Animated resources comparison benchmark does not cover required tag: ${tag}`);
   if (valueGoldens.version !== 1) errors.push(`Unsupported animation value golden version: ${valueGoldens.version}`);
   if (!Number.isFinite(valueGoldens.tolerance) || valueGoldens.tolerance <= 0)
     errors.push("Animation value golden tolerance must be finite and positive");

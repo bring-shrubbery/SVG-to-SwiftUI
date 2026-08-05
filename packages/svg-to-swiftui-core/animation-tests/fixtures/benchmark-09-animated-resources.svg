@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#0f172a"/>
+  <defs>
+    <linearGradient id="moving-gradient" gradientUnits="userSpaceOnUse" x1="8" y1="0" x2="50" y2="0">
+      <animate attributeName="x2" values="50;82" dur="2s" fill="freeze"/>
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+    <pattern id="moving-pattern" width="12" height="12" patternUnits="userSpaceOnUse">
+      <animate attributeName="width" values="12;8" dur="2s" fill="freeze"/>
+      <animate attributeName="patternTransform" values="translate(0 0);translate(1 0)" dur="2s" fill="freeze"/>
+      <rect width="4" height="12" fill="#34d399">
+        <animate attributeName="width" values="4;10" dur="2s" fill="freeze"/>
+      </rect>
+    </pattern>
+    <clipPath id="growing-clip" transform="translate(0 0)">
+      <animateTransform attributeName="transform" type="translate" values="0 0;1 0" dur="2s" fill="freeze"/>
+      <circle cx="40" cy="79" r="8">
+        <animate attributeName="r" values="8;24" dur="2s" fill="freeze"/>
+      </circle>
+    </clipPath>
+    <mask id="sliding-mask" maskUnits="userSpaceOnUse" x="82" y="58" width="70" height="42">
+      <animate attributeName="x" values="82;78" dur="2s" fill="freeze"/>
+      <animate attributeName="width" values="70;74" dur="2s" fill="freeze"/>
+      <rect x="82" y="58" width="34" height="42" fill="white">
+        <animate attributeName="x" values="82;116" dur="2s" fill="freeze"/>
+      </rect>
+    </mask>
+    <marker id="animated-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="0" markerUnits="userSpaceOnUse" overflow="visible">
+      <animate attributeName="orient" values="0;24" dur="2s" fill="freeze"/>
+      <animate attributeName="markerUnits" values="userSpaceOnUse;strokeWidth" dur="2s" calcMode="discrete" fill="freeze"/>
+      <path d="M0 0L9 4.5L0 9Z" fill="#fb7185">
+        <animate attributeName="fill" values="#fb7185;#facc15" dur="2s" fill="freeze"/>
+      </path>
+    </marker>
+    <filter id="moving-filter" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="92" y="3" width="64" height="50">
+      <animate attributeName="x" values="92;88" dur="2s" fill="freeze"/>
+      <animate attributeName="width" values="64;72" dur="2s" fill="freeze"/>
+      <feGaussianBlur stdDeviation="0" result="blur">
+        <animate attributeName="stdDeviation" values="0;2" dur="2s" fill="freeze"/>
+      </feGaussianBlur>
+      <feOffset in="blur" x="92" y="3" width="64" height="50" dx="0" dy="0">
+        <animate attributeName="x" values="92;88" dur="2s" fill="freeze"/>
+        <animate attributeName="width" values="64;72" dur="2s" fill="freeze"/>
+        <animate attributeName="dx" values="0;7" dur="2s" fill="freeze"/>
+        <animate attributeName="dy" values="0;3" dur="2s" fill="freeze"/>
+      </feOffset>
+    </filter>
+  </defs>
+
+  <rect x="8" y="8" width="74" height="38" rx="7" fill="url(#moving-gradient)"/>
+  <rect x="92" y="8" width="58" height="38" rx="7" fill="#a78bfa" filter="url(#moving-filter)"/>
+  <rect x="8" y="58" width="64" height="42" fill="url(#moving-pattern)" clip-path="url(#growing-clip)"/>
+  <rect x="82" y="58" width="70" height="42" fill="#60a5fa" mask="url(#sliding-mask)"/>
+  <path d="M12 110H72" fill="none" stroke="#e2e8f0" stroke-width="3" marker-end="url(#animated-arrow)"/>
+  <image href="../assets/benchmark-09-nested-image.svg" x="72" y="103" width="18" height="12" preserveAspectRatio="xMidYMid meet">
+    <animate attributeName="preserveAspectRatio" values="xMidYMid meet;none" dur="2s" calcMode="discrete" fill="freeze"/>
+  </image>
+  <text x="92" y="113" fill="#f8fafc" font-family="sans-serif" font-size="11"><tspan dx="0 0 0">SVG
+    <animate attributeName="dx" values="0 0 0;0 1 0" dur="2s" fill="freeze"/>
+  </tspan>
+    <animate attributeName="x" values="92;118" dur="2s" fill="freeze"/>
+  </text>
+</svg>

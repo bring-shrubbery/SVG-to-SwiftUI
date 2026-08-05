@@ -383,6 +383,40 @@
         ]
       },
       "expectDistinctReferenceFrames": true
+    },
+    "benchmark-09-animated-resources": {
+      "mode": "comparison",
+      "referenceBackend": "webkit",
+      "width": 160,
+      "height": 120,
+      "expectedMode": "view",
+      "tags": [
+        "animated-bounds",
+        "benchmark-09",
+        "clip-content",
+        "clip-transform",
+        "filter-parameters",
+        "filter-regions",
+        "gradient-coordinates",
+        "image",
+        "marker-content",
+        "marker-orientation",
+        "marker-units",
+        "mask-content",
+        "mask-region",
+        "pattern-content",
+        "pattern-transform",
+        "preserve-aspect-ratio",
+        "resource-consumers",
+        "text",
+        "text-character-position"
+      ],
+      "timeline": {
+        "durationMicroseconds": 2000000,
+        "framesPerSecond": 30,
+        "sampleTimesMicroseconds": [0, 250000, 500000, 750000, 1000000, 1250000, 1500000, 1750000, 2000000]
+      },
+      "expectDistinctReferenceFrames": true
     }
   }
 }

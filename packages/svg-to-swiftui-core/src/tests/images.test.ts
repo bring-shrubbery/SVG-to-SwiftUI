@@ -51,6 +51,48 @@ describe("SVG image resources", () => {
     expect(output).toContain("red: 0.0706");
   });
 
+  test("passes the canonical parent document time into animated SVG image documents", () => {
+    const nested = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4" viewBox="0 0 8 4"><rect width="2" height="4"><animate attributeName="width" values="2;8" dur="2s"/></rect></svg>`;
+    const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(nested)}`;
+    const output = convert(source(`<image href="${href}" x="4" y="5" width="24" height="12"/>`), {
+      structName: "AnimatedNestedImage",
+      strict: true,
+    });
+
+    expect(output).toContain("struct AnimatedNestedImageImageDocument0: View");
+    expect(output).toContain("init(documentTime: Double? = nil");
+    expect(output).toContain("ImageLayer0(documentTime: documentTime)");
+    expect(output).toContain("AnimatedNestedImageImageDocument0(documentTime: documentTime)");
+    expect(output).toMatch(/if let documentTime[\s\S]*content\(at: Self\.sanitizedDocumentTime\(documentTime\)\)/);
+  });
+
+  test("samples image preserveAspectRatio into the placement transform", () => {
+    const href = `data:image/png;base64,${Buffer.from(pngWithDimensions(8, 4)).toString("base64")}`;
+    const output = convert(
+      source(
+        `<image href="${href}" x="4" y="5" width="24" height="18" preserveAspectRatio="xMidYMid meet"><animate attributeName="preserveAspectRatio" values="xMidYMid meet;none" dur="2s"/></image>`,
+      ),
+      { structName: "AnimatedImagePlacement", strict: true },
+    );
+    expect(output).toContain("ImageLayer0(documentTime: documentTime)");
+    expect(output).toContain("svgViewBoxMatrix(");
+    expect(output).toContain("preserveAspectRatio: AnimatedImagePlacement.svgAnimationSource(");
+  });
+
+  test("does not pass document time into a static nested SVG when only image placement animates", () => {
+    const nested = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4" viewBox="0 0 8 4"><rect width="8" height="4"/></svg>`;
+    const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(nested)}`;
+    const output = convert(
+      source(
+        `<image href="${href}" width="24" height="18"><animate attributeName="preserveAspectRatio" values="xMidYMid meet;none" dur="2s"/></image>`,
+      ),
+      { structName: "AnimatedStaticNestedImage", strict: true },
+    );
+    expect(output).toContain("ImageLayer0(documentTime: documentTime)");
+    expect(output).toContain("AnimatedStaticNestedImageImageDocument0()\n");
+    expect(output).not.toContain("AnimatedStaticNestedImageImageDocument0(documentTime: documentTime)");
+  });
+
   test("accepts legacy xlink:href and derives omitted dimensions from raster intrinsic size", () => {
     const document = __testing.parseRenderDocument(source(`<image xlink:href="pixel.png" x="1" y="2"/>`), {
       resources: { supplied: { "pixel.png": { bytes: PNG, mimeType: "image/png" } } },

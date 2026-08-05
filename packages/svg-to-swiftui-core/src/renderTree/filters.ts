@@ -450,7 +450,14 @@ function colorMatrix(element: ElementNode, diagnostics: RenderDiagnostic[]): num
   return type === "matrix" ? values : type === "saturate" ? saturateMatrix(values[0]!) : hueRotateMatrix(values[0]!);
 }
 
-function componentFunction(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterComponentTransferFunction {
+function componentFunction(
+  element: ElementNode,
+  diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
+): FilterComponentTransferFunction {
+  const target = animationTargetKey
+    ? { animationTargetKey: animationTargetKey(element), animationTargetTag: element.tagName ?? "unknown" }
+    : {};
   const rawType = String(attribute(element, "type") ?? "identity")
     .trim()
     .toLowerCase();
@@ -461,28 +468,34 @@ function componentFunction(element: ElementNode, diagnostics: RenderDiagnostic[]
       "invalid-filter-component-transfer-type",
       `Invalid component transfer type '${rawType}'; using identity.`,
     );
-    return { type: "identity" };
+    return { type: "identity", ...target };
   }
-  if (rawType === "identity") return { type: "identity" };
+  if (rawType === "identity") return { type: "identity", ...target };
   if (rawType === "table" || rawType === "discrete") {
     const values = numberList(element, "tableValues", diagnostics);
-    return values ? { type: rawType, values } : { type: "identity" };
+    return values ? { type: rawType, values, ...target } : { type: "identity", ...target };
   }
   if (rawType === "linear")
     return {
       type: "linear",
       slope: numberValue(element, "slope", 1, diagnostics),
       intercept: numberValue(element, "intercept", 0, diagnostics),
+      ...target,
     };
   return {
     type: "gamma",
     amplitude: numberValue(element, "amplitude", 1, diagnostics),
     exponent: numberValue(element, "exponent", 1, diagnostics),
     offset: numberValue(element, "offset", 0, diagnostics),
+    ...target,
   };
 }
 
-function componentFunctions(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterComponentTransferFunctions {
+function componentFunctions(
+  element: ElementNode,
+  diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
+): FilterComponentTransferFunctions {
   const functions: FilterComponentTransferFunctions = [
     { type: "identity" },
     { type: "identity" },
@@ -492,7 +505,7 @@ function componentFunctions(element: ElementNode, diagnostics: RenderDiagnostic[
   const channels: Readonly<Record<string, number>> = { fefuncr: 0, fefuncg: 1, fefuncb: 2, fefunca: 3 };
   for (const child of children(element)) {
     const channel = channels[child.tagName?.toLowerCase() ?? ""];
-    if (channel !== undefined) functions[channel] = componentFunction(child, diagnostics);
+    if (channel !== undefined) functions[channel] = componentFunction(child, diagnostics, animationTargetKey);
   }
   return functions;
 }
@@ -539,7 +552,11 @@ function lightingColor(element: ElementNode, presentation: Presentation, diagnos
   return { ...color, alpha: 1 };
 }
 
-function lightSource(element: ElementNode, diagnostics: RenderDiagnostic[]): FilterLightSourceSpec | undefined {
+function lightSource(
+  element: ElementNode,
+  diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
+): FilterLightSourceSpec | undefined {
   const sources: FilterLightSourceSpec[] = [];
   for (const child of children(element)) {
     const tag = child.tagName?.toLowerCase() ?? "";
@@ -547,12 +564,16 @@ function lightSource(element: ElementNode, diagnostics: RenderDiagnostic[]): Fil
     if (tag === "fedistantlight") {
       sources.push({
         type: "distant",
+        ...(animationTargetKey ? { animationTargetKey: animationTargetKey(child) } : {}),
+        animationTargetTag: child.tagName ?? "feDistantLight",
         azimuth: numberValue(child, "azimuth", 0, diagnostics),
         elevation: numberValue(child, "elevation", 0, diagnostics),
       });
     } else if (tag === "fepointlight") {
       sources.push({
         type: "point",
+        ...(animationTargetKey ? { animationTargetKey: animationTargetKey(child) } : {}),
+        animationTargetTag: child.tagName ?? "fePointLight",
         x: numberValue(child, "x", 0, diagnostics),
         y: numberValue(child, "y", 0, diagnostics),
         z: numberValue(child, "z", 0, diagnostics),
@@ -560,6 +581,8 @@ function lightSource(element: ElementNode, diagnostics: RenderDiagnostic[]): Fil
     } else if (tag === "fespotlight") {
       sources.push({
         type: "spot",
+        ...(animationTargetKey ? { animationTargetKey: animationTargetKey(child) } : {}),
+        animationTargetTag: child.tagName ?? "feSpotLight",
         x: numberValue(child, "x", 0, diagnostics),
         y: numberValue(child, "y", 0, diagnostics),
         z: numberValue(child, "z", 0, diagnostics),
@@ -683,6 +706,7 @@ function buildPrimitiveSpecs(
   definitions: Map<string, ElementNode>,
   config: InternalGeneratorConfig,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
 ): FilterPrimitiveSpec[] {
   const specs: FilterPrimitiveSpec[] = [];
   const named = new Map<string, number>();
@@ -721,6 +745,14 @@ function buildPrimitiveSpecs(
     const input = resolveInput(element, attribute(element, "in"));
     const input2 = hasAttribute(element, "in2") ? resolveInput(element, attribute(element, "in2")) : undefined;
     const common = {
+      ...(animationTargetKey ? { animationTargetKey: animationTargetKey(element) } : {}),
+      animationTargetTag: element.tagName ?? "unknown",
+      animationBaseValues: Object.fromEntries(
+        ["x", "y", "width", "height", "in", "in2", "result"].flatMap((name) => {
+          const value = attribute(element, name);
+          return value === undefined ? [] : [[name, String(value)]];
+        }),
+      ),
       region: regionSpec(element, diagnostics),
       colorInterpolation: colorInterpolation(resolved["color-interpolation-filters"], element, diagnostics),
       source: sourceLocation(element),
@@ -743,7 +775,12 @@ function buildPrimitiveSpecs(
     } else if (tag === "fecolormatrix") {
       spec = { type: "colorMatrix", input, matrix: colorMatrix(element, diagnostics), ...common };
     } else if (tag === "fecomponenttransfer") {
-      spec = { type: "componentTransfer", input, functions: componentFunctions(element, diagnostics), ...common };
+      spec = {
+        type: "componentTransfer",
+        input,
+        functions: componentFunctions(element, diagnostics, animationTargetKey),
+        ...common,
+      };
     } else if (tag === "fecomposite") {
       const rawOperator = String(attribute(element, "operator") ?? "over")
         .trim()
@@ -943,7 +980,7 @@ function buildPrimitiveSpecs(
         diffuseConstant: nonNegativeNumber(element, "diffuseConstant", 1, diagnostics),
         ...(kernelUnitLength ? { kernelUnitLengthX: kernelUnitLength[0], kernelUnitLengthY: kernelUnitLength[1] } : {}),
         color: lightingColor(element, resolved, diagnostics),
-        light: lightSource(element, diagnostics),
+        light: lightSource(element, diagnostics, animationTargetKey),
         ...common,
       };
     } else if (tag === "fespecularlighting") {
@@ -956,7 +993,7 @@ function buildPrimitiveSpecs(
         specularExponent: rangedNumber(element, "specularExponent", 1, 1, 128, diagnostics),
         ...(kernelUnitLength ? { kernelUnitLengthX: kernelUnitLength[0], kernelUnitLengthY: kernelUnitLength[1] } : {}),
         color: lightingColor(element, resolved, diagnostics),
-        light: lightSource(element, diagnostics),
+        light: lightSource(element, diagnostics, animationTargetKey),
         ...common,
       };
     } else if (tag === "fegaussianblur") {
@@ -1034,6 +1071,7 @@ export function resolveFilterResources(
   rootPresentation: Presentation,
   config: InternalGeneratorConfig,
   diagnostics: RenderDiagnostic[],
+  animationTargetKey?: (element: ElementNode) => string,
 ): Map<string, FilterResource> {
   const resolutions = new Map<ElementNode, StyleResolution>();
   const walk = (element: ElementNode, inherited: Presentation): void => {
@@ -1110,12 +1148,45 @@ export function resolveFilterResources(
         ? units(attribute(element, "primitiveUnits"), "userSpaceOnUse", "primitiveUnits", element, diagnostics)
         : (base?.primitiveUnits ?? "userSpaceOnUse"),
       colorInterpolation: colorInterpolation(presentation["color-interpolation-filters"], element, diagnostics),
+      animationTargetKeys: Object.fromEntries(
+        ["x", "y", "width", "height", "filterUnits", "primitiveUnits", "color-interpolation-filters"].flatMap(
+          (name) => {
+            const key = hasAttribute(element, name) ? animationTargetKey?.(element) : base?.animationTargetKeys[name];
+            return key ? [[name, key]] : [];
+          },
+        ),
+      ),
+      animationBaseValues: {
+        x: String(attribute(element, "x") ?? base?.animationBaseValues.x ?? "-10%"),
+        y: String(attribute(element, "y") ?? base?.animationBaseValues.y ?? "-10%"),
+        width: String(attribute(element, "width") ?? base?.animationBaseValues.width ?? "120%"),
+        height: String(attribute(element, "height") ?? base?.animationBaseValues.height ?? "120%"),
+        filterUnits: String(
+          attribute(element, "filterUnits") ?? base?.animationBaseValues.filterUnits ?? "objectBoundingBox",
+        ),
+        primitiveUnits: String(
+          attribute(element, "primitiveUnits") ?? base?.animationBaseValues.primitiveUnits ?? "userSpaceOnUse",
+        ),
+        "color-interpolation-filters": String(
+          presentation["color-interpolation-filters"] ??
+            base?.animationBaseValues["color-interpolation-filters"] ??
+            "linearRGB",
+        ),
+      },
       ...(href ? { href } : {}),
       source: sourceLocation(element),
       element,
       primitives:
         primitiveElements.length > 0
-          ? buildPrimitiveSpecs(element, presentation, styleResolver, definitions, config, diagnostics)
+          ? buildPrimitiveSpecs(
+              element,
+              presentation,
+              styleResolver,
+              definitions,
+              config,
+              diagnostics,
+              animationTargetKey,
+            )
           : (base?.primitives ?? []),
       instances: new Map(),
       invalid: href !== undefined && (!base || base.invalid),
@@ -1226,12 +1297,30 @@ function resolveLightSource(
     const elevation = (source.elevation * Math.PI) / 180;
     return {
       type: "distant",
+      ...(source.animationTargetKey ? { animationTargetKey: source.animationTargetKey } : {}),
+      ...(source.animationTargetTag ? { animationTargetTag: source.animationTargetTag } : {}),
+      animationBaseValues: { azimuth: source.azimuth, elevation: source.elevation },
       x: Math.cos(azimuth) * Math.cos(elevation) * scaleX,
       y: Math.sin(azimuth) * Math.cos(elevation) * scaleY,
       z: Math.sin(elevation),
     };
   }
   const position = {
+    ...(source.animationTargetKey ? { animationTargetKey: source.animationTargetKey } : {}),
+    ...(source.animationTargetTag ? { animationTargetTag: source.animationTargetTag } : {}),
+    animationBaseValues:
+      source.type === "point"
+        ? { x: source.x, y: source.y, z: source.z }
+        : {
+            x: source.x,
+            y: source.y,
+            z: source.z,
+            pointsAtX: source.pointsAtX,
+            pointsAtY: source.pointsAtY,
+            pointsAtZ: source.pointsAtZ,
+            specularExponent: source.specularExponent,
+            ...(source.limitingConeAngle === undefined ? {} : { limitingConeAngle: source.limitingConeAngle }),
+          },
     x: originX + source.x * scaleX,
     y: originY + source.y * scaleY,
     z: source.z,
@@ -1274,6 +1363,8 @@ export function resolveFilterInstance(resource: FilterResource, node: RenderNode
   const primitives: FilterPrimitive[] = [];
   for (const spec of resource.primitives) {
     const common = {
+      animationScaleX: scaleX,
+      animationScaleY: scaleY,
       ...(spec.result ? { result: spec.result } : {}),
       subregion: subregion(spec, primitives, region, resource, node, bounds),
       colorInterpolation: spec.colorInterpolation,

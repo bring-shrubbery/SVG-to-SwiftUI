@@ -44,7 +44,7 @@ export type AnimationInvalidationCategory =
 
 export interface AnimationAttributeRegistryEntry extends AnimationAttributeSpec {
   targetElements: readonly string[] | "graphics" | "text" | "filter-primitives" | "any";
-  runtimeBinding: "render-node" | "gradient-stop" | "pending-resource" | "pending-follow-up";
+  runtimeBinding: "render-node" | "gradient-stop" | "resource" | "pending-resource" | "pending-follow-up";
 }
 
 export interface AnimationValueContext {
@@ -129,7 +129,6 @@ const NUMBER_LIST = new RegExp(`^\\s*${NUMBER_SOURCE}(?:[\\s,]+${NUMBER_SOURCE})
 const NUMBER_ATTRIBUTES = new Set([
   "amplitude",
   "azimuth",
-  "baseFrequency",
   "bias",
   "diffuseConstant",
   "divisor",
@@ -143,7 +142,11 @@ const NUMBER_ATTRIBUTES = new Set([
   "k4",
   "limitingConeAngle",
   "pathLength",
+  "pointsAtX",
+  "pointsAtY",
+  "pointsAtZ",
   "scale",
+  "seed",
   "slope",
   "specularConstant",
   "specularExponent",
@@ -166,6 +169,7 @@ const HORIZONTAL_LENGTH_ATTRIBUTES = new Set([
 const VERTICAL_LENGTH_ATTRIBUTES = new Set(["cy", "dy", "fy", "height", "markerHeight", "refY", "y", "y1", "y2"]);
 const OTHER_LENGTH_ATTRIBUTES = new Set([
   "font-size",
+  "fr",
   "letter-spacing",
   "r",
   "rx",
@@ -178,31 +182,66 @@ const OTHER_LENGTH_ATTRIBUTES = new Set([
 const ANGLE_ATTRIBUTES = new Set(["glyph-orientation-horizontal", "glyph-orientation-vertical", "orient"]);
 const COLOR_ATTRIBUTES = new Set(["color", "flood-color", "lighting-color", "stop-color"]);
 const LENGTH_LIST_ATTRIBUTES = new Set(["stroke-dasharray"]);
+const NUMBER_LIST_ATTRIBUTES = new Set([
+  "baseFrequency",
+  "kernelMatrix",
+  "kernelUnitLength",
+  "radius",
+  "stdDeviation",
+  "tableValues",
+]);
 const DISCRETE_ATTRIBUTES = new Set([
   "alignment-baseline",
   "clip-path",
+  "clipPathUnits",
   "clip-rule",
   "color-interpolation",
   "color-interpolation-filters",
   "display",
+  "edgeMode",
   "dominant-baseline",
   "fill-rule",
   "filter",
+  "filterUnits",
   "font-family",
   "font-style",
   "font-weight",
+  "gradientUnits",
+  "href",
+  "in",
+  "in2",
+  "lengthAdjust",
+  "markerUnits",
+  "maskContentUnits",
+  "mask-type",
+  "maskUnits",
+  "method",
+  "mode",
+  "operator",
   "marker-end",
   "marker-mid",
   "marker-start",
   "mask",
   "overflow",
+  "patternContentUnits",
+  "patternUnits",
   "pointer-events",
   "preserveAspectRatio",
+  "preserveAlpha",
+  "primitiveUnits",
+  "result",
   "shape-rendering",
+  "side",
+  "spacing",
+  "spreadMethod",
+  "stitchTiles",
   "stroke-linecap",
   "stroke-linejoin",
   "text-anchor",
   "text-decoration",
+  "type",
+  "xChannelSelector",
+  "yChannelSelector",
   "vector-effect",
   "visibility",
 ]);
@@ -249,6 +288,7 @@ const TEXT_ATTRIBUTES = new Set([
 const FILTER_ATTRIBUTES = new Set([
   ...NUMBER_ATTRIBUTES,
   ...INTEGER_ATTRIBUTES,
+  ...NUMBER_LIST_ATTRIBUTES,
   "flood-color",
   "flood-opacity",
   "lighting-color",
@@ -360,15 +400,17 @@ function registryEntry(
         : TEXT_ATTRIBUTES.has(canonicalName)
           ? "any"
           : canonicalName === "viewBox" || canonicalName === "preserveAspectRatio"
-            ? ["svg", "symbol", "view", "marker", "pattern"]
+            ? ["svg", "symbol", "view", "marker", "pattern", "image"]
             : "any",
     runtimeBinding: ANIMATE_SET_RENDER_ATTRIBUTES.has(canonicalName)
       ? "render-node"
       : GRADIENT_STOP_ATTRIBUTES.has(canonicalName)
         ? "gradient-stop"
-        : FILTER_ATTRIBUTES.has(canonicalName) || RESOURCE_ATTRIBUTES.has(canonicalName)
-          ? "pending-resource"
-          : "pending-follow-up",
+        : FILTER_ATTRIBUTES.has(canonicalName)
+          ? "resource"
+          : RESOURCE_ATTRIBUTES.has(canonicalName)
+            ? "pending-resource"
+            : "pending-follow-up",
     ...options,
   };
 }
@@ -389,11 +431,12 @@ register(HORIZONTAL_LENGTH_ATTRIBUTES, "length", true, () => ({ axis: "horizonta
 register(VERTICAL_LENGTH_ATTRIBUTES, "length", true, () => ({ axis: "vertical" }));
 register(OTHER_LENGTH_ATTRIBUTES, "length", true, (name) => ({
   axis: "other",
-  ...(["r", "rx", "ry", "stroke-width"].includes(name) ? { clamp: "nonnegative" as const } : {}),
+  ...(["fr", "r", "rx", "ry", "stroke-width"].includes(name) ? { clamp: "nonnegative" as const } : {}),
 }));
 register(ANGLE_ATTRIBUTES, "angle", true);
 register(COLOR_ATTRIBUTES, "color", true);
 register(LENGTH_LIST_ATTRIBUTES, "length-list", true, () => ({ axis: "other" }));
+register(NUMBER_LIST_ATTRIBUTES, "number-list", true);
 register(DISCRETE_ATTRIBUTES, "discrete", false);
 registry.set("stroke-miterlimit", registryEntry("stroke-miterlimit", "number", true, { clamp: "nonnegative" }));
 registry.set("offset", registryEntry("offset", "opacity", true, { clamp: "unit" }));
@@ -401,11 +444,27 @@ registry.set("points", registryEntry("points", "points", true));
 registry.set("d", registryEntry("d", "path", false));
 registry.set("viewBox", registryEntry("viewBox", "viewBox", true));
 registry.set("transform", registryEntry("transform", "transform", true));
+registry.set("gradientTransform", registryEntry("gradientTransform", "transform", true));
+registry.set("patternTransform", registryEntry("patternTransform", "transform", true));
 registry.set("fill", registryEntry("fill", "paint", true));
 registry.set("stroke", registryEntry("stroke", "paint", true));
 registry.set("values", registryEntry("values", "number-list", true));
 registry.set("keyPoints", registryEntry("keyPoints", "number-list", true));
 registry.set("rotate", registryEntry("rotate", "number-list", true));
+for (const name of [
+  "color-interpolation",
+  "fr",
+  "fx",
+  "fy",
+  "gradientTransform",
+  "gradientUnits",
+  "spreadMethod",
+  "startOffset",
+  "textLength",
+]) {
+  const entry = registry.get(name);
+  if (entry) registry.set(name, { ...entry, runtimeBinding: "resource" });
+}
 
 /** Machine-readable registry shared by SMIL, CSS animation, code generation, and conformance reporting. */
 export const ANIMATION_ATTRIBUTE_REGISTRY: readonly AnimationAttributeRegistryEntry[] = [...registry.values()].sort(
@@ -424,6 +483,65 @@ export function resolveAnimationAttribute(
   const spec = registry.get(attributeName);
   if (!spec) return undefined;
   return attributeType === "auto" || spec.namespaces.includes(attributeType) ? spec : undefined;
+}
+
+/** Attribute names such as `offset` have target-specific value grammars in SVG. */
+export function resolveAnimationAttributeForTarget(
+  attributeName: string,
+  attributeType: "auto" | "XML" | "CSS" = "auto",
+  targetTagName?: string,
+): AnimationAttributeRegistryEntry | undefined {
+  const spec = resolveAnimationAttribute(attributeName, attributeType);
+  if (!spec) return undefined;
+  const tag = targetTagName?.toLowerCase() ?? "";
+  if (
+    (tag === "lineargradient" || tag === "radialgradient") &&
+    [
+      "x1",
+      "y1",
+      "x2",
+      "y2",
+      "cx",
+      "cy",
+      "r",
+      "fx",
+      "fy",
+      "fr",
+      "gradientUnits",
+      "gradientTransform",
+      "spreadMethod",
+      "color-interpolation",
+    ].includes(attributeName)
+  )
+    return { ...spec, runtimeBinding: "resource" };
+  if (tag === "pattern" && ["x", "y", "width", "height", "patternTransform"].includes(attributeName))
+    return { ...spec, runtimeBinding: "resource" };
+  if (tag === "filter" && ["x", "y", "width", "height"].includes(attributeName))
+    return { ...spec, runtimeBinding: "resource" };
+  if (["clippath", "mask", "marker"].includes(tag) && attributeName === "transform")
+    return { ...spec, runtimeBinding: "resource" };
+  if (tag === "mask" && ["x", "y", "width", "height"].includes(attributeName))
+    return { ...spec, runtimeBinding: "resource" };
+  if (
+    tag === "marker" &&
+    ["markerWidth", "markerHeight", "refX", "refY", "markerUnits", "orient", "viewBox", "preserveAspectRatio"].includes(
+      attributeName,
+    )
+  )
+    return { ...spec, runtimeBinding: "resource" };
+  if (["fepointlight", "fespotlight"].includes(tag) && ["x", "y", "z"].includes(attributeName))
+    return { ...spec, family: "number", axis: undefined, runtimeBinding: "resource" };
+  if (tag.startsWith("fe") && ["dx", "dy"].includes(attributeName))
+    return { ...spec, family: "number", axis: undefined, runtimeBinding: "resource" };
+  if (attributeName === "offset" && /^feFunc[RGBA]$/i.test(targetTagName ?? ""))
+    return { ...spec, family: "number", clamp: undefined, runtimeBinding: "resource" };
+  if (tag === "feconvolvematrix" && attributeName === "order")
+    return { ...spec, family: "number-list", clamp: "nonnegative", runtimeBinding: "resource" };
+  if (["text", "tspan", "textpath"].includes(tag) && ["x", "y", "dx", "dy"].includes(attributeName))
+    return { ...spec, family: "length-list", runtimeBinding: tag === "text" ? "render-node" : "resource" };
+  if (tag.startsWith("fe")) return { ...spec, runtimeBinding: "resource" };
+  if (["tspan", "textpath"].includes(tag)) return { ...spec, runtimeBinding: "resource" };
+  return spec;
 }
 
 function numbers(source: string): number[] | undefined {
@@ -785,8 +903,9 @@ export function parseAnimationValueSet(
   attributeName: string,
   raw: { base?: string; from?: string; to?: string; by?: string; values?: readonly string[] },
   context: AnimationValueContext,
+  targetAttribute?: AnimationAttributeSpec,
 ): AnimationValueSet | undefined {
-  const attribute = animationAttributeSpec(attributeName);
+  const attribute = targetAttribute ?? animationAttributeSpec(attributeName);
   if (!attribute?.animatable || raw.base === undefined) return undefined;
   const parse = (value: string | undefined) =>
     value === undefined ? undefined : parseAnimationValue(attribute, value, context);
