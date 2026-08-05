@@ -31,6 +31,14 @@ Every comparison compiles generated Swift, renders exact document times, and com
 | 9 | `benchmark-08-css-keyframes` | CSS keyframes mixed with SVG presentation |
 | 10 | `benchmark-10-complex-scene` | combined real-world declarative scene |
 
+## Real-world benchmark suites
+
+These pinned third-party animations are compiled and verified frame by frame with the same RGBA oracle.
+
+| Suite | Fixtures | Included cases |
+| --- | ---: | --- |
+| SVG Spinners CSS showcase | 6 | `vendor-spinner-css-12-dots-scale-rotate`, `vendor-spinner-css-blocks-shuffle-3`, `vendor-spinner-css-blocks-wave`, `vendor-spinner-css-bouncing-ball`, `vendor-spinner-css-clock`, `vendor-spinner-css-tadpole` |
+
 ## Complete inventory
 
 | Feature | Status | Unit evidence | Temporal tag | Limitation |

@@ -111,6 +111,7 @@ jobs:
           path: |
             packages/svg-to-swiftui-core/animation-tests/renders/summary.json
             packages/svg-to-swiftui-core/animation-tests/renders/**/*.mp4
+            packages/svg-to-swiftui-core/animation-tests/renders/**/*.gif
             packages/svg-to-swiftui-core/animation-tests/renders/**/*-diff.png
           if-no-files-found: warn
           retention-days: 7

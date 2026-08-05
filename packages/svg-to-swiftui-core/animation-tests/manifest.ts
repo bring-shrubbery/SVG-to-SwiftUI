@@ -202,8 +202,14 @@ interface RawAnimationFixture {
   };
 }
 
+export interface AnimationBenchmarkSuite {
+  id: string;
+  title: string;
+  fixtures: string[];
+}
+
 interface AnimationManifestFile {
-  version: 2;
+  version: 3;
   defaults: {
     scale: number;
     background: string | null;
@@ -212,6 +218,7 @@ interface AnimationManifestFile {
     tolerance: RgbaTolerance;
   };
   benchmarkLadder: Array<{ rank: number; fixture: string; capability: string }>;
+  benchmarkSuites: AnimationBenchmarkSuite[];
   fixtures: Record<string, RawAnimationFixture>;
 }
 
@@ -332,7 +339,7 @@ export function loadAnimationValueGoldens(): AnimationValueGoldenFile {
 
 export function loadAnimationFixtures(): LoadedAnimationFixture[] {
   const manifest = readManifest();
-  if (manifest.version !== 2) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
+  if (manifest.version !== 3) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
   return Object.entries(manifest.fixtures)
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([name, entry]) => ({
@@ -357,6 +364,12 @@ export function loadAnimationFixtures(): LoadedAnimationFixture[] {
       ...(entry.toleranceReason ? { toleranceReason: entry.toleranceReason } : {}),
       ...(entry.provenance ? { provenance: entry.provenance } : {}),
     }));
+}
+
+export function loadAnimationBenchmarkSuites(): AnimationBenchmarkSuite[] {
+  const manifest = readManifest();
+  if (manifest.version !== 3) throw new Error(`Unsupported animation fixture manifest version: ${manifest.version}`);
+  return manifest.benchmarkSuites;
 }
 
 function validPositiveInteger(value: number): boolean {
@@ -393,6 +406,22 @@ export function validateAnimationManifest(): string[] {
       errors.push(`Benchmark ladder fixture must use comparison mode: ${entry.fixture}`);
     if (entry.capability.trim() === "")
       errors.push(`Benchmark ladder rank ${entry.rank} requires a capability description`);
+  }
+  const suiteIds = manifest.benchmarkSuites.map((suite) => suite.id);
+  if (new Set(suiteIds).size !== suiteIds.length) errors.push("Animation benchmark suite IDs must be unique");
+  for (const suite of manifest.benchmarkSuites) {
+    if (suite.id.trim() === "") errors.push("Animation benchmark suite ID must not be empty");
+    if (suite.title.trim() === "") errors.push(`Animation benchmark suite ${suite.id} requires a title`);
+    if (suite.fixtures.length < 2)
+      errors.push(`Animation benchmark suite ${suite.id} must contain at least two fixtures`);
+    if (new Set(suite.fixtures).size !== suite.fixtures.length)
+      errors.push(`Animation benchmark suite ${suite.id} fixtures must be unique`);
+    for (const name of suite.fixtures) {
+      const fixture = fixtures.find((candidate) => candidate.name === name);
+      if (!fixture) errors.push(`Animation benchmark suite ${suite.id} references missing fixture: ${name}`);
+      else if (fixture.mode !== "comparison")
+        errors.push(`Animation benchmark suite ${suite.id} fixture must use comparison mode: ${name}`);
+    }
   }
   for (const name of actual)
     if (!declared.has(name)) errors.push(`Animation fixture missing from manifest: ${name}.svg`);

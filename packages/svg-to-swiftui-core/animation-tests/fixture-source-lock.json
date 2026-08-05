@@ -251,6 +251,66 @@
       "licenseFile": "vendor-licenses/SamHerbert-SVG-Loaders-LICENSE.md",
       "sourceURL": "https://github.com/SamHerbert/SVG-Loaders/blob/561eacac2f46e2b02e48df547324dcea94a6a1c5/svg-loaders/three-dots.svg",
       "upstreamRevision": "561eacac2f46e2b02e48df547324dcea94a6a1c5"
+    },
+    {
+      "name": "vendor-spinner-css-12-dots-scale-rotate",
+      "path": "fixtures/vendor-spinner-css-12-dots-scale-rotate.svg",
+      "sha256": "1c44379d777ce88089ca174f946fcb8712a425ca1b8c278f94d76923fab56df6",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/12-dots-scale-rotate.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+    },
+    {
+      "name": "vendor-spinner-css-blocks-shuffle-3",
+      "path": "fixtures/vendor-spinner-css-blocks-shuffle-3.svg",
+      "sha256": "e4b3f76c0ce9a8322721e0ac7b83f74fb0a8513cc7dc6e697920662ddd2453bf",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/blocks-shuffle-3.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+    },
+    {
+      "name": "vendor-spinner-css-blocks-wave",
+      "path": "fixtures/vendor-spinner-css-blocks-wave.svg",
+      "sha256": "df24272c3d73bd595a7eb860fd19ed5b6a95117ddf6ef739b335082996211142",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/blocks-wave.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+    },
+    {
+      "name": "vendor-spinner-css-bouncing-ball",
+      "path": "fixtures/vendor-spinner-css-bouncing-ball.svg",
+      "sha256": "fe82361237fa35051a352a9d526f3b966beecf4e312950ab9b63fe66fe75e684",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/bouncing-ball.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+    },
+    {
+      "name": "vendor-spinner-css-clock",
+      "path": "fixtures/vendor-spinner-css-clock.svg",
+      "sha256": "eee700a6beb1be1fb92c91cac7964879c8b42947311ef094f26865d834c7c227",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/clock.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
+    },
+    {
+      "name": "vendor-spinner-css-tadpole",
+      "path": "fixtures/vendor-spinner-css-tadpole.svg",
+      "sha256": "8328d13dba17bb0c12fd35aeaed8825ae379d55c0aa8a9ed70ac9eb324040c73",
+      "author": "Utkarsh Verma",
+      "license": "MIT",
+      "licenseFile": "vendor-licenses/svg-spinners-LICENSE",
+      "sourceURL": "https://github.com/n3r4zzurr0/svg-spinners/blob/abfa05c49acf005b8b1e0ef8eb25a67a7057eb20/svg-css/tadpole.svg",
+      "upstreamRevision": "abfa05c49acf005b8b1e0ef8eb25a67a7057eb20"
     }
   ]
 }

@@ -8,6 +8,7 @@ export function renderAnimationReport(): string {
     readFileSync(resolve(import.meta.dir, "../animation-tests/animation-fixture-manifest.json"), "utf8"),
   ) as {
     benchmarkLadder: Array<{ rank: number; fixture: string; capability: string }>;
+    benchmarkSuites: Array<{ id: string; title: string; fixtures: string[] }>;
   };
   const counts = new Map<string, number>();
   for (const entry of profile.entries) counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
@@ -31,6 +32,17 @@ export function renderAnimationReport(): string {
     "| Rank | Fixture | Capability |",
     "| ---: | --- | --- |",
     ...manifest.benchmarkLadder.map((item) => `| ${item.rank} | \`${item.fixture}\` | ${item.capability} |`),
+    "",
+    "## Real-world benchmark suites",
+    "",
+    "These pinned third-party animations are compiled and verified frame by frame with the same RGBA oracle.",
+    "",
+    "| Suite | Fixtures | Included cases |",
+    "| --- | ---: | --- |",
+    ...manifest.benchmarkSuites.map(
+      (suite) =>
+        `| ${suite.title} | ${suite.fixtures.length} | ${suite.fixtures.map((fixture) => `\`${fixture}\``).join(", ")} |`,
+    ),
     "",
     "## Complete inventory",
     "",

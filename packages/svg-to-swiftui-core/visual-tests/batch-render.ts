@@ -16,7 +16,8 @@ const SUPPORT_PATH = resolve(__dirname, "swiftui-renderer-support.swift");
 // Keep each generated Swift source small enough for slower GitHub macOS runners.
 // Swift type-checking this many independent View declarations is superlinear;
 // one monolithic corpus can exceed the per-process timeout without a code error.
-const MAX_BATCH_SIZE = 500;
+// Keep generated Swift compilation units small enough for stable type-checking on CI runners.
+const MAX_BATCH_SIZE = 200;
 const SWIFT_RENDERER_VERSION = "real-swiftui-srgb-v2";
 
 export interface BatchTestItem {
