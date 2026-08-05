@@ -1,9 +1,10 @@
 /** Compile each generated declaration once, render exact document times, and compare every lossless RGBA frame. */
 import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { ExpectedOutputMode } from "../visual-tests/manifest";
@@ -14,6 +15,32 @@ const execFile = promisify(execFileCallback);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SUPPORT_PATH = resolve(__dirname, "../visual-tests/swiftui-renderer-support.swift");
 const SWIFT_RENDERER_VERSION = "temporal-swiftui-srgb-v1";
+
+export interface AnimationBatchMetrics {
+  generatedSwiftBytes: number;
+  compileMilliseconds: number;
+  renderMilliseconds: number;
+  renderedFrames: number;
+  rendererBinaryBytes: number;
+  peakResidentMemoryBytes: number;
+  firstFrameRenderMilliseconds: number;
+  subsequentFrameAverageMilliseconds: number;
+}
+
+export let lastAnimationBatchMetrics: AnimationBatchMetrics = {
+  generatedSwiftBytes: 0,
+  compileMilliseconds: 0,
+  renderMilliseconds: 0,
+  renderedFrames: 0,
+  rendererBinaryBytes: 0,
+  peakResidentMemoryBytes: 0,
+  firstFrameRenderMilliseconds: 0,
+  subsequentFrameAverageMilliseconds: 0,
+};
+
+function peakResidentBytes(stderr: string): number {
+  return Number(/^\s*(\d+)\s+maximum resident set size/m.exec(stderr)?.[1] ?? 0);
+}
 
 export interface AnimationBatchFrame {
   index: number;
@@ -154,6 +181,16 @@ export async function runAnimationBatch(
   if (items.length === 0) return [];
   const support = readFileSync(SUPPORT_PATH, "utf8");
   const source = generatedSource(support, items);
+  lastAnimationBatchMetrics = {
+    generatedSwiftBytes: Buffer.byteLength(source),
+    compileMilliseconds: 0,
+    renderMilliseconds: 0,
+    renderedFrames: 0,
+    rendererBinaryBytes: 0,
+    peakResidentMemoryBytes: 0,
+    firstFrameRenderMilliseconds: 0,
+    subsequentFrameAverageMilliseconds: 0,
+  };
   const sourceHash = hash(source).slice(0, 20);
   const cacheDirectory = join(rendersDir, ".cache");
   const cachePath = join(rendersDir, ".swift-frame-cache.json");
@@ -174,15 +211,30 @@ export async function runAnimationBatch(
       writeFileSync(sourcePath, source);
       temporaryFiles.push(sourcePath);
       console.log(`  Compiling ${items.length} temporal SwiftUI declaration(s)...`);
+      const compileStarted = performance.now();
       try {
-        await execFile(
-          "xcrun",
-          ["swiftc", "-module-cache-path", join(cacheDirectory, "module-cache"), sourcePath, "-o", binaryPath],
+        const measured = await execFile(
+          "/usr/bin/time",
+          [
+            "-l",
+            "xcrun",
+            "swiftc",
+            "-module-cache-path",
+            join(cacheDirectory, "module-cache"),
+            sourcePath,
+            "-o",
+            binaryPath,
+          ],
           { timeout: 900_000, maxBuffer: 100 * 1024 * 1024 },
+        );
+        lastAnimationBatchMetrics.peakResidentMemoryBytes = Math.max(
+          lastAnimationBatchMetrics.peakResidentMemoryBytes,
+          peakResidentBytes(measured.stderr),
         );
       } catch (error) {
         throw new Error(`Generated temporal SwiftUI compilation failed.\n${compilerFailure(error)}`);
       }
+      lastAnimationBatchMetrics.compileMilliseconds = performance.now() - compileStarted;
     } else {
       console.log(`  Using cached temporal SwiftUI renderer for ${items.length} fixture(s)`);
     }
@@ -240,20 +292,39 @@ export async function runAnimationBatch(
     }
 
     if (tasks.length > 0) {
-      const tasksPath = join(tmpdir(), `svg-swiftui-animation-tasks-${sourceHash}-${Date.now()}.json`);
-      temporaryFiles.push(tasksPath);
-      writeFileSync(tasksPath, JSON.stringify(tasks));
       console.log(`  Rendering ${tasks.length} SwiftUI frame(s) at explicit document times...`);
+      const render = async (selected: object[], label: string): Promise<number> => {
+        const tasksPath = join(tmpdir(), `svg-swiftui-animation-tasks-${sourceHash}-${label}-${Date.now()}.json`);
+        temporaryFiles.push(tasksPath);
+        writeFileSync(tasksPath, JSON.stringify(selected));
+        const started = performance.now();
+        const measured = await execFile("/usr/bin/time", ["-l", binaryPath, tasksPath], {
+          timeout: 900_000,
+          maxBuffer: 100 * 1024 * 1024,
+        });
+        lastAnimationBatchMetrics.peakResidentMemoryBytes = Math.max(
+          lastAnimationBatchMetrics.peakResidentMemoryBytes,
+          peakResidentBytes(measured.stderr),
+        );
+        return performance.now() - started;
+      };
       try {
-        await execFile(binaryPath, [tasksPath], { timeout: 900_000, maxBuffer: 100 * 1024 * 1024 });
+        lastAnimationBatchMetrics.firstFrameRenderMilliseconds = await render(tasks.slice(0, 1), "first");
+        const remainingMilliseconds = tasks.length > 1 ? await render(tasks.slice(1), "remaining") : 0;
+        lastAnimationBatchMetrics.renderMilliseconds =
+          lastAnimationBatchMetrics.firstFrameRenderMilliseconds + remainingMilliseconds;
+        lastAnimationBatchMetrics.subsequentFrameAverageMilliseconds =
+          tasks.length > 1 ? remainingMilliseconds / (tasks.length - 1) : 0;
       } catch (error) {
         throw new Error(`Generated temporal SwiftUI renderer failed.\n${compilerFailure(error)}`);
       }
+      lastAnimationBatchMetrics.renderedFrames = tasks.length;
       for (const { cacheKey, itemHash } of pending) cache[cacheKey] = { hash: itemHash };
     } else {
       console.log("  All SwiftUI temporal frames are valid cache hits");
     }
     writeFileSync(cachePath, JSON.stringify(cache, null, 2));
+    lastAnimationBatchMetrics.rendererBinaryBytes = statSync(binaryPath).size;
   } catch (error) {
     renderingError = error instanceof Error ? error.message : String(error);
   } finally {

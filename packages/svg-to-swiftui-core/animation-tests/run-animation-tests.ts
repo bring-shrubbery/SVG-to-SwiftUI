@@ -2,7 +2,7 @@
 /** Deterministic SVG animation conformance runner: seek, compile, render, and compare lossless RGBA frames. */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PNG } from "pngjs";
@@ -14,7 +14,12 @@ import {
 } from "../src/renderTree/animationValues";
 import type { ResolvedResource } from "../src/types";
 import { outputMode, withPixelViewport } from "../visual-tests/manifest";
-import { type AnimationBatchItem, type AnimationFrameResult, runAnimationBatch } from "./batch-render";
+import {
+  type AnimationBatchItem,
+  type AnimationFrameResult,
+  lastAnimationBatchMetrics,
+  runAnimationBatch,
+} from "./batch-render";
 import {
   ANIMATION_FIXTURES_DIR,
   type LoadedAnimationFixture,
@@ -33,6 +38,9 @@ const REFERENCE_RENDERER_VERSION = "webkit-explicit-all-smil-time-containers-v2"
 const VIDEO_ENCODER_SOURCE = resolve(__dirname, "video-encoder.swift");
 const VIDEO_ENCODER_BINARY = resolve(CACHE_DIR, "animation-video-encoder");
 const VALUE_GOLDENS_PATH = resolve(__dirname, "animation-value-goldens.json");
+const ANIMATION_BUDGETS = JSON.parse(readFileSync(resolve(__dirname, "animation-budgets.json"), "utf8")) as {
+  limits: Record<string, number>;
+};
 
 interface ReferenceCacheEntry {
   hash: string;
@@ -447,6 +455,21 @@ function sideBySideFrame(reference: string, swift: string, output: string): void
   writeFileSync(output, PNG.sync.write(result));
 }
 
+function differenceFrame(reference: string, swift: string, output: string): void {
+  const expected = PNG.sync.read(readFileSync(reference));
+  const actual = PNG.sync.read(readFileSync(swift));
+  if (expected.width !== actual.width || expected.height !== actual.height)
+    throw new Error(`Cannot compose difference frame with mismatched dimensions: ${reference} and ${swift}`);
+  const result = new PNG({ width: expected.width, height: expected.height });
+  for (let offset = 0; offset < result.data.length; offset += 4) {
+    result.data[offset] = Math.min(255, Math.abs(expected.data[offset]! - actual.data[offset]!) * 4);
+    result.data[offset + 1] = Math.min(255, Math.abs(expected.data[offset + 1]! - actual.data[offset + 1]!) * 4);
+    result.data[offset + 2] = Math.min(255, Math.abs(expected.data[offset + 2]! - actual.data[offset + 2]!) * 4);
+    result.data[offset + 3] = 255;
+  }
+  writeFileSync(output, PNG.sync.write(result));
+}
+
 function generateReviewVideos(fixtures: LoadedAnimationFixture[], comparisonItems: AnimationBatchItem[]): void {
   const compared = new Map(comparisonItems.map((item) => [item.name, item]));
   for (const fixture of fixtures) {
@@ -482,6 +505,18 @@ function generateReviewVideos(fixtures: LoadedAnimationFixture[], comparisonItem
       pixelHeight,
       fixture.timeline.framesPerSecond,
       reviewSequence(fixture, sideBySide),
+    );
+    const differences = fixture.frames.map((frame, index) => {
+      const output = resolve(fixtureDirectory, "frames", `${frame.stem}-difference-video.png`);
+      differenceFrame(references[index]!, swiftFrames[index]!, output);
+      return output;
+    });
+    encodeReviewVideo(
+      resolve(fixtureDirectory, "difference.mp4"),
+      pixelWidth,
+      pixelHeight,
+      fixture.timeline.framesPerSecond,
+      reviewSequence(fixture, differences),
     );
   }
 }
@@ -565,6 +600,12 @@ async function main(): Promise<void> {
   console.log(`Processing ${fixtures.length} animation fixture(s), ${frameCount} exact frame time(s)...`);
   const comparisonItems: AnimationBatchItem[] = [];
   const preparationErrors: { fixture: string; error: string }[] = [];
+  const preparationMetrics: Array<{
+    fixture: string;
+    inputBytes: number;
+    generatedSwiftBytes: number;
+    conversionMilliseconds: number;
+  }> = [];
   let referenceProbesPassed = 0;
   for (const fixture of fixtures) {
     try {
@@ -599,6 +640,7 @@ async function main(): Promise<void> {
       if (fixture.mode === "comparison") {
         const expectedMode = fixture.expectedMode!;
         const swiftTypeName = `AnimationFixture${comparisonItems.length}`;
+        const conversionStarted = performance.now();
         const swiftCode = await convertAsync(source, {
           structName: swiftTypeName,
           precision: 5,
@@ -611,6 +653,12 @@ async function main(): Promise<void> {
             baseURL: sourceURL.href,
             supplied: fixtureResources.supplied,
           },
+        });
+        preparationMetrics.push({
+          fixture: fixture.name,
+          inputBytes: Buffer.byteLength(source),
+          generatedSwiftBytes: Buffer.byteLength(swiftCode),
+          conversionMilliseconds: Math.round((performance.now() - conversionStarted) * 100) / 100,
         });
         const actualMode = outputMode(swiftCode);
         if (actualMode !== expectedMode)
@@ -646,6 +694,27 @@ async function main(): Promise<void> {
     console.log("  Encoding review-only MP4 artifacts...");
     generateReviewVideos(fixtures, comparisonItems);
   }
+  const limits = ANIMATION_BUDGETS.limits;
+  const budgetFailures: string[] = [];
+  if (lastAnimationBatchMetrics.compileMilliseconds > limits.compileMillisecondsPerBatch!)
+    budgetFailures.push("Swift compile time budget exceeded");
+  if (lastAnimationBatchMetrics.firstFrameRenderMilliseconds > limits.firstFrameRenderMilliseconds!)
+    budgetFailures.push("cold render batch budget exceeded");
+  if (lastAnimationBatchMetrics.subsequentFrameAverageMilliseconds > limits.subsequentFrameRenderMilliseconds!)
+    budgetFailures.push("average frame render budget exceeded");
+  if (lastAnimationBatchMetrics.peakResidentMemoryBytes > limits.peakResidentMemoryBytes!)
+    budgetFailures.push("peak resident memory budget exceeded");
+  if (videos) {
+    for (const fixture of fixtures) {
+      const artifactBytes = ["reference.mp4", "swiftui.mp4", "side-by-side.mp4", "difference.mp4"]
+        .map((name) => resolve(RENDERS_DIR, fixture.name, name))
+        .filter(existsSync)
+        .reduce((sum, path) => sum + statSync(path).size, 0);
+      if (artifactBytes > limits.reviewArtifactBytesPerFixture!)
+        budgetFailures.push(`${fixture.name}: review artifact budget exceeded`);
+    }
+  }
+  for (const failure of budgetFailures) preparationErrors.push({ fixture: "performance-budget", error: failure });
   const failures = results.filter((result) => result.status !== "pass");
   if (preparationErrors.length > 0 || failures.length > 0) {
     console.log("\nFailures:");
@@ -681,6 +750,8 @@ async function main(): Promise<void> {
         passed,
         failed,
         errors,
+        performance: lastAnimationBatchMetrics,
+        preparationMetrics,
         worstFrames: Object.fromEntries(
           Object.entries(worstFrames).map(([metric, result]) => [metric, frameSummary(result)]),
         ),

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="48" viewBox="0 0 96 48">
+  <rect width="96" height="48" rx="8" fill="#0f172a"/>
+  <circle cx="48" cy="24" r="14" fill="#38bdf8" opacity=".35">
+    <animate attributeName="fill" values="#38bdf8;#fb7185;#facc15" dur="1s" fill="freeze"/>
+    <animate attributeName="opacity" values=".35;1;.6" dur="1s" fill="freeze"/>
+  </circle>
+</svg>

@@ -52,6 +52,7 @@
       "**/*.json",
       "**/*.jsonc",
       "!apps/nextjs/public/data/icons/*.json",
+      "!packages/svg-to-swiftui-core/conformance/svg-animation-profile.json",
       "!tooling/typescript/*.json"
     ]
   },

@@ -3511,6 +3511,7 @@ export function buildRenderDocument(
     diagnostics,
     animationTargetSnapshots,
     styleResolver.animationKeyframes(),
+    { ...config.animations, strict: config.strict },
   );
 
   return {

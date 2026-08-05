@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
+  <rect width="160" height="120" fill="#0f172a"/>
+  <defs>
+    <clipPath id="growing-clip" transform="translate(0 0)">
+      <animateTransform attributeName="transform" type="translate" values="0 0;1 0" dur="2s" fill="freeze"/>
+      <circle cx="40" cy="79" r="8"><animate attributeName="r" values="8;24" dur="2s" fill="freeze"/></circle>
+    </clipPath>
+    <mask id="sliding-mask" maskUnits="userSpaceOnUse" x="82" y="58" width="70" height="42">
+      <animate attributeName="x" values="82;78" dur="2s" fill="freeze"/>
+      <animate attributeName="width" values="70;74" dur="2s" fill="freeze"/>
+      <rect x="82" y="58" width="34" height="42" fill="white">
+        <animate attributeName="x" values="82;116" dur="2s" fill="freeze"/>
+      </rect>
+    </mask>
+    <filter id="moving-filter" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="92" y="3" width="64" height="50">
+      <animate attributeName="x" values="92;88" dur="2s" fill="freeze"/>
+      <animate attributeName="width" values="64;72" dur="2s" fill="freeze"/>
+      <feGaussianBlur stdDeviation="0" result="blur"><animate attributeName="stdDeviation" values="0;2" dur="2s" fill="freeze"/></feGaussianBlur>
+      <feOffset in="blur" dx="0" dy="0"><animate attributeName="dx" values="0;7" dur="2s" fill="freeze"/><animate attributeName="dy" values="0;3" dur="2s" fill="freeze"/></feOffset>
+    </filter>
+  </defs>
+  <rect x="8" y="58" width="64" height="42" fill="#34d399" clip-path="url(#growing-clip)"/>
+  <rect x="82" y="58" width="70" height="42" fill="#60a5fa" mask="url(#sliding-mask)"/>
+  <rect x="92" y="8" width="58" height="38" rx="7" fill="#a78bfa" filter="url(#moving-filter)"/>
+  <text x="92" y="113" fill="#f8fafc" font-family="sans-serif" font-size="11"><tspan dx="0 0 0">SVG
+    <animate attributeName="dx" values="0 0 0;0 1 0" dur="2s" fill="freeze"/>
+  </tspan><animate attributeName="x" values="92;118" dur="2s" fill="freeze"/></text>
+</svg>

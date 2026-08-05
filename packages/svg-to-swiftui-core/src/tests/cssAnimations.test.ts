@@ -119,4 +119,22 @@ describe("compiled CSS keyframes", () => {
       <rect id="box" width="20" height="20" style="animation: fade 1s 2s 3s"/></svg>`);
     expect(result.diagnostics.map((item) => item.code)).toContain("invalid-css-animation-shorthand");
   });
+
+  test("matches an implicit none endpoint to a neutral CSS transform list", () => {
+    const document = __testing.parseRenderDocument(`
+      <svg viewBox="0 0 24 24"><style>
+        @keyframes spin { 100% { transform: rotate(360deg) } }
+        #ring { animation: spin .75s linear infinite; }
+      </style><path id="ring" d="M12 1A11 11 0 1 0 23 12"/></svg>`);
+    const animation = document.animationProgram.animations.find((item) => item.attributeName === "transform")!;
+    expect(animation.value).toMatchObject({
+      family: "transform",
+      values: [{ components: [{ kind: "rotate", values: [0] }] }, { components: [{ kind: "rotate", values: [360] }] }],
+    });
+    expect(
+      convert(
+        `<svg viewBox="0 0 24 24"><style>@keyframes spin{to{transform:rotate(360deg)}}#r{animation:spin 1s linear infinite}</style><rect id="r" width="4" height="4"/></svg>`,
+      ),
+    ).toContain('signature: "rotate1"');
+  });
 });

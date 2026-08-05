@@ -1,0 +1,3907 @@
+{
+  "version": 1,
+  "profile": "SVG 2 declarative animation compiled to deterministic SwiftUI",
+  "specifications": [
+    "https://www.w3.org/TR/SVG2/",
+    "https://www.w3.org/TR/2001/REC-smil-animation-20010904/",
+    "https://www.w3.org/TR/css-animations-1/"
+  ],
+  "statuses": [
+    "supported",
+    "partially-supported",
+    "intentionally-snapshotted",
+    "browser-runtime-out-of-scope",
+    "obsolete",
+    "unsupported-blocker"
+  ],
+  "entries": [
+    {
+      "id": "attribute:alignment-baseline",
+      "category": "attribute",
+      "name": "alignment-baseline",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:amplitude",
+      "category": "attribute",
+      "name": "amplitude",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:azimuth",
+      "category": "attribute",
+      "name": "azimuth",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:baseFrequency",
+      "category": "attribute",
+      "name": "baseFrequency",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:bias",
+      "category": "attribute",
+      "name": "bias",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:clip-path",
+      "category": "attribute",
+      "name": "clip-path",
+      "status": "partially-supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-resource; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:clip-rule",
+      "category": "attribute",
+      "name": "clip-rule",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:clipPathUnits",
+      "category": "attribute",
+      "name": "clipPathUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:color",
+      "category": "attribute",
+      "name": "color",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:color-interpolation",
+      "category": "attribute",
+      "name": "color-interpolation",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:color-interpolation-filters",
+      "category": "attribute",
+      "name": "color-interpolation-filters",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:cx",
+      "category": "attribute",
+      "name": "cx",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:cy",
+      "category": "attribute",
+      "name": "cy",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:d",
+      "category": "attribute",
+      "name": "d",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:diffuseConstant",
+      "category": "attribute",
+      "name": "diffuseConstant",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:display",
+      "category": "attribute",
+      "name": "display",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:divisor",
+      "category": "attribute",
+      "name": "divisor",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:dominant-baseline",
+      "category": "attribute",
+      "name": "dominant-baseline",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:dx",
+      "category": "attribute",
+      "name": "dx",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:dy",
+      "category": "attribute",
+      "name": "dy",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:edgeMode",
+      "category": "attribute",
+      "name": "edgeMode",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:elevation",
+      "category": "attribute",
+      "name": "elevation",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:exponent",
+      "category": "attribute",
+      "name": "exponent",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:fill",
+      "category": "attribute",
+      "name": "fill",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:fill-opacity",
+      "category": "attribute",
+      "name": "fill-opacity",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:fill-rule",
+      "category": "attribute",
+      "name": "fill-rule",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:filter",
+      "category": "attribute",
+      "name": "filter",
+      "status": "partially-supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-resource; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:filterUnits",
+      "category": "attribute",
+      "name": "filterUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:flood-color",
+      "category": "attribute",
+      "name": "flood-color",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:flood-opacity",
+      "category": "attribute",
+      "name": "flood-opacity",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:font-family",
+      "category": "attribute",
+      "name": "font-family",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:font-size",
+      "category": "attribute",
+      "name": "font-size",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:font-style",
+      "category": "attribute",
+      "name": "font-style",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:font-weight",
+      "category": "attribute",
+      "name": "font-weight",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:fr",
+      "category": "attribute",
+      "name": "fr",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:fx",
+      "category": "attribute",
+      "name": "fx",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:fy",
+      "category": "attribute",
+      "name": "fy",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:glyph-orientation-horizontal",
+      "category": "attribute",
+      "name": "glyph-orientation-horizontal",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:glyph-orientation-vertical",
+      "category": "attribute",
+      "name": "glyph-orientation-vertical",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:gradientTransform",
+      "category": "attribute",
+      "name": "gradientTransform",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:gradientUnits",
+      "category": "attribute",
+      "name": "gradientUnits",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:height",
+      "category": "attribute",
+      "name": "height",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:href",
+      "category": "attribute",
+      "name": "href",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:in",
+      "category": "attribute",
+      "name": "in",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:in2",
+      "category": "attribute",
+      "name": "in2",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:intercept",
+      "category": "attribute",
+      "name": "intercept",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:k",
+      "category": "attribute",
+      "name": "k",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:k1",
+      "category": "attribute",
+      "name": "k1",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:k2",
+      "category": "attribute",
+      "name": "k2",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:k3",
+      "category": "attribute",
+      "name": "k3",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:k4",
+      "category": "attribute",
+      "name": "k4",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:kernelMatrix",
+      "category": "attribute",
+      "name": "kernelMatrix",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:kernelUnitLength",
+      "category": "attribute",
+      "name": "kernelUnitLength",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:keyPoints",
+      "category": "attribute",
+      "name": "keyPoints",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:lengthAdjust",
+      "category": "attribute",
+      "name": "lengthAdjust",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:letter-spacing",
+      "category": "attribute",
+      "name": "letter-spacing",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:lighting-color",
+      "category": "attribute",
+      "name": "lighting-color",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:limitingConeAngle",
+      "category": "attribute",
+      "name": "limitingConeAngle",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:marker-end",
+      "category": "attribute",
+      "name": "marker-end",
+      "status": "partially-supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-resource; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:marker-mid",
+      "category": "attribute",
+      "name": "marker-mid",
+      "status": "partially-supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-resource; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:marker-start",
+      "category": "attribute",
+      "name": "marker-start",
+      "status": "partially-supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-resource; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:markerHeight",
+      "category": "attribute",
+      "name": "markerHeight",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:markerUnits",
+      "category": "attribute",
+      "name": "markerUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:markerWidth",
+      "category": "attribute",
+      "name": "markerWidth",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:mask",
+      "category": "attribute",
+      "name": "mask",
+      "status": "partially-supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-resource; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:mask-type",
+      "category": "attribute",
+      "name": "mask-type",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:maskContentUnits",
+      "category": "attribute",
+      "name": "maskContentUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:maskUnits",
+      "category": "attribute",
+      "name": "maskUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:method",
+      "category": "attribute",
+      "name": "method",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:mode",
+      "category": "attribute",
+      "name": "mode",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:numOctaves",
+      "category": "attribute",
+      "name": "numOctaves",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:offset",
+      "category": "attribute",
+      "name": "offset",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:opacity",
+      "category": "attribute",
+      "name": "opacity",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:operator",
+      "category": "attribute",
+      "name": "operator",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:order",
+      "category": "attribute",
+      "name": "order",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:orient",
+      "category": "attribute",
+      "name": "orient",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:overflow",
+      "category": "attribute",
+      "name": "overflow",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:pathLength",
+      "category": "attribute",
+      "name": "pathLength",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:patternContentUnits",
+      "category": "attribute",
+      "name": "patternContentUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:patternTransform",
+      "category": "attribute",
+      "name": "patternTransform",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:patternUnits",
+      "category": "attribute",
+      "name": "patternUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:pointer-events",
+      "category": "attribute",
+      "name": "pointer-events",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:points",
+      "category": "attribute",
+      "name": "points",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:pointsAtX",
+      "category": "attribute",
+      "name": "pointsAtX",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:pointsAtY",
+      "category": "attribute",
+      "name": "pointsAtY",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:pointsAtZ",
+      "category": "attribute",
+      "name": "pointsAtZ",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:preserveAlpha",
+      "category": "attribute",
+      "name": "preserveAlpha",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:preserveAspectRatio",
+      "category": "attribute",
+      "name": "preserveAspectRatio",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:primitiveUnits",
+      "category": "attribute",
+      "name": "primitiveUnits",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:r",
+      "category": "attribute",
+      "name": "r",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:radius",
+      "category": "attribute",
+      "name": "radius",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:refX",
+      "category": "attribute",
+      "name": "refX",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:refY",
+      "category": "attribute",
+      "name": "refY",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:result",
+      "category": "attribute",
+      "name": "result",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:rotate",
+      "category": "attribute",
+      "name": "rotate",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:rx",
+      "category": "attribute",
+      "name": "rx",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:ry",
+      "category": "attribute",
+      "name": "ry",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:scale",
+      "category": "attribute",
+      "name": "scale",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:seed",
+      "category": "attribute",
+      "name": "seed",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:shape-rendering",
+      "category": "attribute",
+      "name": "shape-rendering",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:side",
+      "category": "attribute",
+      "name": "side",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:slope",
+      "category": "attribute",
+      "name": "slope",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:spacing",
+      "category": "attribute",
+      "name": "spacing",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:specularConstant",
+      "category": "attribute",
+      "name": "specularConstant",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:specularExponent",
+      "category": "attribute",
+      "name": "specularExponent",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:spreadMethod",
+      "category": "attribute",
+      "name": "spreadMethod",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:startOffset",
+      "category": "attribute",
+      "name": "startOffset",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stdDeviation",
+      "category": "attribute",
+      "name": "stdDeviation",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stitchTiles",
+      "category": "attribute",
+      "name": "stitchTiles",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:stop-color",
+      "category": "attribute",
+      "name": "stop-color",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stop-opacity",
+      "category": "attribute",
+      "name": "stop-opacity",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke",
+      "category": "attribute",
+      "name": "stroke",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-dasharray",
+      "category": "attribute",
+      "name": "stroke-dasharray",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-dashoffset",
+      "category": "attribute",
+      "name": "stroke-dashoffset",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-linecap",
+      "category": "attribute",
+      "name": "stroke-linecap",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-linejoin",
+      "category": "attribute",
+      "name": "stroke-linejoin",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-miterlimit",
+      "category": "attribute",
+      "name": "stroke-miterlimit",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-opacity",
+      "category": "attribute",
+      "name": "stroke-opacity",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:stroke-width",
+      "category": "attribute",
+      "name": "stroke-width",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:surfaceScale",
+      "category": "attribute",
+      "name": "surfaceScale",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:tableValues",
+      "category": "attribute",
+      "name": "tableValues",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:targetX",
+      "category": "attribute",
+      "name": "targetX",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:targetY",
+      "category": "attribute",
+      "name": "targetY",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:text-anchor",
+      "category": "attribute",
+      "name": "text-anchor",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:text-decoration",
+      "category": "attribute",
+      "name": "text-decoration",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:textLength",
+      "category": "attribute",
+      "name": "textLength",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:transform",
+      "category": "attribute",
+      "name": "transform",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:type",
+      "category": "attribute",
+      "name": "type",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:values",
+      "category": "attribute",
+      "name": "values",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:vector-effect",
+      "category": "attribute",
+      "name": "vector-effect",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:viewBox",
+      "category": "attribute",
+      "name": "viewBox",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:visibility",
+      "category": "attribute",
+      "name": "visibility",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:width",
+      "category": "attribute",
+      "name": "width",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:word-spacing",
+      "category": "attribute",
+      "name": "word-spacing",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:x",
+      "category": "attribute",
+      "name": "x",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:x1",
+      "category": "attribute",
+      "name": "x1",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:x2",
+      "category": "attribute",
+      "name": "x2",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:xChannelSelector",
+      "category": "attribute",
+      "name": "xChannelSelector",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "attribute:y",
+      "category": "attribute",
+      "name": "y",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:y1",
+      "category": "attribute",
+      "name": "y1",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:y2",
+      "category": "attribute",
+      "name": "y2",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "benchmark-ladder"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "attribute:yChannelSelector",
+      "category": "attribute",
+      "name": "yChannelSelector",
+      "status": "intentionally-snapshotted",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/105",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Runtime binding is pending-follow-up; the deterministic base value remains available."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "calculation:accumulate",
+      "category": "calculation",
+      "name": "accumulate",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:additive",
+      "category": "calculation",
+      "name": "additive",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:by",
+      "category": "calculation",
+      "name": "by",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:calcMode",
+      "category": "calculation",
+      "name": "calcMode",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:from",
+      "category": "calculation",
+      "name": "from",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:keySplines",
+      "category": "calculation",
+      "name": "keySplines",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:keyTimes",
+      "category": "calculation",
+      "name": "keyTimes",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:to",
+      "category": "calculation",
+      "name": "to",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "calculation:values",
+      "category": "calculation",
+      "name": "values",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:@keyframes",
+      "category": "css",
+      "name": "@keyframes",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation",
+      "category": "css",
+      "name": "animation",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-delay",
+      "category": "css",
+      "name": "animation-delay",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-direction",
+      "category": "css",
+      "name": "animation-direction",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-duration",
+      "category": "css",
+      "name": "animation-duration",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-fill-mode",
+      "category": "css",
+      "name": "animation-fill-mode",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-iteration-count",
+      "category": "css",
+      "name": "animation-iteration-count",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-name",
+      "category": "css",
+      "name": "animation-name",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-play-state",
+      "category": "css",
+      "name": "animation-play-state",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:animation-timing-function",
+      "category": "css",
+      "name": "animation-timing-function",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "css-keyframes"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:transform-origin",
+      "category": "css",
+      "name": "transform-origin",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "vendor"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "css:transition",
+      "category": "css",
+      "name": "transition",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Transitions require browser style mutation; the computed initial state is snapshotted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "css:transition-delay",
+      "category": "css",
+      "name": "transition-delay",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Transitions require browser style mutation; the computed initial state is snapshotted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "css:transition-duration",
+      "category": "css",
+      "name": "transition-duration",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Transitions require browser style mutation; the computed initial state is snapshotted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "css:transition-property",
+      "category": "css",
+      "name": "transition-property",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Transitions require browser style mutation; the computed initial state is snapshotted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "css:transition-timing-function",
+      "category": "css",
+      "name": "transition-timing-function",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/cssAnimations.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Transitions require browser style mutation; the computed initial state is snapshotted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "element:animate",
+      "category": "element",
+      "name": "animate",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "element:animateMotion",
+      "category": "element",
+      "name": "animateMotion",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-motion"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "element:animateTransform",
+      "category": "element",
+      "name": "animateTransform",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-transform"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "element:audio",
+      "category": "element",
+      "name": "audio",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Executable or media browser runtimes are never emitted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "element:discard",
+      "category": "element",
+      "name": "discard",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "discard"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "element:iframe",
+      "category": "element",
+      "name": "iframe",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Executable or media browser runtimes are never emitted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "element:mpath",
+      "category": "element",
+      "name": "mpath",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-motion"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "element:script",
+      "category": "element",
+      "name": "script",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Executable or media browser runtimes are never emitted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "element:set",
+      "category": "element",
+      "name": "set",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "element:video",
+      "category": "element",
+      "name": "video",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "Executable or media browser runtimes are never emitted."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "event:beginEvent",
+      "category": "event",
+      "name": "beginEvent",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:blur",
+      "category": "event",
+      "name": "blur",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:click",
+      "category": "event",
+      "name": "click",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:endEvent",
+      "category": "event",
+      "name": "endEvent",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:focus",
+      "category": "event",
+      "name": "focus",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:keydown",
+      "category": "event",
+      "name": "keydown",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:keyup",
+      "category": "event",
+      "name": "keyup",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:mousedown",
+      "category": "event",
+      "name": "mousedown",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:mousemove",
+      "category": "event",
+      "name": "mousemove",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:mouseout",
+      "category": "event",
+      "name": "mouseout",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:mouseover",
+      "category": "event",
+      "name": "mouseover",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:mouseup",
+      "category": "event",
+      "name": "mouseup",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "event:repeatEvent",
+      "category": "event",
+      "name": "repeatEvent",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "interaction:documentTime injection",
+      "category": "interaction",
+      "name": "documentTime injection",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "interaction:hover state",
+      "category": "interaction",
+      "name": "hover state",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "The generated view is deterministic and has no embedded browser runtime."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "interaction:JavaScript dispatch",
+      "category": "interaction",
+      "name": "JavaScript dispatch",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "The generated view is deterministic and has no embedded browser runtime."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "interaction:live DOM mutation",
+      "category": "interaction",
+      "name": "live DOM mutation",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "The generated view is deterministic and has no embedded browser runtime."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "interaction:media clock",
+      "category": "interaction",
+      "name": "media clock",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "The generated view is deterministic and has no embedded browser runtime."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "interaction:navigation",
+      "category": "interaction",
+      "name": "navigation",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "The generated view is deterministic and has no embedded browser runtime."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "interaction:network fetch",
+      "category": "interaction",
+      "name": "network fetch",
+      "status": "browser-runtime-out-of-scope",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationTargets.test.ts"
+      ],
+      "temporalTags": [
+        "static-control"
+      ],
+      "limitations": [
+        "The generated view is deterministic and has no embedded browser runtime."
+      ],
+      "permissiveFallback": "snapshot base value and diagnose",
+      "strictFallback": "reject when dynamic behavior affects output"
+    },
+    {
+      "id": "interaction:reduced motion",
+      "category": "interaction",
+      "name": "reduced motion",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "interaction:scene pause",
+      "category": "interaction",
+      "name": "scene pause",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "interaction:SVGAnimationEvent trace",
+      "category": "interaction",
+      "name": "SVGAnimationEvent trace",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "deterministic-events"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "motion:keyPoints",
+      "category": "motion",
+      "name": "keyPoints",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-motion"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "motion:origin",
+      "category": "motion",
+      "name": "origin",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-motion"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "motion:path",
+      "category": "motion",
+      "name": "path",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-motion"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "motion:rotate",
+      "category": "motion",
+      "name": "rotate",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "animate-motion"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "obsolete:animateColor",
+      "category": "obsolete",
+      "name": "animateColor",
+      "status": "obsolete",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "color"
+      ],
+      "limitations": [
+        "Accepted through generic animate semantics; authors should use animate."
+      ],
+      "permissiveFallback": "compile equivalent or snapshot",
+      "strictFallback": "diagnose obsolete syntax"
+    },
+    {
+      "id": "timing:accessKey",
+      "category": "timing",
+      "name": "accessKey",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:begin",
+      "category": "timing",
+      "name": "begin",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:clock-value",
+      "category": "timing",
+      "name": "clock-value",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:dur",
+      "category": "timing",
+      "name": "dur",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:end",
+      "category": "timing",
+      "name": "end",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:eventbase",
+      "category": "timing",
+      "name": "eventbase",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:fill",
+      "category": "timing",
+      "name": "fill",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:indefinite",
+      "category": "timing",
+      "name": "indefinite",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:max",
+      "category": "timing",
+      "name": "max",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:min",
+      "category": "timing",
+      "name": "min",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:repeat-value",
+      "category": "timing",
+      "name": "repeat-value",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:repeatCount",
+      "category": "timing",
+      "name": "repeatCount",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:repeatDur",
+      "category": "timing",
+      "name": "repeatDur",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:restart",
+      "category": "timing",
+      "name": "restart",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "smil-timing"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:syncbase",
+      "category": "timing",
+      "name": "syncbase",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "timing:wallclock",
+      "category": "timing",
+      "name": "wallclock",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animation.test.ts"
+      ],
+      "temporalTags": [
+        "instance-time-list"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:color",
+      "category": "value-family",
+      "name": "color",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:discrete",
+      "category": "value-family",
+      "name": "discrete",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:integer",
+      "category": "value-family",
+      "name": "integer",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:length",
+      "category": "value-family",
+      "name": "length",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:length-list",
+      "category": "value-family",
+      "name": "length-list",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:number",
+      "category": "value-family",
+      "name": "number",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:opacity",
+      "category": "value-family",
+      "name": "opacity",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:paint",
+      "category": "value-family",
+      "name": "paint",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:path",
+      "category": "value-family",
+      "name": "path",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:percentage",
+      "category": "value-family",
+      "name": "percentage",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:points",
+      "category": "value-family",
+      "name": "points",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:transform",
+      "category": "value-family",
+      "name": "transform",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    },
+    {
+      "id": "value-family:viewBox",
+      "category": "value-family",
+      "name": "viewBox",
+      "status": "supported",
+      "issue": "https://github.com/bring-shrubbery/SVG-to-SwiftUI/issues/94",
+      "unitEvidence": [
+        "src/tests/animationValues.test.ts"
+      ],
+      "temporalTags": [
+        "smil-values"
+      ],
+      "limitations": [],
+      "permissiveFallback": "compile",
+      "strictFallback": "compile"
+    }
+  ]
+}
