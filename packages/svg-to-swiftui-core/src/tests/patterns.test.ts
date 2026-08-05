@@ -158,6 +158,9 @@ describe("typed SVG pattern resources", () => {
     expect(output).toContain("CGAffineTransform(translationX:");
     expect(output).toContain("drawPattern0(context: &context, size: size)");
     expect(output).toContain("private func drawPattern0(context: inout GraphicsContext, size: CGSize)");
+    expect(output).toContain("context.withCGContext { (graphics: CGContext) in");
+    expect(output).toContain("drawPattern0CG(graphics: graphics, size: size)");
+    expect(output).toContain("private func drawPattern0CG(graphics: CGContext, size: CGSize)");
     expect(output.match(/context\.withCGContext/g)).toHaveLength(2);
   });
 

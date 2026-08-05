@@ -3420,6 +3420,7 @@ function renderPatternNode(
   const prefix = indentation.repeat(level);
   const inner = indentation.repeat(level + 1);
   const rendererName = `drawPattern${renderContext.nextPatternRenderer++}`;
+  const cgRendererName = `${rendererName}CG`;
   const rendererParameters = [
     "context: inout GraphicsContext",
     "size: CGSize",
@@ -3432,11 +3433,27 @@ function renderPatternNode(
     ...(renderContext.animated ? ["documentTime: documentTime"] : []),
     ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
   ].join(", ");
+  const cgRendererParameters = [
+    "graphics: CGContext",
+    "size: CGSize",
+    ...(renderContext.animated ? ["documentTime: Double"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: [String: [(begin: Double, end: Double)]]"] : []),
+  ].join(", ");
+  const cgRendererArguments = [
+    "graphics: graphics",
+    "size: size",
+    ...(renderContext.animated ? ["documentTime: documentTime"] : []),
+    ...(renderContext.eventDriven ? ["animationIntervals: animationIntervals"] : []),
+  ].join(", ");
   renderContext.patternRenderers.push([
     `${indentation}private func ${rendererName}(${rendererParameters}) {`,
-    `${indentation.repeat(2)}context.withCGContext { graphics in`,
-    ...renderPatternCommands(node, "graphics", 3, indentation),
+    `${indentation.repeat(2)}context.withCGContext { (graphics: CGContext) in`,
+    `${indentation.repeat(3)}${cgRendererName}(${cgRendererArguments})`,
     `${indentation.repeat(2)}}`,
+    `${indentation}}`,
+    "",
+    `${indentation}private func ${cgRendererName}(${cgRendererParameters}) {`,
+    ...renderPatternCommands(node, "graphics", 2, indentation),
     `${indentation}}`,
   ]);
   const lines = [
