@@ -38,7 +38,7 @@ export function renderAnimationReport(): string {
     "| Element | Status | Evidence |",
     "| --- | --- | --- |",
     "| `<animateTransform>` | implemented | typed parser/sampler/composition tests; 18-frame `benchmark-06-animate-transform` |",
-    "| `<animateMotion>` | pending roadmap ticket | not yet wired to SwiftUI |",
+    "| `<animateMotion>` / `<mpath>` | implemented | metric/parser/composition tests; 18-frame `benchmark-07-animate-motion` |",
     "",
   ];
   return lines.join("\n");

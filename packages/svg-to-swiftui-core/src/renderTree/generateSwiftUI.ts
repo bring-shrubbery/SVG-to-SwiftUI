@@ -489,6 +489,45 @@ function buildViewNodes(
     base: TypedAnimationValue,
   ): string | undefined => animatedValueExpressionFromAnimations(animationsFor(node, attributeName), base);
 
+  const animatedMotionExpression = (node: RenderNode): string | undefined => {
+    const animations = directAnimationsFor(node, "motion");
+    if (animations.length === 0) return undefined;
+    let expression = "CGAffineTransform.identity";
+    for (const animation of animations) {
+      const motion = animation.motion;
+      if (!motion) continue;
+      const intervals = context.animationIntervals.get(animation.stableId) ?? [];
+      const intervalLiteral = intervals
+        .map((interval) => `(begin: ${swiftDuration(interval.begin)}, end: ${swiftDuration(interval.end)})`)
+        .join(", ");
+      const duration =
+        animation.timing.duration.type === "seconds" ? animation.timing.duration.seconds : Number.POSITIVE_INFINITY;
+      const repeatingDuration = computeSMILRepeatingDuration(animation.timing);
+      const points = motion.points
+        .map(
+          (point) =>
+            `${context.rootName}.SVGAnimationMotionPoint(x: ${formatNumber(point.x)}, y: ${formatNumber(point.y)}, distance: ${formatNumber(point.distance)}, move: ${point.move})`,
+        )
+        .join(", ");
+      const keyTimes = animation.composition.keyTimes?.map((value) => formatNumber(value)).join(", ") ?? "";
+      const keyPoints = animation.composition.keyPoints?.map((value) => formatNumber(value)).join(", ") ?? "";
+      const pathPoints = motion.keyDistances
+        .map((distance) => formatNumber(motion.length <= 1e-12 ? 0 : distance / motion.length))
+        .join(", ");
+      const keySplines =
+        animation.composition.keySplines
+          ?.map(
+            (spline) =>
+              `(x1: ${formatNumber(spline.x1)}, y1: ${formatNumber(spline.y1)}, x2: ${formatNumber(spline.x2)}, y2: ${formatNumber(spline.y2)})`,
+          )
+          .join(", ") ?? "";
+      const rotateMode = motion.rotate.type === "auto" ? (motion.rotate.reverse ? "autoReverse" : "auto") : "angle";
+      const angle = motion.rotate.type === "angle" ? motion.rotate.degrees : 0;
+      expression = `${context.rootName}.svgAnimatedMotion(documentTime: documentTime, intervals: [${intervalLiteral}], duration: ${swiftDuration(duration)}, repeatingDuration: ${swiftDuration(repeatingDuration)}, points: [${points}], length: ${formatNumber(motion.length)}, pathPoints: [${pathPoints}], rotate: .${rotateMode}, angle: ${formatNumber(angle)}, calcMode: .${animation.composition.calcMode}, keyTimes: [${keyTimes}], keyPoints: [${keyPoints}], keySplines: [${keySplines}], additive: ${animation.composition.additive === "sum" ? "true" : "false"}, accumulate: ${animation.composition.accumulate === "sum" ? "true" : "false"}, underlying: ${expression}, freeze: ${animation.timing.fill === "freeze" ? "true" : "false"})`;
+    }
+    return expression === "CGAffineTransform.identity" ? undefined : expression;
+  };
+
   const transformCorrectionExpression = (
     node: RenderNode,
     transforms: RenderNode["transform"][],
@@ -512,10 +551,11 @@ function buildViewNodes(
       ],
     };
     const animatedBase = animatedValueExpression(node, "transform", baseValue);
-    if (!animatedBase && !animatedSuffix) return undefined;
+    const animatedMotion = animatedMotionExpression(node);
+    if (!animatedBase && !animatedSuffix && !animatedMotion) return undefined;
     const ancestors = transforms.reduce(multiplyTransforms, IDENTITY_TRANSFORM);
     const staticTransform = multiplyTransforms(ancestors, node.transform);
-    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base)}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
+    return `${context.rootName}.svgAnimatedTransformCorrection(animatedBase: ${animatedBase ? `${context.rootName}.svgAnimationTransform(${animatedBase})` : swiftTransform(metadata.base)}, animatedMotion: ${animatedMotion ?? "CGAffineTransform.identity"}, animatedSuffix: ${animatedSuffix ?? swiftTransform(metadata.suffix)}, ancestors: ${swiftTransform(ancestors)}, staticTransform: ${swiftTransform(staticTransform)}, outputSize: proxy.size, coordinateSpace: CGRect(x: ${formatNumber(context.options.viewBox.x)}, y: ${formatNumber(context.options.viewBox.y)}, width: ${formatNumber(context.options.viewBox.width)}, height: ${formatNumber(context.options.viewBox.height)}))`;
   };
 
   const numericBase = (
@@ -4382,6 +4422,8 @@ function createView(
         "enum SVGAnimationForm { case values, fromto, fromby, by, to }",
         "enum SVGAnimationCalcMode { case discrete, linear, paced, spline }",
         "enum SVGAnimationClamp { case none, unit, nonnegative, integer }",
+        "enum SVGAnimationMotionRotate { case auto, autoReverse, angle }",
+        "struct SVGAnimationMotionPoint { let x: Double; let y: Double; let distance: Double; let move: Bool }",
         "enum SVGAnimationRuntimeValueKind { case number, integer, opacity, length, angle, color, numberList, lengthList, points, paintColor, path, viewBox, transform, discrete }",
         "struct SVGAnimationRuntimeValue {",
         `${indentation}let kind: SVGAnimationRuntimeValueKind`,
@@ -4565,11 +4607,50 @@ function createView(
         `${indentation}return svgMultiplyTransform(animatedOutput, staticOutput.inverted())`,
         "}",
         "",
-        "private static func svgAnimatedTransformCorrection(animatedBase: CGAffineTransform, animatedSuffix: CGAffineTransform, ancestors: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect) -> CGAffineTransform {",
-        `${indentation}let animatedUser = svgMultiplyTransform(ancestors, svgMultiplyTransform(animatedBase, animatedSuffix))`,
+        "private static func svgAnimatedTransformCorrection(animatedBase: CGAffineTransform, animatedMotion: CGAffineTransform, animatedSuffix: CGAffineTransform, ancestors: CGAffineTransform, staticTransform: CGAffineTransform, outputSize: CGSize, coordinateSpace: CGRect) -> CGAffineTransform {",
+        `${indentation}let target = svgMultiplyTransform(animatedBase, svgMultiplyTransform(animatedMotion, animatedSuffix))`,
+        `${indentation}let animatedUser = svgMultiplyTransform(ancestors, target)`,
         `${indentation}let animatedOutput = svgOutputTransform(animatedUser, size: outputSize, coordinateSpace: coordinateSpace)`,
         `${indentation}let staticOutput = svgOutputTransform(staticTransform, size: outputSize, coordinateSpace: coordinateSpace)`,
         `${indentation}return svgMultiplyTransform(animatedOutput, staticOutput.inverted())`,
+        "}",
+        "",
+        "private static func svgMotionSample(points: [SVGAnimationMotionPoint], length: Double, fraction: Double) -> (x: Double, y: Double, angle: Double) {",
+        `${indentation}guard let first = points.first else { return (0, 0, 0) }`,
+        `${indentation}let distance = min(max(0, fraction), 1) * max(0, length)`,
+        `${indentation}var low = 0; var high = points.count - 1`,
+        `${indentation}while low < high { let middle = (low + high) / 2; if points[middle].distance < distance - 0.000000000001 { low = middle + 1 } else { high = middle } }`,
+        `${indentation}var upper = low`,
+        `${indentation}while upper + 1 < points.count && points[upper + 1].distance <= distance + 0.000000000001 { upper += 1 }`,
+        `${indentation}func usable(_ index: Int) -> Bool { index > 0 && index < points.count && !points[index].move && hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y) > 0.000000000001 }`,
+        `${indentation}var segment: Int?`,
+        `${indentation}var forward = max(1, points[upper].distance <= distance + 0.000000000001 ? upper + 1 : upper)`,
+        `${indentation}while forward < points.count { if usable(forward) { segment = forward; break }; forward += 1 }`,
+        `${indentation}if segment == nil { var backward = min(points.count - 1, low); while backward >= 1 { if usable(backward) { segment = backward; break }; backward -= 1 } }`,
+        `${indentation}guard let segment else { return (points[upper].x, points[upper].y, 0) }`,
+        `${indentation}let start = points[segment - 1]; let end = points[segment]`,
+        `${indentation}let span = end.distance - start.distance`,
+        `${indentation}let progress = span <= 0.000000000001 ? 0 : min(1, max(0, (distance - start.distance) / span))`,
+        `${indentation}return (start.x + (end.x - start.x) * progress, start.y + (end.y - start.y) * progress, atan2(end.y - start.y, end.x - start.x))`,
+        "}",
+        "",
+        "private static func svgMotionTransform(points: [SVGAnimationMotionPoint], length: Double, fraction: Double, rotate: SVGAnimationMotionRotate, angle: Double) -> CGAffineTransform {",
+        `${indentation}let sample = svgMotionSample(points: points, length: length, fraction: fraction)`,
+        `${indentation}let radians: Double`,
+        `${indentation}switch rotate { case .auto: radians = sample.angle; case .autoReverse: radians = sample.angle + .pi; case .angle: radians = angle * .pi / 180 }`,
+        `${indentation}let translation = CGAffineTransform(translationX: sample.x, y: sample.y)`,
+        `${indentation}return svgMultiplyTransform(translation, CGAffineTransform(rotationAngle: radians))`,
+        "}",
+        "",
+        "private static func svgAnimatedMotion(documentTime: Double, intervals: [(begin: Double, end: Double)], duration: Double, repeatingDuration: Double, points: [SVGAnimationMotionPoint], length: Double, pathPoints: [Double], rotate: SVGAnimationMotionRotate, angle: Double, calcMode: SVGAnimationCalcMode, keyTimes: [Double], keyPoints: [Double], keySplines: [(x1: Double, y1: Double, x2: Double, y2: Double)], additive: Bool, accumulate: Bool, underlying: CGAffineTransform, freeze: Bool) -> CGAffineTransform {",
+        `${indentation}let timing = svgTimingSample(documentTime: documentTime, intervals: intervals, duration: duration, repeatingDuration: repeatingDuration, freeze: freeze)`,
+        `${indentation}if timing.state == .inactive || timing.state == .completed { return underlying }`,
+        `${indentation}guard let progress = timing.simpleProgress else { return underlying }`,
+        `${indentation}let controlPoints = keyPoints.count >= 2 ? keyPoints : pathPoints`,
+        `${indentation}let fraction = calcMode == .paced && keyPoints.isEmpty ? progress : svgAnimationValueSample(progress: progress, values: controlPoints, form: .values, calcMode: calcMode, keyTimes: keyTimes, keySplines: keySplines, additive: false, accumulate: false, repeatIteration: 0, clamp: .unit, underlying: 0)`,
+        `${indentation}var effect = svgMotionTransform(points: points, length: length, fraction: fraction, rotate: rotate, angle: angle)`,
+        `${indentation}if accumulate && timing.repeatIteration > 0 { let endpoint = svgMotionTransform(points: points, length: length, fraction: 1, rotate: rotate, angle: angle); for _ in 0..<timing.repeatIteration { effect = svgMultiplyTransform(effect, endpoint) } }`,
+        `${indentation}return additive ? svgMultiplyTransform(underlying, effect) : effect`,
         "}",
         "",
         "private static func svgAnimationColor(_ value: SVGAnimationRuntimeValue) -> Color {",
