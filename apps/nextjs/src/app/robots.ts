@@ -4,7 +4,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: "/",
+      allow: ["/", "/llms.txt"],
     },
     sitemap: "https://svg-to-swiftui.quassum.com/sitemap.xml",
   };

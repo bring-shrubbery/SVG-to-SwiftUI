@@ -35,7 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: "https://svg-to-swiftui.quassum.com/llms.txt",
-      lastModified: "2026-04-19",
+      lastModified: "2026-10-20",
       changeFrequency: "monthly",
       priority: 0.5,
     },
